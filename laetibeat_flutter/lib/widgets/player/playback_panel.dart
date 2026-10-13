@@ -5,6 +5,7 @@ import 'package:laetibeat/src/rust/api/simple.dart' as rust;
 import '../../animations.dart';
 import '../settings/music_library_provider.dart';
 import 'player_provider.dart';
+import 'squish_button_row.dart';
 
 //共享播放面板:三个区域(来源区/播放显示区/控制区)
 //主页/搜索/音乐库右侧默认显示;全屏页复用同一面板
@@ -32,22 +33,35 @@ class PlaybackPanel extends ConsumerWidget {
         // 缩放封顶在 0.8~1.4 之间,全屏/小窗都不至于过大或过小
         final scale = (c.maxHeight / baseH).clamp(0.8, 1.4).toDouble();
         return ClipRect(
-          child: Align(
-            alignment: Alignment.center,
-            child: Transform.scale(
-              scale: scale,
-              child: SizedBox(
-                width: c.maxWidth / scale,
-                height: baseH,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _sourceRegion(theme, scheme, player),
-                    SizedBox(height: theme.spacing.lg),
-                    Expanded(child: _displayRegion(context, theme, track)),
-                    SizedBox(height: theme.spacing.lg),
-                    _controlRegion(theme, scheme, player, ref),
-                  ],
+          child: Padding(
+            // 顶部固定留一个小间距,多余高度转移到底部,避免全屏时顶部空带过大
+            padding: EdgeInsets.only(top: theme.spacing.xxl),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Transform.scale(
+                scale: scale,
+                // 绕顶部缩放,贴顶时内容只向下展开,避免往上顶出被 clip 裁掉来源区
+                alignment: Alignment.topCenter,
+                child: SizedBox(
+                  width: c.maxWidth / scale,
+                  height: baseH,
+                  // 全页统一横向内边距: 封面/显示区/进度条/控制按钮行
+                  // 左右都一致地距屏幕相同距离
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: theme.spacing.xl,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _sourceRegion(theme, scheme, player),
+                        SizedBox(height: theme.spacing.lg),
+                        Expanded(child: _displayRegion(context, theme, track)),
+                        SizedBox(height: theme.spacing.lg),
+                        _controlRegion(theme, scheme, player, ref),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -134,6 +148,7 @@ class PlaybackPanel extends ConsumerWidget {
               child: FittedBox(
                 fit: BoxFit.contain,
                 child: SizedBox(
+                  // 铺满内边距带整宽,封面距左右两侧正好为统一间距 x
                   width: c.maxWidth,
                   height: c.maxWidth,
                   child: _cover(theme),
@@ -241,63 +256,20 @@ class PlaybackPanel extends ConsumerWidget {
           ],
         ),
         SizedBox(height: theme.spacing.md),
-        //上一首 / 播放暂停 / 下一首 - 按钮组左右留白,整体缩窄居中
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: theme.spacing.xl),
-          child: LayoutBuilder(
+        //上一首 / 播放暂停 / 下一首 - 横向内边距已由全页统一 Padding 提供
+        LayoutBuilder(
           builder: (context, c) {
-            final spacing = theme.spacing.xs;
-            final btnW = (c.maxWidth - spacing * 2) / 3;
-            return M3EButtonGroup(
-              type: M3EButtonGroupType.standard,
-              shape: M3EButtonShape.round,
-              size: M3EButtonSize.md,
-              style: M3EButtonStyle.filled,
-              neighborSquish: true,
-              spacing: spacing,
-              selectedIndex: player.isPlaying ? 1 : null,
-              onSelectedIndexChanged: (i) {
-                //按钮组点已选项是取消选中,回调null;播放中只有中间选中,视为点暂停
-                if (i == null) {
-                  notifier.toggle();
-                  return;
-                }
-                switch (i) {
-                  case 0:
-                    notifier.prev();
-                    break;
-                  case 1:
-                    notifier.toggle();
-                    break;
-                  case 2:
-                    notifier.next();
-                    break;
-                }
-              },
-              actions: [
-                M3EButtonGroupAction(
-                  icon: const Icon(Icons.skip_previous),
-                  tooltip: '上一首',
-                  enabled: player.queue.isNotEmpty,
-                  width: btnW,
-                ),
-                M3EButtonGroupAction(
-                  icon: const Icon(Icons.play_arrow),
-                  selectedIcon: const Icon(Icons.pause),
-                  tooltip: player.isPlaying ? '暂停' : '播放',
-                  enabled: player.current != null,
-                  width: btnW,
-                ),
-                M3EButtonGroupAction(
-                  icon: const Icon(Icons.skip_next),
-                  tooltip: '下一首',
-                  enabled: player.queue.isNotEmpty,
-                  width: btnW,
-                ),
-              ],
+            // 控制排: 上一首/播放暂停/下一首,复刻 neighbor-squish 效果
+            return SquishButtonRow(
+              isPlaying: player.isPlaying,
+              previousEnabled: player.queue.isNotEmpty,
+              toggleEnabled: player.current != null,
+              nextEnabled: player.queue.isNotEmpty,
+              onPrevious: notifier.prev,
+              onToggle: notifier.toggle,
+              onNext: notifier.next,
             );
           },
-          ),
         ),
         SizedBox(height: theme.spacing.md),
         //底部:左侧按钮组(播放列表/随机/顺序) + 右侧三点菜单
