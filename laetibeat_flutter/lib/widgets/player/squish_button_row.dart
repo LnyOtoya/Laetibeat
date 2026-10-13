@@ -176,42 +176,47 @@ class _SquishButtonRowState extends State<SquishButtonRow>
     final theme = M3ETheme.of(context);
     final labelStyle = theme.typeScale.labelMedium;
 
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, _) {
-        final sizes = _squishSizes(theme, labelStyle);
-        // 居中、三键紧密相邻; 通过加长中间按钮来缩小两侧留白
-        return Center(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _button(
-                0,
-                sizes[0],
-                icon: Icons.skip_previous,
-                label: null,
-                tooltip: '上一首',
-              ),
-              SizedBox(width: theme.spacing.sm),
-              _button(
-                1,
-                sizes[1],
-                icon: widget.isPlaying ? Icons.pause : Icons.play_arrow,
-                label: widget.isPlaying ? '暂停' : '播放',
-                tooltip: widget.isPlaying ? '暂停' : '播放',
-              ),
-              SizedBox(width: theme.spacing.sm),
-              _button(
-                2,
-                sizes[2],
-                icon: Icons.skip_next,
-                label: null,
-                tooltip: '下一首',
-              ),
-            ],
-          ),
-        );
-      },
+    // 其余控件用同款 FittedBox 防溢出: 空间不足时整行缩放而非横向溢出
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.center,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          final sizes = _squishSizes(theme, labelStyle);
+          // 居中、三键紧密相邻; 通过加长中间按钮来缩小两侧留白
+          return Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _button(
+                  0,
+                  sizes[0],
+                  icon: Icons.skip_previous,
+                  label: null,
+                  tooltip: '上一首',
+                ),
+                SizedBox(width: theme.spacing.sm),
+                _button(
+                  1,
+                  sizes[1],
+                  icon: widget.isPlaying ? Icons.pause : Icons.play_arrow,
+                  label: widget.isPlaying ? '暂停' : '播放',
+                  tooltip: widget.isPlaying ? '暂停' : '播放',
+                ),
+                SizedBox(width: theme.spacing.sm),
+                _button(
+                  2,
+                  sizes[2],
+                  icon: Icons.skip_next,
+                  label: null,
+                  tooltip: '下一首',
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 

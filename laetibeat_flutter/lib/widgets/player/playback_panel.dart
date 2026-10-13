@@ -55,9 +55,11 @@ class PlaybackPanel extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _sourceRegion(theme, scheme, player),
+                        // 来源距离封面: 间距稍小
                         SizedBox(height: theme.spacing.lg),
                         Expanded(child: _displayRegion(context, theme, track)),
-                        SizedBox(height: theme.spacing.lg),
+                        // 显示区域距离控制区: 间距稍大
+                        SizedBox(height: theme.spacing.xxl),
                         _controlRegion(theme, scheme, player, ref),
                       ],
                     ),
@@ -157,7 +159,7 @@ class PlaybackPanel extends ConsumerWidget {
             ),
           ),
         ),
-        SizedBox(height: theme.spacing.lg),
+        SizedBox(height: theme.spacing.xxl),
         Row(
           children: [
             Expanded(
