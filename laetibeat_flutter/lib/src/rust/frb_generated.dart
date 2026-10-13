@@ -216,14 +216,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   UiTrack dco_decode_ui_track(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 5)
-      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
     return UiTrack(
       id: dco_decode_String(arr[0]),
       title: dco_decode_String(arr[1]),
       artist: dco_decode_String(arr[2]),
       album: dco_decode_String(arr[3]),
       duration: dco_decode_String(arr[4]),
+      path: dco_decode_String(arr[5]),
     );
   }
 
@@ -284,12 +285,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_artist = sse_decode_String(deserializer);
     var var_album = sse_decode_String(deserializer);
     var var_duration = sse_decode_String(deserializer);
+    var var_path = sse_decode_String(deserializer);
     return UiTrack(
       id: var_id,
       title: var_title,
       artist: var_artist,
       album: var_album,
       duration: var_duration,
+      path: var_path,
     );
   }
 
@@ -359,6 +362,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.artist, serializer);
     sse_encode_String(self.album, serializer);
     sse_encode_String(self.duration, serializer);
+    sse_encode_String(self.path, serializer);
   }
 
   @protected

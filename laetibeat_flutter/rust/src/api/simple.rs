@@ -1,5 +1,5 @@
 use flutter_rust_bridge::frb;
-use laetibeat_core::model::MusicLibrary;
+use laetibeat_core::model::{MusicLibrary, SourceType};
 use laetibeat_core::scan_directory;
 
 // 弹出系统原生文件夹选择框,选中返回其路径,取消返回None
@@ -16,6 +16,8 @@ pub struct  UiTrack {
     pub artist: String,
     pub album: String,
     pub duration: String,
+    // 本地文件的原始绝对路径;非本地音源(如opensubsonic)为空串
+    pub path: String,
 }
 
 // 扫描本地音乐文件夹,异步执行不阻塞UI
@@ -24,12 +26,20 @@ pub fn scan_local_music_folder(dir_path: String) -> Result<Vec<UiTrack>, String>
 
     scan_directory(&mut library, &dir_path)?;
 
-    let ui_tracks = library.tracks.into_iter().map(|track| UiTrack {
-        id: track.id,
-        title: track.title,
-        artist: track.artist,
-        album: track.album,
-        duration: format_duration(track.duration),
+    let ui_tracks = library.tracks.into_iter().map(|track| {
+        // 从音源中取出真实本地路径;非本地音源暂时给空串
+        let path = match &track.source_type {
+            SourceType::LocalFile(p) => p.to_string_lossy().to_string(),
+            SourceType::Opensubsonic { .. } => String::new(),
+        };
+        UiTrack {
+            id: track.id,
+            title: track.title,
+            artist: track.artist,
+            album: track.album,
+            duration: format_duration(track.duration),
+            path,
+        }
     }).collect();
     Ok(ui_tracks)
 }

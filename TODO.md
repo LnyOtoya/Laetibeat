@@ -5,7 +5,7 @@
 - [x] 1.1 初始化rust workspace
 - [x] 1.2 定义核心数据结构(歌曲track，专辑album，艺术家artist，播放状态playstate)以及统一音源抽象接口(AudioSource)
 - [x] 1.3 实现本地文件夹扫描与元数据解析(引入walkdir遍历，lofty读取歌曲标签。对wav标签进行特殊处理)
-- [ ] 1.4 搭建解码模块(使用symphonia将音频文件解包为标准PCM数据流，与音频输出解耦)
+- [x] 1.4 解码方案定板:不自研symphonia,桌面解码由播放引擎 media_kit(libmpv+FFmpeg) 承接(已打通Linux)。仅当未来追求极致嵌入式时再考虑自研PCM解码
 
 ## 阶段2: 前端搭建与FFI桥接
 
@@ -17,7 +17,8 @@
 ## 阶段3: 高级UI交互与媒体会话初步完善
 
 - [ ] 3.1 完善播放器各个页面，包括播放列表和音源切换等
-- [ ] 3.2 接入just_audio与audio_service，打通Android媒体会话与常驻保活。
+- [ ] 3.2 Android后端接入(Media3或just_audio+audio_service)，经 PlaybackBackend 平插，打通媒体会话与常驻保活
+- [x] 3.3 桌面端真实播放:引入 PlaybackBackend 抽象(playback_backend.dart)，Linux 用 MediaKitBackend(media_kit)，替换假Timer由引擎状态流(position/duration/playing/completed)驱动
 
 ## 阶段4: 接入opensubsonic api
 
@@ -32,5 +33,5 @@
 
 ## 阶段6: 跨平台输出适配
 
-- [ ] 6.1 桌面端集成基础音频输出(cpal或rodio)，移动端对接系统媒体会话
+- [x] 6.1 桌面端音频输出(由 media_kit 内置 libmpv+FFmpeg 承担,已可行)。移动端另行对接系统媒体会话
 - [ ] 6.2 多端打包与适配测试(android、Windows、Linux、)

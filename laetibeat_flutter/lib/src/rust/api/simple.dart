@@ -20,6 +20,7 @@ class UiTrack {
   final String artist;
   final String album;
   final String duration;
+  final String path;
 
   const UiTrack({
     required this.id,
@@ -27,6 +28,7 @@ class UiTrack {
     required this.artist,
     required this.album,
     required this.duration,
+    required this.path,
   });
 
   @override
@@ -35,7 +37,8 @@ class UiTrack {
       title.hashCode ^
       artist.hashCode ^
       album.hashCode ^
-      duration.hashCode;
+      duration.hashCode ^
+      path.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -46,5 +49,6 @@ class UiTrack {
           title == other.title &&
           artist == other.artist &&
           album == other.album &&
-          duration == other.duration;
+          duration == other.duration &&
+          path == other.path;
 }

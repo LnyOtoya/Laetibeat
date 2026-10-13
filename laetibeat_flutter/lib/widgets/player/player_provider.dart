@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:laetibeat/src/rust/api/simple.dart' as rust;
+import 'playback_backend.dart';
 
 //播放状态:当前曲目/播放中/进度/来源/队列
 //三页右侧播放面板 + 全屏页都读同一份,保证"相互联系"
@@ -43,31 +44,54 @@ class PlayerState {
 }
 
 class PlayerNotifier extends Notifier<PlayerState> {
-  //进度自动前进(假实现,周期触发;后期由真实解码回调驱动)
-  Timer? _ticker;
+  //真实播放后端(Linux 首发为 media_kit)。只通过这一层拼口驱动,不直接碰引擎。
+  late final PlaybackBackend _backend;
+  final List<StreamSubscription> _subs = [];
 
   @override
   PlayerState build() {
-    //默认空态:未选择任何曲目播放,待用户从音乐库点播后接管
-    _ticker?.cancel();
-    _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+    _backend = createPlaybackBackend();
+
+    // 订阅真实引擎的状态/进度流,彻底取代之前每秒跳一次的假 Timer
+    _subs.add(_backend.positionStream.listen(_onPosition));
+    _subs.add(_backend.durationStream.listen(_onDuration));
+    _subs.add(_backend.playingStream.listen(_onPlaying));
+    _subs.add(_backend.completedStream.listen((_) => next())); //播完自动切下一首
+
+    ref.onDispose(() {
+      for (final s in _subs) {
+        s.cancel();
+      }
+      _subs.clear();
+      _backend.dispose();
+    });
+
     return const PlayerState(queue: [], isPlaying: false);
   }
 
-  void _tick() {
-    if (!state.isPlaying) return;
-    final total = state.duration.inMilliseconds;
-    final nextPos = state.position + const Duration(seconds: 1);
-    if (total > 0 && nextPos.inMilliseconds >= total) {
-      next(); //播完自动切下一首
-    } else {
-      state = state.copyWith(position: nextPos);
-    }
+  void _onPosition(Duration p) {
+    if (state.queue.isEmpty) return; //空态不推进展示
+    final total = state.duration;
+    final clamped = (total > Duration.zero && p > total) ? total : p;
+    state = state.copyWith(position: clamped);
   }
 
-  //播放/暂停切换
-  void toggle() {
-    state = state.copyWith(isPlaying: !state.isPlaying);
+  void _onDuration(Duration d) {
+    state = state.copyWith(duration: d);
+  }
+
+  void _onPlaying(bool on) {
+    state = state.copyWith(isPlaying: on);
+  }
+
+  //播放/暂停切换:由真实引擎的实际状态决定,不再本地假翻
+  Future<void> toggle() async {
+    if (state.queue.isEmpty) return;
+    if (state.isPlaying) {
+      await _backend.pause();
+    } else {
+      await _backend.play();
+    }
   }
 
   //播放队列中指定曲目,同时记录来源
@@ -75,12 +99,7 @@ class PlayerNotifier extends Notifier<PlayerState> {
     final queue = state.queue;
     if (queue.isEmpty) return;
     final idx = (index + queue.length) % queue.length;
-    state = state.copyWith(
-      currentIndex: idx,
-      isPlaying: true,
-      position: Duration.zero,
-      source: source ?? state.source,
-    );
+    _openAndPlay(idx, source ?? state.source);
   }
 
   //用真实扫描到的曲目整体替换队列并从 startIndex 开始播放
@@ -95,6 +114,25 @@ class PlayerNotifier extends Notifier<PlayerState> {
       duration: _durationOf(tracks[idx]),
       source: source ?? state.source,
     );
+    _backend.open(_trackOf(tracks[idx]));
+  }
+
+  void _openAndPlay(int idx, String source) {
+    final track = state.queue[idx];
+    state = state.copyWith(
+      currentIndex: idx,
+      isPlaying: true,
+      position: Duration.zero,
+      duration: _durationOf(track),
+      source: source,
+    );
+    _backend.open(_trackOf(track));
+  }
+
+  //由曲目拼出 PlaybackTrack:path 转 file:// URI,时长先用元数据粗值兜底
+  PlaybackTrack _trackOf(rust.UiTrack t) {
+    final uri = t.path.isEmpty ? t.id : Uri.file(t.path).toString();
+    return PlaybackTrack(uri: uri, fallbackDuration: _durationOf(t));
   }
 
   //从解析的'03:24'时长文本转成 Duration,失败则用整曲默认值
@@ -105,17 +143,16 @@ class PlayerNotifier extends Notifier<PlayerState> {
       final s = int.tryParse(parts[1]);
       if (m != null && s != null) return Duration(minutes: m, seconds: s);
     }
-    return const Duration(seconds: 204);
+    return const Duration(seconds: 0);
   }
 
-  //拖拽进度条定位
+  //拖拽进度条定位:只改位置并同步给真实引擎 seek,不改变播放状态。
+  //isPlaying 完全由引擎的 playingStream 驱动,避免"暂停时拖条被误判为播放"导致按钮状态失真。
   void seek(Duration position) {
     final total = state.duration.inMilliseconds;
     final ms = position.inMilliseconds.clamp(0, total > 0 ? total : 0);
-    state = state.copyWith(
-      position: Duration(milliseconds: ms),
-      isPlaying: true,
-    );
+    state = state.copyWith(position: Duration(milliseconds: ms));
+    _backend.seek(Duration(milliseconds: ms));
   }
 
   //下一首

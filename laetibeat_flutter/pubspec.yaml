@@ -40,6 +40,8 @@ dependencies:
   flutter_riverpod: ^3.0.0
   material_3_expressive: ^1.1.6
   window_manager: ^0.5.2
+  media_kit: ^1.2.6
+  media_kit_libs_linux: ^1.2.1
 
 dev_dependencies:
   flutter_test:

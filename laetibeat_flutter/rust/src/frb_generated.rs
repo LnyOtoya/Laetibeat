@@ -207,12 +207,14 @@ impl SseDecode for crate::api::simple::UiTrack {
         let mut var_artist = <String>::sse_decode(deserializer);
         let mut var_album = <String>::sse_decode(deserializer);
         let mut var_duration = <String>::sse_decode(deserializer);
+        let mut var_path = <String>::sse_decode(deserializer);
         return crate::api::simple::UiTrack {
             id: var_id,
             title: var_title,
             artist: var_artist,
             album: var_album,
             duration: var_duration,
+            path: var_path,
         };
     }
 }
@@ -280,6 +282,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::simple::UiTrack {
             self.artist.into_into_dart().into_dart(),
             self.album.into_into_dart().into_dart(),
             self.duration.into_into_dart().into_dart(),
+            self.path.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -345,6 +348,7 @@ impl SseEncode for crate::api::simple::UiTrack {
         <String>::sse_encode(self.artist, serializer);
         <String>::sse_encode(self.album, serializer);
         <String>::sse_encode(self.duration, serializer);
+        <String>::sse_encode(self.path, serializer);
     }
 }
 
