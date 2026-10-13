@@ -139,7 +139,7 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
     M3EColorScheme scheme,
     List<_LibRow> rows,
   ) {
-    return M3ECardList.builder(
+    return M3EList.scrollable(
       itemCount: rows.length,
       selection: true,
       selectionController: _selectionController,

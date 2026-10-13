@@ -282,7 +282,7 @@ class PlaybackPanel extends ConsumerWidget {
                 ),
                 M3EButtonGroupAction(
                   icon: const Icon(Icons.play_arrow),
-                  checkedIcon: const Icon(Icons.pause),
+                  selectedIcon: const Icon(Icons.pause),
                   tooltip: player.isPlaying ? '暂停' : '播放',
                   enabled: player.current != null,
                   width: btnW,

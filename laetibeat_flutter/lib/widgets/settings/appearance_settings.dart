@@ -24,7 +24,7 @@ class AppearanceSettings extends ConsumerWidget {
           ),
         ),
         SizedBox(height: theme.spacing.sm),
-        M3ECardList(
+        M3EList(
           itemCount: 1,
           onTap: (i) => _showThemeSheet(context, ref),
           itemBuilder: (context, i) {
@@ -68,7 +68,7 @@ class AppearanceSettings extends ConsumerWidget {
               Text('应用主题', style: theme.typeScale.titleLarge),
               SizedBox(height: sheet.spacing.sm),
               //三项纯文字主题,选中项背景高亮(colorBuilder按索引上色)
-              M3ECardList(
+              M3EList(
                 itemCount: AppThemeMode.values.length,
                 onTap: (i) {
                   ref.read(appThemeModeProvider.notifier).select(AppThemeMode.values[i]);

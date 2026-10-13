@@ -43,7 +43,7 @@ class ContentSettings extends ConsumerWidget {
       String? supportingText,
       VoidCallback? onTap,
     }) {
-      return M3ECardList(
+      return M3EList(
         itemCount: 1,
         onTap: onTap == null ? null : (i) => onTap(),
         itemBuilder: (context, i) {
@@ -61,7 +61,7 @@ class ContentSettings extends ConsumerWidget {
       );
     }
 
-    //实时扫描状态列表项(仅扫描开始后显示,与上方列表项一致的 M3ECardList 样式)
+    //实时扫描状态列表项(仅扫描开始后显示,与上方列表项一致的 M3EList 样式)
     Widget _statusItem(
       M3EThemeData theme,
       M3EColorScheme scheme,
@@ -117,7 +117,7 @@ class ContentSettings extends ConsumerWidget {
           ),
         );
       }
-      return M3ECardList(
+      return M3EList(
         itemCount: 1,
         itemBuilder: (context, i) => item,
       );

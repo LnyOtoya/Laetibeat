@@ -80,7 +80,7 @@ class _SelectableCardListState extends State<SelectableCardList> {
     final M3ESelectionController controller = widget.controller ?? _controller;
     final Widget Function(BuildContext, int) itemBuilder = widget.itemBuilder;
     if (widget.lazy) {
-      return M3ECardList.builder(
+      return M3EList.scrollable(
         itemCount: widget.itemCount,
         selection: true,
         selectionController: controller,
@@ -95,7 +95,7 @@ class _SelectableCardListState extends State<SelectableCardList> {
         itemBuilder: itemBuilder,
       );
     }
-    return M3ECardList(
+    return M3EList(
       itemCount: widget.itemCount,
       selection: true,
       selectionController: controller,

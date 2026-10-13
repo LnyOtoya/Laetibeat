@@ -64,7 +64,7 @@ class SettingsSection extends ConsumerWidget {
               ),
             ),
             SizedBox(height: theme.spacing.sm),
-            M3ECardList(
+            M3EList(
               itemCount: _groups[g].items.length,
               onTap: (i) {
                 ref.read(settingsCategoryProvider.notifier).select(_groups[g].items[i].category);

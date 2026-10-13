@@ -54,7 +54,7 @@ class _RecentSectionState extends State<RecentSection> {
           ),
           SizedBox(height: theme.spacing.lg),
           //卡片列表,只显示5个
-          M3ECardList(
+          M3EList(
             itemCount: _albums.length,
             itemBuilder: (context, index) {
               final album = _albums[index];
