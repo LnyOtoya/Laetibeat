@@ -94,6 +94,18 @@ class PlayerNotifier extends Notifier<PlayerState> {
     }
   }
 
+  //供外部(如 MPRIS)强制暂停
+  Future<void> pause() async {
+    if (state.queue.isEmpty) return;
+    await _backend.pause();
+  }
+
+  //供外部恢复播放(已播放则为空操作)
+  Future<void> resume() async {
+    if (state.queue.isEmpty) return;
+    await _backend.play();
+  }
+
   //播放队列中指定曲目,同时记录来源
   void play(int index, {String? source}) {
     final queue = state.queue;

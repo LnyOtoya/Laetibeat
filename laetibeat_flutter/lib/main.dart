@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:laetibeat/src/rust/api/simple.dart';
 import 'package:laetibeat/src/rust/frb_generated.dart';
 import 'nav_shell.dart';
+import 'widgets/integration/media_integration_host.dart';
 import 'widgets/settings/settings_provider.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -64,7 +65,7 @@ class MyApp extends ConsumerWidget {
         syncWghtToWeight: true,
         emphasizedGrad: 50,
       ),
-      home: const NavShell(),
+      home: const MediaIntegrationHost(child: NavShell()),
     );
   }
 }
