@@ -29,7 +29,8 @@ class PlaybackPanel extends ConsumerWidget {
     const baseH = 720.0;
     return LayoutBuilder(
       builder: (context, c) {
-        final scale = c.maxHeight / baseH;
+        // 缩放封顶在 0.8~1.4 之间,全屏/小窗都不至于过大或过小
+        final scale = (c.maxHeight / baseH).clamp(0.8, 1.4).toDouble();
         return ClipRect(
           child: Align(
             alignment: Alignment.center,

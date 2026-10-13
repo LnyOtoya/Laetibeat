@@ -21,6 +21,7 @@ class _SearchPageState extends State<SearchPage> {
     return TwoPaneLayout(
       leftFlex: 3,
       rightFlex: 2,
+      rightMaxWidth: 520,
       left: _pane(context),
       right: PlayerRightPane(key: _rightPaneKey),
     );

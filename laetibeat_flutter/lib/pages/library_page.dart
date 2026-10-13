@@ -21,6 +21,7 @@ class _LibraryPageState extends State<LibraryPage> {
     return TwoPaneLayout(
       leftFlex: 3,
       rightFlex: 2,
+      rightMaxWidth: 520,
       left: LibraryBrowser(onSelect: _openDetail),
       right: PlayerRightPane(key: _rightPaneKey),
     );

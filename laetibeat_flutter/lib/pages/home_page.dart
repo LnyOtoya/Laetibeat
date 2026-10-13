@@ -27,6 +27,7 @@ class _HomePageState extends State<HomePage> {
     return TwoPaneLayout(
       leftFlex: 3,
       rightFlex: 2,
+      rightMaxWidth: 520,
       left: ScrollConfiguration(
         behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
         child: SingleChildScrollView(
