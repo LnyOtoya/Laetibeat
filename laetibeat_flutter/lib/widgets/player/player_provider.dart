@@ -13,6 +13,18 @@ class PlayerState {
   final Duration duration;
   final String source; //播放来源(如'曲目'/'recently add'),由启动播放处设置
 
+  /// 当前音频输出设备
+  final AudioDeviceInfo? audioDevice;
+
+  /// 当前可用音频设备列表
+  final List<AudioDeviceInfo> audioDevices;
+
+  /// 当前媒体音频参数(声道/采样率)
+  final AudioParamsInfo? audioParams;
+
+  /// 当前媒体音频码率(Kbps)
+  final double? audioBitrate;
+
   const PlayerState({
     this.queue = const <rust.UiTrack>[],
     this.currentIndex = 0,
@@ -20,6 +32,10 @@ class PlayerState {
     this.position = Duration.zero,
     this.duration = Duration.zero,
     this.source = '曲目',
+    this.audioDevice,
+    this.audioDevices = const <AudioDeviceInfo>[],
+    this.audioParams,
+    this.audioBitrate,
   });
 
   rust.UiTrack? get current => queue.isEmpty ? null : queue[currentIndex];
@@ -31,6 +47,10 @@ class PlayerState {
     Duration? position,
     Duration? duration,
     String? source,
+    AudioDeviceInfo? audioDevice,
+    List<AudioDeviceInfo>? audioDevices,
+    AudioParamsInfo? audioParams,
+    double? audioBitrate,
   }) {
     return PlayerState(
       queue: queue ?? this.queue,
@@ -39,6 +59,10 @@ class PlayerState {
       position: position ?? this.position,
       duration: duration ?? this.duration,
       source: source ?? this.source,
+      audioDevice: audioDevice ?? this.audioDevice,
+      audioDevices: audioDevices ?? this.audioDevices,
+      audioParams: audioParams ?? this.audioParams,
+      audioBitrate: audioBitrate ?? this.audioBitrate,
     );
   }
 }
@@ -57,6 +81,19 @@ class PlayerNotifier extends Notifier<PlayerState> {
     _subs.add(_backend.durationStream.listen(_onDuration));
     _subs.add(_backend.playingStream.listen(_onPlaying));
     _subs.add(_backend.completedStream.listen((_) => next())); //播完自动切下一首
+    // 设备/输出:当前渲染器、可用设备、声道参数
+    _subs.add(_backend.audioDeviceStream.listen((d) {
+      state = state.copyWith(audioDevice: d);
+    }));
+    _subs.add(_backend.audioDevicesStream.listen((l) {
+      state = state.copyWith(audioDevices: l);
+    }));
+    _subs.add(_backend.audioParamsStream.listen((p) {
+      state = state.copyWith(audioParams: p);
+    }));
+    _subs.add(_backend.audioBitrateStream.listen((b) {
+      state = state.copyWith(audioBitrate: b);
+    }));
 
     ref.onDispose(() {
       for (final s in _subs) {
@@ -99,6 +136,9 @@ class PlayerNotifier extends Notifier<PlayerState> {
     if (state.queue.isEmpty) return;
     await _backend.pause();
   }
+
+  //切换音频输出设备
+  Future<void> setAudioDevice(String id) => _backend.setAudioDevice(id);
 
   //供外部恢复播放(已播放则为空操作)
   Future<void> resume() async {

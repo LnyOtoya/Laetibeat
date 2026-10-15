@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import '../../animations.dart';
 import 'playback_panel.dart';
-import 'playback_queue.dart';
+import 'device_panel.dart';
 
 //右侧内容区复用外壳:默认播放面板,点击左侧进入本页详情
 //状态(播放页/详情)由此组件内部管理,页面用GlobalKey<PlayerRightPaneState>触发
@@ -77,8 +77,8 @@ class PlayerRightPaneState extends State<PlayerRightPane> {
           ),
         ),
         SizedBox(height: theme.spacing.md),
-        //下容器: 播放队列,自带表面
-        const PlaybackQueue(),
+        //下容器: 设备/输出面板,自带表面
+        const DevicePanel(),
       ],
     );
   }

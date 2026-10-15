@@ -22,6 +22,22 @@ class PlaybackTrack {
   const PlaybackTrack({required this.uri, this.fallbackDuration = Duration.zero});
 }
 
+/// 音频输出设备。id 为设备的唯一标识(name),name 为可读名称。
+/// 独立于具体引擎(id/name),避免上层耦合 media_kit。
+class AudioDeviceInfo {
+  final String id;
+  final String name;
+  const AudioDeviceInfo(this.id, this.name);
+}
+
+/// 当前媒体的音频参数(声道/采样率/格式)。全部可空,引擎未给时上层自行兜底。
+class AudioParamsInfo {
+  final String? format;
+  final int? sampleRate;
+  final int? channelCount;
+  const AudioParamsInfo({this.format, this.sampleRate, this.channelCount});
+}
+
 /// 播放后端最低能力集合
 abstract class PlaybackBackend {
   /// 播放进度流(毫秒级实时)
@@ -35,6 +51,21 @@ abstract class PlaybackBackend {
 
   /// 单曲播完事件流(用于自动切下一首)
   Stream<void> get completedStream;
+
+  /// 当前音频输出设备流(切换/被系统改用时通知)
+  Stream<AudioDeviceInfo> get audioDeviceStream;
+
+  /// 当前可用音频设备列表流(插拔/后端起播后更新)
+  Stream<List<AudioDeviceInfo>> get audioDevicesStream;
+
+  /// 当前媒体音频参数流(声道/采样率/格式)
+  Stream<AudioParamsInfo> get audioParamsStream;
+
+  /// 当前媒体音频码率流(Kbps,引擎未解析时为 null)
+  Stream<double?> get audioBitrateStream;
+
+  /// 切换音频输出设备(id 即设备的唯一标识)
+  Future<void> setAudioDevice(String id);
 
   /// 装载并开始播放一首曲目
   Future<void> open(PlaybackTrack track);
@@ -79,6 +110,32 @@ class MediaKitBackend implements PlaybackBackend {
   @override
   Stream<void> get completedStream =>
       _player.stream.completed.where((done) => done).map((_) {});
+
+  @override
+  Stream<AudioDeviceInfo> get audioDeviceStream => _player.stream.audioDevice
+      .map((d) => AudioDeviceInfo(d.name, d.description));
+
+  @override
+  Stream<List<AudioDeviceInfo>> get audioDevicesStream => _player.stream
+      .audioDevices
+      .map((list) => list.map((d) => AudioDeviceInfo(d.name, d.description)).toList());
+
+  @override
+  Stream<AudioParamsInfo> get audioParamsStream =>
+      _player.stream.audioParams.map(
+        (p) => AudioParamsInfo(
+          format: p.format,
+          sampleRate: p.sampleRate,
+          channelCount: p.channelCount,
+        ),
+      );
+
+  @override
+  Stream<double?> get audioBitrateStream => _player.stream.audioBitrate;
+
+  @override
+  Future<void> setAudioDevice(String id) =>
+      _player.setAudioDevice(mk.AudioDevice(id, ''));
 
   @override
   Future<void> open(PlaybackTrack track) async {
