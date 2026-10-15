@@ -15,6 +15,13 @@ class PlaybackPanel extends ConsumerWidget {
   //是否处于全屏布局
   final bool fullscreen;
 
+  /// 宽度低于该值进入紧凑布局(收拢次要控件,适配 Android 竖屏等窄屏)
+  static const double _compactBreakpoint = 480.0;
+
+  /// 竖直空间低于该值时(如矮窗口被下方播放队列压缩)退化为可滚动布局,
+  /// 避免固定内容超出可用高度导致 RenderFlex 溢出
+  static const double _tightHeight = 460.0;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = M3ETheme.of(context);
@@ -25,48 +32,67 @@ class PlaybackPanel extends ConsumerWidget {
     //空态:未播放任何曲目时,按音乐库是否有曲目分两种占位提示
     if (track == null) return _emptyState(ref, theme, scheme);
 
-    //整体等比缩放:高度方向随窗口自适应,宽度抵消scale后始终占满窗口
-    //所有控件(文字/按钮/间距/封面)都随窗口高度一起变大变小
-    const baseH = 720.0;
+    // 流式自适应:不再对整棵子树做 Transform.scale 光栅缩放(那是文字/圆角
+    // 出现锯齿的根因)。窗口变化只靠 Flex 重新排版:封面用 Expanded+AspectRatio(1)
+    // 永远保持正方形,高度余量被 Expanded 吸收;文字/图标/圆角始终原生像素渲染。
     return LayoutBuilder(
       builder: (context, c) {
-        // 缩放封顶在 0.8~1.4 之间,全屏/小窗都不至于过大或过小
-        final scale = (c.maxHeight / baseH).clamp(0.8, 1.4).toDouble();
-        return ClipRect(
-          child: Padding(
-            // 顶部固定留一个小间距,多余高度转移到底部,避免全屏时顶部空带过大
-            padding: EdgeInsets.only(top: theme.spacing.xxl),
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: Transform.scale(
-                scale: scale,
-                // 绕顶部缩放,贴顶时内容只向下展开,避免往上顶出被 clip 裁掉来源区
-                alignment: Alignment.topCenter,
-                child: SizedBox(
-                  width: c.maxWidth / scale,
-                  height: baseH,
-                  // 全页统一横向内边距: 封面/显示区/进度条/控制按钮行
-                  // 左右都一致地距屏幕相同距离
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: theme.spacing.xl,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _sourceRegion(theme, scheme, player),
-                        // 来源距离封面: 间距稍小
-                        SizedBox(height: theme.spacing.lg),
-                        Expanded(child: _displayRegion(context, theme, track)),
-                        // 显示区域距离控制区: 间距稍大
-                        SizedBox(height: theme.spacing.xxl),
-                        _controlRegion(theme, scheme, player, ref),
-                      ],
-                    ),
+        // 窄屏(如未来 Android 竖屏)进入紧凑模式:收拢次要控件
+        final compact = c.maxWidth < _compactBreakpoint;
+        final hPad = theme.spacing.xl;
+        final vPad = theme.spacing.lg;
+
+        // 竖直空间极小(矮窗口被下方队列压缩):退化为可滚动布局,保证不溢出
+        if (c.maxHeight < _tightHeight) {
+          return SingleChildScrollView(
+            padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _sourceRegion(theme, scheme, player),
+                SizedBox(height: theme.spacing.lg),
+                // 封面保持正方形,但限制高度,避免滚动过长
+                Center(
+                  child: ConstrainedBox(
+                    constraints:
+                        BoxConstraints(maxHeight: c.maxHeight * 0.45),
+                    child: AspectRatio(aspectRatio: 1, child: _cover(theme)),
+                  ),
+                ),
+                SizedBox(height: theme.spacing.xxl),
+                _infoRow(context, theme, track, compact: compact),
+                SizedBox(height: theme.spacing.xxl),
+                _controlRegion(theme, scheme, player, ref, compact: compact),
+              ],
+            ),
+          );
+        }
+
+        // 常规流式填充布局:封面 Expanded 吸收所有高度余量,
+        // AspectRatio(1) 保证正方形、不拉伸,文字/图标始终原生像素渲染
+        return Padding(
+          padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _sourceRegion(theme, scheme, player),
+              // 来源距离封面: 间距稍小
+              SizedBox(height: theme.spacing.lg),
+              Expanded(
+                child: Center(
+                  child: AspectRatio(
+                    aspectRatio: 1,
+                    child: _cover(theme),
                   ),
                 ),
               ),
-            ),
+              // 信息行距离控制区: 间距稍大
+              SizedBox(height: theme.spacing.xxl),
+              _infoRow(context, theme, track, compact: compact),
+              SizedBox(height: theme.spacing.xxl),
+              _controlRegion(theme, scheme, player, ref, compact: compact),
+            ],
           ),
         );
       },
@@ -133,71 +159,51 @@ class PlaybackPanel extends ConsumerWidget {
     );
   }
 
-  //区域2:播放显示区 - 封面铺满宽度 + 左(歌名/歌手)右(全屏/歌词)
-  Widget _displayRegion(
+  //区域2:信息行 - 左(歌名/歌手)右(全屏/歌词),排在封面下方
+  //紧凑模式下收起歌词入口,留出更多横向空间
+  Widget _infoRow(
     BuildContext context,
     M3EThemeData theme,
-    rust.UiTrack? track,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    rust.UiTrack? track, {
+    bool compact = false,
+  }) {
+    return Row(
       children: [
-        //封面按内容区宽度铺满(正方形,高度不足时整体缩放),贴住下方信息行
         Expanded(
-          child: LayoutBuilder(
-            builder: (context, c) => Align(
-              alignment: Alignment.bottomCenter,
-              child: FittedBox(
-                fit: BoxFit.contain,
-                child: SizedBox(
-                  // 铺满内边距带整宽,封面距左右两侧正好为统一间距 x
-                  width: c.maxWidth,
-                  height: c.maxWidth,
-                  child: _cover(theme),
-                ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                track?.title ?? '未在播放',
+                style: theme.typeScale.titleLarge,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-            ),
+              SizedBox(height: theme.spacing.xs),
+              Text(
+                track == null ? '' : '${track.artist} · ${track.album}',
+                style: theme.typeScale.bodyMedium.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
         ),
-        SizedBox(height: theme.spacing.xxl),
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    track?.title ?? '未在播放',
-                    style: theme.typeScale.titleLarge,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  SizedBox(height: theme.spacing.xs),
-                  Text(
-                    track == null ? '' : '${track.artist} · ${track.album}',
-                    style: theme.typeScale.bodyMedium.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            M3EIconButton(
-              size: M3EIconButtonSize.md,
-              icon: const Icon(Icons.fullscreen),
-              tooltip: '全屏',
-              onPressed: () => _openFullscreen(context),
-            ),
-            M3EIconButton(
-              size: M3EIconButtonSize.md,
-              icon: const Icon(Icons.lyrics),
-              tooltip: '歌词',
-              onPressed: () {}, //歌词逻辑未接入
-            ),
-          ],
+        M3EIconButton(
+          size: M3EIconButtonSize.md,
+          icon: const Icon(Icons.fullscreen),
+          tooltip: '全屏',
+          onPressed: () => _openFullscreen(context),
         ),
+        if (!compact)
+          M3EIconButton(
+            size: M3EIconButtonSize.md,
+            icon: const Icon(Icons.lyrics),
+            tooltip: '歌词',
+            onPressed: () {}, //歌词逻辑未接入
+          ),
       ],
     );
   }
@@ -219,12 +225,14 @@ class PlaybackPanel extends ConsumerWidget {
   }
 
   //区域3:控制区 - 进度条+时长 / 上一首播放暂停下一首 / 底部按钮组+菜单
+  //紧凑模式下隐藏底部次要按钮行(播放列表/随机/顺序),收进三点菜单
   Widget _controlRegion(
     M3EThemeData theme,
     M3EColorScheme scheme,
     PlayerState player,
-    WidgetRef ref,
-  ) {
+    WidgetRef ref, {
+    bool compact = false,
+  }) {
     final total = player.duration.inMilliseconds;
     final value = total > 0
         ? (player.position.inMilliseconds / total).clamp(0.0, 1.0)
@@ -259,47 +267,46 @@ class PlaybackPanel extends ConsumerWidget {
         ),
         SizedBox(height: theme.spacing.md),
         //上一首 / 播放暂停 / 下一首 - 横向内边距已由全页统一 Padding 提供
-        LayoutBuilder(
-          builder: (context, c) {
-            // 控制排: 上一首/播放暂停/下一首,复刻 neighbor-squish 效果
-            return SquishButtonRow(
-              isPlaying: player.isPlaying,
-              previousEnabled: player.queue.isNotEmpty,
-              toggleEnabled: player.current != null,
-              nextEnabled: player.queue.isNotEmpty,
-              onPrevious: notifier.prev,
-              onToggle: notifier.toggle,
-              onNext: notifier.next,
-            );
-          },
+        //复刻 neighbor-squish 效果;内部用 FittedBox 兜底窄屏不横向溢出
+        SquishButtonRow(
+          isPlaying: player.isPlaying,
+          previousEnabled: player.queue.isNotEmpty,
+          toggleEnabled: player.current != null,
+          nextEnabled: player.queue.isNotEmpty,
+          onPrevious: notifier.prev,
+          onToggle: notifier.toggle,
+          onNext: notifier.next,
         ),
         SizedBox(height: theme.spacing.md),
         //底部:左侧按钮组(播放列表/随机/顺序) + 右侧三点菜单
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                M3EIconButton(
-                  size: M3EIconButtonSize.sm,
-                  icon: const Icon(Icons.playlist_play),
-                  tooltip: '播放列表',
-                  onPressed: () {},
-                ),
-                M3EIconButton(
-                  size: M3EIconButtonSize.sm,
-                  icon: const Icon(Icons.shuffle),
-                  tooltip: '随机播放',
-                  onPressed: () {},
-                ),
-                M3EIconButton(
-                  size: M3EIconButtonSize.sm,
-                  icon: const Icon(Icons.repeat),
-                  tooltip: '顺序播放',
-                  onPressed: () {},
-                ),
-              ],
-            ),
+            if (!compact)
+              Row(
+                children: [
+                  M3EIconButton(
+                    size: M3EIconButtonSize.sm,
+                    icon: const Icon(Icons.playlist_play),
+                    tooltip: '播放列表',
+                    onPressed: () {},
+                  ),
+                  M3EIconButton(
+                    size: M3EIconButtonSize.sm,
+                    icon: const Icon(Icons.shuffle),
+                    tooltip: '随机播放',
+                    onPressed: () {},
+                  ),
+                  M3EIconButton(
+                    size: M3EIconButtonSize.sm,
+                    icon: const Icon(Icons.repeat),
+                    tooltip: '顺序播放',
+                    onPressed: () {},
+                  ),
+                ],
+              )
+            else
+              const SizedBox.shrink(),
             _moreMenu(),
           ],
         ),
