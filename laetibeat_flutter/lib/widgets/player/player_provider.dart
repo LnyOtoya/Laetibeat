@@ -25,6 +25,12 @@ class PlayerState {
   /// 当前媒体音频码率(Kbps)
   final double? audioBitrate;
 
+  /// 是否随机播放(打乱队列顺序切下一首)
+  final bool shuffle;
+
+  /// 当前重复模式(顺序/单曲/列表)
+  final PlaybackRepeatMode repeatMode;
+
   const PlayerState({
     this.queue = const <rust.UiTrack>[],
     this.currentIndex = 0,
@@ -36,6 +42,8 @@ class PlayerState {
     this.audioDevices = const <AudioDeviceInfo>[],
     this.audioParams,
     this.audioBitrate,
+    this.shuffle = false,
+    this.repeatMode = PlaybackRepeatMode.off,
   });
 
   rust.UiTrack? get current => queue.isEmpty ? null : queue[currentIndex];
@@ -51,6 +59,8 @@ class PlayerState {
     List<AudioDeviceInfo>? audioDevices,
     AudioParamsInfo? audioParams,
     double? audioBitrate,
+    bool? shuffle,
+    PlaybackRepeatMode? repeatMode,
   }) {
     return PlayerState(
       queue: queue ?? this.queue,
@@ -63,9 +73,14 @@ class PlayerState {
       audioDevices: audioDevices ?? this.audioDevices,
       audioParams: audioParams ?? this.audioParams,
       audioBitrate: audioBitrate ?? this.audioBitrate,
+      shuffle: shuffle ?? this.shuffle,
+      repeatMode: repeatMode ?? this.repeatMode,
     );
   }
 }
+
+/// 重复模式:off=顺序播完即停, single=单曲循环, all=列表循环
+enum PlaybackRepeatMode { off, single, all }
 
 class PlayerNotifier extends Notifier<PlayerState> {
   //真实播放后端(Linux 首发为 media_kit)。只通过这一层拼口驱动,不直接碰引擎。
@@ -212,6 +227,20 @@ class PlayerNotifier extends Notifier<PlayerState> {
 
   //上一首
   void prev() => play(state.currentIndex - 1);
+
+  //随机播放开关
+  void toggleShuffle() =>
+      state = state.copyWith(shuffle: !state.shuffle);
+
+  //重复模式轮换: 顺序 -> 单曲 -> 列表 -> 顺序
+  void cycleRepeat() {
+    final next = switch (state.repeatMode) {
+      PlaybackRepeatMode.off => PlaybackRepeatMode.single,
+      PlaybackRepeatMode.single => PlaybackRepeatMode.all,
+      PlaybackRepeatMode.all => PlaybackRepeatMode.off,
+    };
+    state = state.copyWith(repeatMode: next);
+  }
 }
 
 //全局播放状态

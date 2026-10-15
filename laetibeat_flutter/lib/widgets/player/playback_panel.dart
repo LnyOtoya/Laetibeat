@@ -76,6 +76,8 @@ class PlaybackPanel extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // 来源区顶部留缝,整体稍下移
+              SizedBox(height: theme.spacing.xl),
               _sourceRegion(theme, scheme, player),
               // 来源距离封面: 间距稍小
               SizedBox(height: theme.spacing.lg),
@@ -145,7 +147,7 @@ class PlaybackPanel extends ConsumerWidget {
           alignment: Alignment.center,
           child: Text(
             '正在播放',
-            style: theme.typeScale.labelMedium.copyWith(
+            style: theme.typeScale.labelLarge.copyWith(
               color: scheme.onSurfaceVariant,
             ),
           ),
@@ -153,7 +155,7 @@ class PlaybackPanel extends ConsumerWidget {
         SizedBox(height: theme.spacing.xs),
         Align(
           alignment: Alignment.center,
-          child: Text(player.source, style: theme.typeScale.titleSmall),
+          child: Text(player.source, style: theme.typeScale.titleLarge),
         ),
       ],
     );
@@ -175,14 +177,14 @@ class PlaybackPanel extends ConsumerWidget {
             children: [
               Text(
                 track?.title ?? '未在播放',
-                style: theme.typeScale.titleLarge,
+                style: theme.typeScale.headlineSmall,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               SizedBox(height: theme.spacing.xs),
               Text(
                 track == null ? '' : '${track.artist} · ${track.album}',
-                style: theme.typeScale.bodyMedium.copyWith(
+                style: theme.typeScale.bodyLarge.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
                 maxLines: 1,
@@ -191,19 +193,36 @@ class PlaybackPanel extends ConsumerWidget {
             ],
           ),
         ),
-        M3EIconButton(
-          size: M3EIconButtonSize.md,
-          icon: const Icon(Icons.fullscreen),
-          tooltip: '全屏',
-          onPressed: () => _openFullscreen(context),
+        M3EButtonGroup(
+          type: M3EButtonGroupType.connected,
+          direction: Axis.horizontal,
+          shape: M3EButtonShape.round,
+          size: M3EButtonSize.md,
+          style: M3EButtonStyle.filled,
+          neighborSquish: true,
+          expandedRatio: 0.15,
+          // 不更新 selectedIndex: 每个格保持未选中渲染,
+          // 仅用点击回调做瞬时命令(全屏/歌词),不会恒亮
+          onSelectedIndexChanged: (idx) {
+            if (idx == 0) {
+              _openFullscreen(context);
+            }
+            // idx == 1 => 歌词,逻辑暂未接入
+          },
+          actions: [
+            const M3EButtonGroupAction(
+              icon: Icon(Icons.fullscreen),
+              semanticLabel: '全屏',
+              tooltip: '全屏',
+            ),
+            if (!compact)
+              const M3EButtonGroupAction(
+                icon: Icon(Icons.lyrics),
+                semanticLabel: '歌词',
+                tooltip: '歌词',
+              ),
+          ],
         ),
-        if (!compact)
-          M3EIconButton(
-            size: M3EIconButtonSize.md,
-            icon: const Icon(Icons.lyrics),
-            tooltip: '歌词',
-            onPressed: () {}, //歌词逻辑未接入
-          ),
       ],
     );
   }
@@ -246,14 +265,14 @@ class PlaybackPanel extends ConsumerWidget {
         if (player.isPlaying)
           M3ESlider.wavy(
             value: value,
-            trackThickness: 10,
+            trackThickness: 12,
             onChanged: (v) =>
                 notifier.seek(Duration(milliseconds: (v * total).round())),
           )
         else
           M3ESlider(
             value: value,
-            trackThickness: 10,
+            trackThickness: 12,
             onChanged: (v) =>
                 notifier.seek(Duration(milliseconds: (v * total).round())),
           ),
@@ -261,8 +280,8 @@ class PlaybackPanel extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(_fmt(player.position), style: theme.typeScale.labelSmall),
-            Text(_fmt(player.duration), style: theme.typeScale.labelSmall),
+            Text(_fmt(player.position), style: theme.typeScale.labelMedium),
+            Text(_fmt(player.duration), style: theme.typeScale.labelMedium),
           ],
         ),
         SizedBox(height: theme.spacing.md),
@@ -278,32 +297,96 @@ class PlaybackPanel extends ConsumerWidget {
           onNext: notifier.next,
         ),
         SizedBox(height: theme.spacing.md),
-        //底部:左侧按钮组(播放列表/随机/顺序) + 右侧三点菜单
+        //第一行:随机 / 重复(单曲-列表循环切换) / 添加到歌单(仅图标,逻辑未接入)
+        //受控 multiSelect 表达: selectedIndices 含 0=随机开, 含 1=循环开;
+        //中间按钮 icon 依 repeatMode 动态切换(repeat_one=单曲, repeat=列表)
+        Center(
+          // ConstrainedBox 让 connected 组不铺满表面,而收缩到固定宽度
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 340),
+            child: Container(
+            padding: EdgeInsets.all(theme.spacing.sm),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainer,
+              // 超大圆角值:左右两侧呈完美半圆(胶囊形)
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: M3EButtonGroup(
+          type: M3EButtonGroupType.connected,
+          direction: Axis.horizontal,
+          shape: M3EButtonShape.round,
+          size: M3EButtonSize.md,
+          style: M3EButtonStyle.tonal,
+          density: M3EButtonGroupDensity.regular,
+          neighborSquish: false,
+          overflow: M3EButtonGroupOverflow.scroll,
+          // overflow: M3EButtonGroupOverflow.experimentalPaging,
+          haptic: M3EHapticFeedback.light,
+          selectionRequired: false,
+          multiSelect: true,
+          selectedIndices: {
+            if (player.shuffle) 0,
+            if (player.repeatMode != PlaybackRepeatMode.off) 1,
+          },
+          onSelectedIndicesChanged: (indices) {
+            //动作1: 随机开关
+            if (indices.contains(0) != player.shuffle) {
+              notifier.toggleShuffle();
+            }
+            //动作2: 重复模式轮换(每次点击都轮换,不管是否已在选中)
+            if (indices.contains(1) !=
+                (player.repeatMode != PlaybackRepeatMode.off)) {
+              notifier.cycleRepeat();
+            }
+            //动作3: 添加到歌单 - 仅图标,暂无逻辑
+          },
+          actions: [
+            M3EButtonGroupAction(
+              icon: const Icon(Icons.shuffle),
+              selectedIcon: const Icon(Icons.shuffle),
+              // label 缺省即纯 icon
+              semanticLabel: '随机播放',
+              tooltip: '随机播放',
+            ),
+            M3EButtonGroupAction(
+              icon: Icon(
+                player.repeatMode == PlaybackRepeatMode.single
+                    ? Icons.repeat_one
+                    : Icons.repeat,
+              ),
+              selectedIcon: Icon(
+                player.repeatMode == PlaybackRepeatMode.single
+                    ? Icons.repeat_one
+                    : Icons.repeat,
+              ),
+              // label 缺省即纯 icon
+              semanticLabel: '重复',
+              tooltip: '重复',
+            ),
+            const M3EButtonGroupAction(
+              icon: Icon(Icons.playlist_add),
+              // label 缺省即纯 icon
+              semanticLabel: '添加到歌单',
+              tooltip: '添加到歌单',
+            ),
+          ],
+          ),
+          ),
+          ),
+        ),
+        SizedBox(height: theme.spacing.md),
+        //第二行:左侧播放队列 + 右侧三点菜单(均文字+图标, sm 方形规格)
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             if (!compact)
-              Row(
-                children: [
-                  M3EIconButton(
-                    size: M3EIconButtonSize.sm,
-                    icon: const Icon(Icons.playlist_play),
-                    tooltip: '播放列表',
-                    onPressed: () {},
-                  ),
-                  M3EIconButton(
-                    size: M3EIconButtonSize.sm,
-                    icon: const Icon(Icons.shuffle),
-                    tooltip: '随机播放',
-                    onPressed: () {},
-                  ),
-                  M3EIconButton(
-                    size: M3EIconButtonSize.sm,
-                    icon: const Icon(Icons.repeat),
-                    tooltip: '顺序播放',
-                    onPressed: () {},
-                  ),
-                ],
+              M3EButton(
+                size: M3EButtonSize.sm,
+                icon: const Icon(Icons.playlist_play),
+                label: const Text('队列'),
+                style: M3EButtonStyle.filled,
+                shape: M3EButtonShape.square,
+                onPressed: () {},
               )
             else
               const SizedBox.shrink(),
@@ -322,10 +405,12 @@ class PlaybackPanel extends ConsumerWidget {
         M3EMenuEntry(label: '添加到播放队列'),
         M3EMenuEntry(label: '查看歌词'),
       ],
-      anchorBuilder: (context, open) => M3EIconButton(
-        size: M3EIconButtonSize.sm,
+      anchorBuilder: (context, open) => M3EButton(
+        size: M3EButtonSize.sm,
         icon: const Icon(Icons.more_vert),
-        tooltip: '更多',
+        label: const Text('更多'),
+        style: M3EButtonStyle.filled,
+        shape: M3EButtonShape.square,
         onPressed: open,
       ),
     );

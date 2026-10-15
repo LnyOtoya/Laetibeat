@@ -64,11 +64,11 @@ class _SquishButtonRowState extends State<SquishButtonRow>
   int? _pressed;
 
   /// 纯圆形(前后)按钮的基本宽度
-  static const double _roundBase = 56.0;
-  static const double _iconSize = 24.0;
+  static const double _roundBase = 80.0;
+  static const double _iconSize = 32.0;
 
-  /// 按钮高度与 [M3EButtonSize.md] 对齐,行内三键等高
-  static const double _buttonHeight = 56.0;
+  /// 按钮高度,行内三键等高(加大以整体放大该行)
+  static const double _buttonHeight = 80.0;
 
   @override
   void dispose() {
@@ -174,7 +174,7 @@ class _SquishButtonRowState extends State<SquishButtonRow>
   @override
   Widget build(BuildContext context) {
     final theme = M3ETheme.of(context);
-    final labelStyle = theme.typeScale.labelMedium;
+    final labelStyle = theme.typeScale.bodyMedium;
 
     // 其余控件用同款 FittedBox 防溢出: 空间不足时整行缩放而非横向溢出
     return FittedBox(
@@ -236,7 +236,7 @@ class _SquishButtonRowState extends State<SquishButtonRow>
         ? M3EIconButton(
             icon: Icon(icon),
             variant: M3EIconButtonVariant.filled,
-            size: M3EIconButtonSize.md,
+            size: M3EIconButtonSize.lg,
             shape: M3EIconButtonShapeVariant.round,
             matchParentConstraints: true,
             tooltip: tooltip,
@@ -245,14 +245,14 @@ class _SquishButtonRowState extends State<SquishButtonRow>
         // 宽度并居中 icon+label, 不再依赖外层 SizedBox 强改宽度
         : M3EButton(
             icon: Icon(icon),
-            label: Text(label!),
+            label: Text(label),
             decoration: M3EButtonDecoration(
               fixedSize: Size(width, _buttonHeight),
             ),
             onPressed: enabled ? () {} : null,
             enabled: enabled,
             style: M3EButtonStyle.filled,
-            size: M3EButtonSize.md,
+            size: M3EButtonSize.lg,
             shape: M3EButtonShape.round,
             tooltip: tooltip,
           );
