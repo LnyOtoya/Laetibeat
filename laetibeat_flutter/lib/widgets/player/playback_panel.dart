@@ -1,9 +1,12 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:laetibeat/src/rust/api/simple.dart' as rust;
 import '../../animations.dart';
 import '../settings/music_library_provider.dart';
+import 'cover_provider.dart';
 import 'player_provider.dart';
 import 'squish_button_row.dart';
 
@@ -24,80 +27,110 @@ class PlaybackPanel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = M3ETheme.of(context);
-    final scheme = theme.colorScheme;
+    final baseTheme = M3ETheme.of(context);
     final player = ref.watch(playerProvider);
     final track = player.current;
 
-    //空态:未播放任何曲目时,按音乐库是否有曲目分两种占位提示
-    if (track == null) return _emptyState(ref, theme, scheme);
+    //空态:未播放任何曲目时,按音乐库是否有曲目分两种占位提示(保持全局配色)
+    if (track == null) return _emptyState(ref, baseTheme, baseTheme.colorScheme);
 
-    // 流式自适应:不再对整棵子树做 Transform.scale 光栅缩放(那是文字/圆角
-    // 出现锯齿的根因)。窗口变化只靠 Flex 重新排版:封面用 Expanded+AspectRatio(1)
-    // 永远保持正方形,高度余量被 Expanded 吸收;文字/图标/圆角始终原生像素渲染。
-    return LayoutBuilder(
-      builder: (context, c) {
-        // 窄屏(如未来 Android 竖屏)进入紧凑模式:收拢次要控件
-        final compact = c.maxWidth < _compactBreakpoint;
-        final hPad = theme.spacing.xl;
-        final vPad = theme.spacing.lg;
-
-        // 竖直空间极小(矮窗口被下方队列压缩):退化为可滚动布局,保证不溢出
-        if (c.maxHeight < _tightHeight) {
-          return SingleChildScrollView(
-            padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _sourceRegion(theme, scheme, player),
-                SizedBox(height: theme.spacing.lg),
-                // 封面保持正方形,但限制高度,避免滚动过长
-                Center(
-                  child: ConstrainedBox(
-                    constraints:
-                        BoxConstraints(maxHeight: c.maxHeight * 0.45),
-                    child: AspectRatio(aspectRatio: 1, child: _cover(theme)),
-                  ),
-                ),
-                SizedBox(height: theme.spacing.xxl),
-                _infoRow(context, theme, track, compact: compact),
-                SizedBox(height: theme.spacing.xxl),
-                _controlRegion(theme, scheme, player, ref, compact: compact),
-              ],
+    // 播放页封面取色:仅本页用封面主色派生 ColorScheme 覆盖全局配色,
+    // 其余页面保持原有壁纸/主题取色不变。无封面时保持默认配色。
+    final coverInfo = ref.watch(playbackCoverProvider).value;
+    final scopedTheme = coverInfo == null
+        ? baseTheme
+        : baseTheme.withColorScheme(
+            M3EColorScheme.fromSeed(
+              coverInfo.coverColor,
+              brightness: baseTheme.colorScheme.brightness,
             ),
           );
-        }
 
-        // 常规流式填充布局:封面 Expanded 吸收所有高度余量,
-        // AspectRatio(1) 保证正方形、不拉伸,文字/图标始终原生像素渲染
-        return Padding(
-          padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // 来源区顶部留缝,整体稍下移
-              SizedBox(height: theme.spacing.xl),
-              _sourceRegion(theme, scheme, player),
-              // 来源距离封面: 间距稍小
-              SizedBox(height: theme.spacing.lg),
-              Expanded(
-                child: Center(
-                  child: AspectRatio(
-                    aspectRatio: 1,
-                    child: _cover(theme),
+    // 用 M3ETheme 本地覆盖 ColorScheme,使子树里所有 M3E 组件都吃到封面配色;
+    // 在 Builder 内重读 theme,让文字/图标/组件统一走封面派生配色。
+    return M3ETheme(
+      data: scopedTheme,
+      child: Builder(
+        builder: (inner) {
+          final theme = M3ETheme.of(inner);
+          final scheme = theme.colorScheme;
+          final bytes = coverInfo?.bytes;
+
+          // 流式自适应:不再对整棵子树做 Transform.scale 光栅缩放(那是文字/圆角
+          // 出现锯齿的根因)。窗口变化只靠 Flex 重新排版:封面用 Expanded+AspectRatio(1)
+          // 永远保持正方形,高度余量被 Expanded 吸收;文字/图标/圆角始终原生像素渲染。
+          return LayoutBuilder(
+            builder: (context, c) {
+              // 窄屏(如未来 Android 竖屏)进入紧凑模式:收拢次要控件
+              final compact = c.maxWidth < _compactBreakpoint;
+              final hPad = theme.spacing.xl;
+              final vPad = theme.spacing.lg;
+
+              // 竖直空间极小(矮窗口被下方队列压缩):退化为可滚动布局,保证不溢出
+              if (c.maxHeight < _tightHeight) {
+                return SingleChildScrollView(
+                  padding:
+                      EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _sourceRegion(theme, scheme, player),
+                      SizedBox(height: theme.spacing.lg),
+                      // 封面保持正方形,但限制高度,避免滚动过长
+                      Center(
+                        child: ConstrainedBox(
+                          constraints:
+                              BoxConstraints(maxHeight: c.maxHeight * 0.45),
+                          child: AspectRatio(
+                            aspectRatio: 1,
+                            child: _cover(theme, bytes: bytes),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: theme.spacing.xxl),
+                      _infoRow(context, theme, track, compact: compact),
+                      SizedBox(height: theme.spacing.xxl),
+                      _controlRegion(theme, scheme, player, ref,
+                          compact: compact),
+                    ],
                   ),
+                );
+              }
+
+              // 常规流式填充布局:封面 Expanded 吸收所有高度余量,
+              // AspectRatio(1) 保证正方形、不拉伸,文字/图标始终原生像素渲染
+              return Padding(
+                padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // 来源区顶部留缝,整体稍下移
+                    SizedBox(height: theme.spacing.xl),
+                    _sourceRegion(theme, scheme, player),
+                    // 来源距离封面: 间距稍小
+                    SizedBox(height: theme.spacing.lg),
+                    Expanded(
+                      child: Center(
+                        child: AspectRatio(
+                          aspectRatio: 1,
+                          child: _cover(theme, bytes: bytes),
+                        ),
+                      ),
+                    ),
+                    // 信息行距离控制区: 间距稍大
+                    SizedBox(height: theme.spacing.xxl),
+                    _infoRow(context, theme, track, compact: compact),
+                    SizedBox(height: theme.spacing.xxl),
+                    _controlRegion(theme, scheme, player, ref,
+                        compact: compact),
+                  ],
                 ),
-              ),
-              // 信息行距离控制区: 间距稍大
-              SizedBox(height: theme.spacing.xxl),
-              _infoRow(context, theme, track, compact: compact),
-              SizedBox(height: theme.spacing.xxl),
-              _controlRegion(theme, scheme, player, ref, compact: compact),
-            ],
-          ),
-        );
-      },
+              );
+            },
+          );
+        },
+      ),
     );
   }
 
@@ -227,18 +260,32 @@ class PlaybackPanel extends ConsumerWidget {
     );
   }
 
-  //封面:自控圆角(比M3EShapeContainer.square默认radius更小),图标按边长比例
-  Widget _cover(M3EThemeData theme) {
+  //封面:自控圆角(比M3EShapeContainer.square默认radius更小)。
+  //有封面字节则铺满显示 Image.memory,无封面回退占位音符图标(按边长比例)
+  Widget _cover(M3EThemeData theme, {Uint8List? bytes}) {
     final scheme = theme.colorScheme;
+    final hasArt = bytes != null && bytes.isNotEmpty;
     return ClipRRect(
       borderRadius: BorderRadius.circular(theme.spacing.md),
       child: ColoredBox(
         color: scheme.secondaryContainer,
-        child: LayoutBuilder(
-          builder: (context, c) => Center(
-            child: Icon(M3EIcons.music_note, size: c.maxWidth * 0.4),
-          ),
-        ),
+        child: hasArt
+            ? Image.memory(
+                bytes,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+                gaplessPlayback: true,
+              )
+            : LayoutBuilder(
+                builder: (context, c) => Center(
+                  child: Icon(
+                    M3EIcons.music_note,
+                    size: c.maxWidth * 0.4,
+                    color: scheme.onSecondaryContainer,
+                  ),
+                ),
+              ),
       ),
     );
   }

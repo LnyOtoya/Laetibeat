@@ -5,6 +5,7 @@ import 'package:laetibeat/src/rust/api/simple.dart' as rust;
 import '../animations.dart';
 import 'settings/music_library_provider.dart';
 import 'player/player_provider.dart';
+import 'player/cover_provider.dart';
 
 //音乐库浏览筛选
 enum LibraryFilter { track, artist, album }
@@ -167,7 +168,7 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
     widget.onSelect?.call(row.headline, row.supporting);
   }
 
-  //列表项:图标占位leading(后期换封面)+三点菜单trailing
+  //列表项:leading 显示真实封面(懒加载,无封面回退图标)+三点菜单trailing
   Widget _libItem(
     M3EThemeData theme,
     M3EColorScheme scheme,
@@ -176,12 +177,14 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
     return M3EListItem(
       headline: row.headline,
       supportingText: row.supporting,
-      leading: M3EShapeContainer.square(
-        width: theme.spacing.xxl * 1.5,
-        height: theme.spacing.xxl * 1.5,
-        color: scheme.secondaryContainer,
-        child: Icon(row.icon, size: 24),
-      ),
+      leading: row.track == null
+          ? M3EShapeContainer.square(
+              width: theme.spacing.xxl * 1.5,
+              height: theme.spacing.xxl * 1.5,
+              color: scheme.secondaryContainer,
+              child: Icon(row.icon, size: 24),
+            )
+          : _RowCover(track: row.track!),
       trailing: _moreMenu(),
     );
   }
@@ -189,30 +192,48 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
   //曲目视图:每首单曲一行
   List<_LibRow> _trackRows(List<rust.UiTrack> tracks) => [
         for (final t in tracks)
-          _LibRow(t.title, '${t.artist} · ${t.album}', M3EIcons.music_note),
+          _LibRow(
+            t.title,
+            '${t.artist} · ${t.album}',
+            M3EIcons.music_note,
+            track: t,
+          ),
       ];
 
-  //艺术家视图:按艺术家去重一行,副文本为曲目数
+  //艺术家视图:按艺术家去重一行,副文本为曲目数,取每个艺术家的一首代表曲目取封面
   List<_LibRow> _artistRows(List<rust.UiTrack> tracks) {
     final counts = <String, int>{};
+    final first = <String, rust.UiTrack>{};
     for (final t in tracks) {
       counts[t.artist] = (counts[t.artist] ?? 0) + 1;
+      first.putIfAbsent(t.artist, () => t);
     }
     final rows = [
       for (final e in counts.entries)
-        _LibRow(e.key, '${e.value} 首曲目', M3EIcons.music_note),
+        _LibRow(
+          e.key,
+          '${e.value} 首曲目',
+          M3EIcons.music_note,
+          track: first[e.key],
+        ),
     ]..sort((a, b) => a.headline.compareTo(b.headline));
     return rows;
   }
 
-  //专辑视图:按专辑去重一行,副文本为所属艺术家
+  //专辑视图:按专辑去重一行,副文本为所属艺术家,取每张专辑的一首代表曲目取封面
   List<_LibRow> _albumRows(List<rust.UiTrack> tracks) {
-    final artists = <String, String>{};
+    final byAlbum = <String, rust.UiTrack>{};
     for (final t in tracks) {
-      artists.putIfAbsent(t.album, () => t.artist);
+      byAlbum.putIfAbsent(t.album, () => t);
     }
     final rows = [
-      for (final e in artists.entries) _LibRow(e.key, e.value, M3EIcons.music_note),
+      for (final e in byAlbum.entries)
+        _LibRow(
+          e.key,
+          e.value.artist,
+          M3EIcons.music_note,
+          track: e.value,
+        ),
     ]..sort((a, b) => a.headline.compareTo(b.headline));
     return rows;
   }
@@ -263,11 +284,48 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
   }
 }
 
-//列表行数据:标题+副文本+图标(音乐库三视图共用)
+//列表行数据:标题+副文本+图标(音乐库三视图共用)+代表曲目(用于取封面)
 class _LibRow {
-  const _LibRow(this.headline, this.supporting, this.icon);
+  const _LibRow(this.headline, this.supporting, this.icon, {this.track});
 
   final String headline;
   final String supporting;
   final IconData icon;
+
+  /// 代表曲目,用于读取/展示封面;为 null 时该行显示图标占位
+  final rust.UiTrack? track;
+}
+
+//带封面的行首图:懒加载曲目封面 bytes,无封面回退占位图标
+class _RowCover extends ConsumerWidget {
+  const _RowCover({required this.track});
+
+  final rust.UiTrack track;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = M3ETheme.of(context);
+    final scheme = theme.colorScheme;
+    final size = theme.spacing.xxl * 1.5;
+    final bytes = ref.watch(trackCoverProvider(track)).value;
+    final hasArt = bytes != null && bytes.isNotEmpty;
+
+    return ClipRRect(
+      borderRadius: M3EDimensions.borderRadiusSmall,
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: hasArt
+            ? Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true)
+            : ColoredBox(
+                color: scheme.secondaryContainer,
+                child: Icon(
+                  M3EIcons.music_note,
+                  size: 24,
+                  color: scheme.onSecondaryContainer,
+                ),
+              ),
+      ),
+    );
+  }
 }
