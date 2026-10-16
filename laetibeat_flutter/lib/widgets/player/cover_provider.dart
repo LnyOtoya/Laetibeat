@@ -92,10 +92,10 @@ final coverProvider = Provider<CoverProvider>((ref) {
 });
 
 /// 当前播放曲目的封面信息(字节 + 主色)。随当前曲目切换而刷新。
+/// 只订阅 current,避免 position 每 tick 更新 state 时反复重跑。
 /// 无封面 / 取色失败时返回 null,UI 回退占位图标并保留应用默认配色。
 final playbackCoverProvider = FutureProvider<PlaybackCover?>((ref) async {
-  final player = ref.watch(playerProvider);
-  final track = player.current;
+  final track = ref.watch(playerProvider.select((s) => s.current));
   if (track == null) return null;
 
   final cover = ref.read(coverProvider);

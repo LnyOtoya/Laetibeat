@@ -9,15 +9,21 @@ import '../settings/music_library_provider.dart';
 import 'cover_provider.dart';
 import 'player_provider.dart';
 import 'squish_button_row.dart';
+import 'lyrics_view.dart';
 
 //共享播放面板:三个区域(来源区/播放显示区/控制区)
 //主页/搜索/音乐库右侧默认显示;全屏页复用同一面板
-class PlaybackPanel extends ConsumerWidget {
+class PlaybackPanel extends ConsumerStatefulWidget {
   const PlaybackPanel({super.key, this.fullscreen = false});
 
   //是否处于全屏布局
   final bool fullscreen;
 
+  @override
+  ConsumerState<PlaybackPanel> createState() => _PlaybackPanelState();
+}
+
+class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
   /// 宽度低于该值进入紧凑布局(收拢次要控件,适配 Android 竖屏等窄屏)
   static const double _compactBreakpoint = 480.0;
 
@@ -25,8 +31,12 @@ class PlaybackPanel extends ConsumerWidget {
   /// 避免固定内容超出可用高度导致 RenderFlex 溢出
   static const double _tightHeight = 460.0;
 
+  /// 是否在面板内切换显示歌词。默认 false = 显示封面(播放页);
+  /// 按歌词按钮切换为歌词区,再按切回封面。不进入全屏,全屏方案另做。
+  bool _showLyrics = false;
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final baseTheme = M3ETheme.of(context);
     final player = ref.watch(playerProvider);
     final track = player.current;
@@ -77,21 +87,28 @@ class PlaybackPanel extends ConsumerWidget {
                     children: [
                       _sourceRegion(theme, scheme, player),
                       SizedBox(height: theme.spacing.lg),
-                      // 封面保持正方形,但限制高度,避免滚动过长
-                      Center(
-                        child: ConstrainedBox(
+                      // 封面/歌词区:默认封面,按歌词按钮切换为歌词
+                      if (_showLyrics)
+                        ConstrainedBox(
                           constraints:
                               BoxConstraints(maxHeight: c.maxHeight * 0.45),
-                          child: AspectRatio(
-                            aspectRatio: 1,
-                            child: _cover(theme, bytes: bytes),
+                          child: const LyricsView(),
+                        )
+                      else
+                        Center(
+                          child: ConstrainedBox(
+                            constraints:
+                                BoxConstraints(maxHeight: c.maxHeight * 0.45),
+                            child: AspectRatio(
+                              aspectRatio: 1,
+                              child: _cover(theme, bytes: bytes),
+                            ),
                           ),
                         ),
-                      ),
                       SizedBox(height: theme.spacing.xxl),
-                      _infoRow(context, theme, track, compact: compact),
+                      _infoRow(context, theme, track),
                       SizedBox(height: theme.spacing.xxl),
-                      _controlRegion(theme, scheme, player, ref,
+                      _controlRegion(context, theme, scheme, player, ref,
                           compact: compact),
                     ],
                   ),
@@ -111,18 +128,20 @@ class PlaybackPanel extends ConsumerWidget {
                     // 来源距离封面: 间距稍小
                     SizedBox(height: theme.spacing.lg),
                     Expanded(
-                      child: Center(
-                        child: AspectRatio(
-                          aspectRatio: 1,
-                          child: _cover(theme, bytes: bytes),
-                        ),
-                      ),
+                      child: _showLyrics
+                          ? const LyricsView()
+                          : Center(
+                              child: AspectRatio(
+                                aspectRatio: 1,
+                                child: _cover(theme, bytes: bytes),
+                              ),
+                            ),
                     ),
                     // 信息行距离控制区: 间距稍大
                     SizedBox(height: theme.spacing.xxl),
-                    _infoRow(context, theme, track, compact: compact),
+                    _infoRow(context, theme, track),
                     SizedBox(height: theme.spacing.xxl),
-                    _controlRegion(theme, scheme, player, ref,
+                    _controlRegion(context, theme, scheme, player, ref,
                         compact: compact),
                   ],
                 ),
@@ -195,13 +214,11 @@ class PlaybackPanel extends ConsumerWidget {
   }
 
   //区域2:信息行 - 左(歌名/歌手)右(全屏/歌词),排在封面下方
-  //紧凑模式下收起歌词入口,留出更多横向空间
   Widget _infoRow(
     BuildContext context,
     M3EThemeData theme,
-    rust.UiTrack? track, {
-    bool compact = false,
-  }) {
+    rust.UiTrack? track,
+  ) {
     return Row(
       children: [
         Expanded(
@@ -240,7 +257,10 @@ class PlaybackPanel extends ConsumerWidget {
             if (idx == 0) {
               _openFullscreen(context);
             }
-            // idx == 1 => 歌词,逻辑暂未接入
+            if (idx == 1) {
+              // 歌词按钮:在面板内切换封面/歌词,不进入全屏
+              setState(() => _showLyrics = !_showLyrics);
+            }
           },
           actions: [
             const M3EButtonGroupAction(
@@ -248,12 +268,11 @@ class PlaybackPanel extends ConsumerWidget {
               semanticLabel: '全屏',
               tooltip: '全屏',
             ),
-            if (!compact)
-              const M3EButtonGroupAction(
-                icon: Icon(Icons.lyrics),
-                semanticLabel: '歌词',
-                tooltip: '歌词',
-              ),
+            const M3EButtonGroupAction(
+              icon: Icon(Icons.lyrics),
+              semanticLabel: '歌词',
+              tooltip: '歌词',
+            ),
           ],
         ),
       ],
@@ -293,6 +312,7 @@ class PlaybackPanel extends ConsumerWidget {
   //区域3:控制区 - 进度条+时长 / 上一首播放暂停下一首 / 底部按钮组+菜单
   //紧凑模式下隐藏底部次要按钮行(播放列表/随机/顺序),收进三点菜单
   Widget _controlRegion(
+    BuildContext context,
     M3EThemeData theme,
     M3EColorScheme scheme,
     PlayerState player,
@@ -435,7 +455,7 @@ class PlaybackPanel extends ConsumerWidget {
               shape: M3EButtonShape.square,
               onPressed: () {},
             ),
-            _moreMenu(),
+            _moreMenu(context),
           ],
         ),
       ],
@@ -443,12 +463,15 @@ class PlaybackPanel extends ConsumerWidget {
   }
 
   //竖向三点菜单
-  Widget _moreMenu() {
+  Widget _moreMenu(BuildContext context) {
     return M3EMenu.entries(
       position: M3EMenuAnchorPosition.bottomEnd,
-      entries: const [
-        M3EMenuEntry(label: '添加到播放队列'),
-        M3EMenuEntry(label: '查看歌词'),
+      entries: [
+        const M3EMenuEntry(label: '添加到播放队列'),
+        M3EMenuEntry(
+          label: _showLyrics ? '收起歌词' : '查看歌词',
+          onPressed: () => setState(() => _showLyrics = !_showLyrics),
+        ),
       ],
       anchorBuilder: (context, open) => M3EButton(
         size: M3EButtonSize.sm,
