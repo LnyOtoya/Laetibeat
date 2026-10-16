@@ -423,20 +423,18 @@ class PlaybackPanel extends ConsumerWidget {
         ),
         SizedBox(height: theme.spacing.md),
         //第二行:左侧播放队列 + 右侧三点菜单(均文字+图标, sm 方形规格)
+        //队列按钮不做 compact 隐藏,小窗口也始终保留(入口固定可见)
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            if (!compact)
-              M3EButton(
-                size: M3EButtonSize.sm,
-                icon: const Icon(Icons.playlist_play),
-                label: const Text('队列'),
-                style: M3EButtonStyle.filled,
-                shape: M3EButtonShape.square,
-                onPressed: () {},
-              )
-            else
-              const SizedBox.shrink(),
+            M3EButton(
+              size: M3EButtonSize.sm,
+              icon: const Icon(Icons.playlist_play),
+              label: const Text('队列'),
+              style: M3EButtonStyle.filled,
+              shape: M3EButtonShape.square,
+              onPressed: () {},
+            ),
             _moreMenu(),
           ],
         ),
