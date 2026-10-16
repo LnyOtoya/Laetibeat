@@ -478,46 +478,86 @@ class PlaybackPanel extends ConsumerWidget {
 }
 
 //全屏播放页:复用PlaybackPanel,整体覆盖当前页
-class PlaybackFullscreenPage extends StatelessWidget {
+class PlaybackFullscreenPage extends ConsumerWidget {
   const PlaybackFullscreenPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final theme = M3ETheme.of(context);
-    final scheme = theme.colorScheme;
-    return Scaffold(
-      backgroundColor: scheme.surface,
-      body: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.all(theme.spacing.xxl),
-          child: Column(
-            children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: M3EIconButton(
-                  size: M3EIconButtonSize.md,
-                  icon: const Icon(Icons.close),
-                  tooltip: '关闭',
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ),
-              Expanded(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 560),
-                    child: AnimatedSwitcher(
-                      duration: kSectionAnimDuration,
-                      switchInCurve: kSectionAnimCurve,
-                      switchOutCurve: kSectionAnimCurve,
-                      child: const PlaybackPanel(fullscreen: true),
+  Widget build(BuildContext context, WidgetRef ref) {
+    //封面取色作用域包住整页:Scaffold 底色也随封面带色(secondaryContainer)
+    return PlaybackCoverScope(
+      child: Builder(
+        builder: (inner) {
+          final theme = M3ETheme.of(inner);
+          final coverInfo = ref.watch(playbackCoverProvider).value;
+          return Scaffold(
+            backgroundColor: playbackPanelBackground(theme, coverInfo),
+            body: SafeArea(
+              child: Padding(
+                padding: EdgeInsets.all(theme.spacing.xxl),
+                child: Column(
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: M3EIconButton(
+                        size: M3EIconButtonSize.md,
+                        icon: const Icon(Icons.close),
+                        tooltip: '关闭',
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
                     ),
-                  ),
+                    Expanded(
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 560),
+                          child: AnimatedSwitcher(
+                            duration: kSectionAnimDuration,
+                            switchInCurve: kSectionAnimCurve,
+                            switchOutCurve: kSectionAnimCurve,
+                            child: const PlaybackPanel(fullscreen: true),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
+}
+
+//播放页封面取色作用域:把封面主色派生的 ColorScheme 注入子树,让"外层容器
+//(侧栏播放区外壳/全屏页 Scaffold)与播放面板"共用同一套封面配色。
+//内部用 M3ETheme 本地覆盖,子树里的 M3E 组件统一走封面配色。
+//无封面(未播放/无内嵌图)时保持全局配色,背景回退 surface。
+class PlaybackCoverScope extends ConsumerWidget {
+  const PlaybackCoverScope({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final baseTheme = M3ETheme.of(context);
+    final coverInfo = ref.watch(playbackCoverProvider).value;
+    final scopedTheme = coverInfo == null
+        ? baseTheme
+        : baseTheme.withColorScheme(
+            M3EColorScheme.fromSeed(
+              coverInfo.coverColor,
+              brightness: baseTheme.colorScheme.brightness,
+            ),
+          );
+    return M3ETheme(data: scopedTheme, child: child);
+  }
+}
+
+/// 播放页"反其道"带色背景:有封面时用 secondaryContainer(柔和明显的封面色相),
+/// 无封面回退 surface。供外层容器读取。
+Color playbackPanelBackground(M3EThemeData theme, PlaybackCover? coverInfo) {
+  return coverInfo == null
+      ? theme.colorScheme.surface
+      : theme.colorScheme.secondaryContainer;
 }
