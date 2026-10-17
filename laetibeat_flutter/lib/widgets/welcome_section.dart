@@ -1,37 +1,26 @@
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
+import 'package:laetibeat/src/rust/api/simple.dart' as rust;
+
 import '../animations.dart';
+import 'player/cover_provider.dart';
+import 'player/player_provider.dart';
 
 //首页欢迎
-class WelcomeSection extends StatefulWidget {
+class WelcomeSection extends ConsumerStatefulWidget {
   const WelcomeSection({super.key});
 
   @override
-  State<WelcomeSection> createState() => _WelcomeSectionState();
+  ConsumerState<WelcomeSection> createState() => _WelcomeSectionState();
 }
 
 //播放的阶段
 enum _PlaybackPhase { greeting, playing, ending }
 
-//假数据，之后填充
-class _MockPlayback {
-  static const String userName = 'OtoyaAAAAAAAA';
-  static const String currentTitle = '宇宙超威力加强合金版之超长标题';
-  static const String currentArtist = '歌手名最长应该也就这么长';
-  static const String nextTitle = '宇宙超威力加强合金版之超长标题';
-  static const String nextArtist = '歌手名最长应该也就这么长';
-
-  static String greetingFor(DateTime now) {
-    final int hour = now.hour;
-    if (hour >= 5 && hour < 12) return 'Good morning';
-    if (hour >= 12 && hour < 18) return 'Good afternoon';
-    return 'Good evening';
-  }
-}
-
-class _WelcomeSectionState extends State<WelcomeSection> {
+class _WelcomeSectionState extends ConsumerState<WelcomeSection> {
   //无限循环：page = index % [_pageCount]。
   static const int _pageCount = 3;
   static const int _itemCount = 900000;
@@ -72,6 +61,13 @@ class _WelcomeSectionState extends State<WelcomeSection> {
   Widget build(BuildContext context) {
     final theme = M3ETheme.of(context);
 
+    // 只订阅当前曲目与下一首,避免播放进度每 tick 触发轮播重建
+    final current = ref.watch(playerProvider.select((s) => s.current));
+    final next = ref.watch(playerProvider.select((s) {
+      if (s.queue.length < 2) return null;
+      return s.queue[(s.currentIndex + 1) % s.queue.length];
+    }));
+
     return AnimatedContainer(
       height: 140,
       duration: kSectionAnimDuration,
@@ -88,13 +84,18 @@ class _WelcomeSectionState extends State<WelcomeSection> {
         itemCount: _itemCount,
         itemBuilder: (context, index) {
           final phase = _PlaybackPhase.values[index % _pageCount];
-          return _buildPage(theme, phase);
+          return _buildPage(theme, phase, current, next);
         },
       ),
     );
   }
 
-  Widget _buildPage(M3EThemeData theme, _PlaybackPhase phase) {
+  Widget _buildPage(
+    M3EThemeData theme,
+    _PlaybackPhase phase,
+    rust.UiTrack? current,
+    rust.UiTrack? next,
+  ) {
     final scheme = theme.colorScheme;
     final type = theme.typeScale;
     final emphasized = theme.typography.emphasized;
@@ -102,9 +103,17 @@ class _WelcomeSectionState extends State<WelcomeSection> {
     final Widget content;
     switch (phase) {
       case _PlaybackPhase.greeting:
-        content = Text(
-          '${_MockPlayback.greetingFor(DateTime.now())}，${_MockPlayback.userName}',
-          style: type.headlineMedium,
+        content = Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(_greetingFor(DateTime.now()), style: type.headlineMedium),
+            SizedBox(height: theme.spacing.xs),
+            Text(
+              '今天想听点什么？',
+              style: type.bodyLarge.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ],
         );
       case _PlaybackPhase.playing:
         content = Row(
@@ -113,9 +122,11 @@ class _WelcomeSectionState extends State<WelcomeSection> {
             Expanded(
               child: _buildThreeLines(
                 type: type,
-                overline: '正在播放',
-                headline: _MockPlayback.currentTitle,
-                supporting: _MockPlayback.currentArtist,
+                overline: current == null ? '未在播放' : '正在播放',
+                headline: current?.title ?? '还没有播放音乐',
+                supporting: current == null
+                    ? '从音乐库选择一首歌曲开始'
+                    : '${current.artist} · ${current.album}',
                 overlineStyle: type.labelMedium.copyWith(
                   color: scheme.onSurfaceVariant,
                 ),
@@ -126,19 +137,10 @@ class _WelcomeSectionState extends State<WelcomeSection> {
               ),
             ),
             SizedBox(width: theme.spacing.lg),
-            // 右侧cookie12Sided形状封面,尺寸用spacing.xxl三倍=96
-            M3EShapeContainer.cookie12Sided(
-              width: theme.spacing.xxl * 3,
-              height: theme.spacing.xxl * 3,
-              gradient: _coverGradient(theme),
-              clipBehavior: Clip.antiAlias,
-              child: Center(
-                child: Icon(
-                  M3EIcons.music_note,
-                  size: theme.spacing.xxl,
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
+            _WelcomeCover(
+              track: current,
+              twelveSided: true,
+              theme: theme,
             ),
           ],
         );
@@ -149,9 +151,10 @@ class _WelcomeSectionState extends State<WelcomeSection> {
             Expanded(
               child: _buildThreeLines(
                 type: type,
-                overline: '下一首即将播放',
-                headline: _MockPlayback.nextTitle,
-                supporting: _MockPlayback.nextArtist,
+                overline: next == null ? '队列已到末尾' : '下一首即将播放',
+                headline: next?.title ??
+                    (current == null ? '队列为空' : '没有下一首了'),
+                supporting: next?.artist ?? '从音乐库添加更多歌曲',
                 overlineStyle: type.labelMedium.copyWith(
                   color: scheme.onSurfaceVariant,
                 ),
@@ -162,19 +165,10 @@ class _WelcomeSectionState extends State<WelcomeSection> {
               ),
             ),
             SizedBox(width: theme.spacing.lg),
-            // 右侧cookie4Sided形状封面
-            M3EShapeContainer.cookie4Sided(
-              width: theme.spacing.xxl * 3,
-              height: theme.spacing.xxl * 3,
-              gradient: _coverGradient(theme),
-              clipBehavior: Clip.antiAlias,
-              child: Center(
-                child: Icon(
-                  M3EIcons.music_note,
-                  size: theme.spacing.xxl,
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
+            _WelcomeCover(
+              track: next,
+              twelveSided: false,
+              theme: theme,
             ),
           ],
         );
@@ -189,19 +183,6 @@ class _WelcomeSectionState extends State<WelcomeSection> {
         ),
         child: content,
       ),
-    );
-  }
-
-  //封面渐变占位
-  LinearGradient _coverGradient(M3EThemeData theme) {
-    final scheme = theme.colorScheme;
-    return LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [
-        scheme.primaryContainer,
-        scheme.tertiaryContainer,
-      ],
     );
   }
 
@@ -241,5 +222,73 @@ class _WelcomeSectionState extends State<WelcomeSection> {
         ),
       ],
     );
+  }
+}
+
+String _greetingFor(DateTime now) {
+  final hour = now.hour;
+  if (hour >= 5 && hour < 12) return 'Good morning';
+  if (hour >= 12 && hour < 18) return 'Good afternoon';
+  return 'Good evening';
+}
+
+//轮播封面:有内嵌封面显示真实封面,否则保留渐变占位
+class _WelcomeCover extends ConsumerWidget {
+  const _WelcomeCover({
+    required this.track,
+    required this.twelveSided,
+    required this.theme,
+  });
+
+  final rust.UiTrack? track;
+  final bool twelveSided;
+  final M3EThemeData theme;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final current = track;
+    final bytes =
+        current == null ? null : ref.watch(trackCoverProvider(current)).value;
+    final hasArt = bytes != null && bytes.isNotEmpty;
+    final scheme = theme.colorScheme;
+    final size = theme.spacing.xxl * 3;
+
+    final child = hasArt
+        ? Image.memory(
+            bytes,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            gaplessPlayback: true,
+          )
+        : Center(
+            child: Icon(
+              M3EIcons.music_note,
+              size: theme.spacing.xxl,
+              color: scheme.onSurfaceVariant,
+            ),
+          );
+
+    final gradient = LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [scheme.primaryContainer, scheme.tertiaryContainer],
+    );
+
+    return twelveSided
+        ? M3EShapeContainer.cookie12Sided(
+            width: size,
+            height: size,
+            gradient: gradient,
+            clipBehavior: Clip.antiAlias,
+            child: child,
+          )
+        : M3EShapeContainer.cookie4Sided(
+            width: size,
+            height: size,
+            gradient: gradient,
+            clipBehavior: Clip.antiAlias,
+            child: child,
+          );
   }
 }
