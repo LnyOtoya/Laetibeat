@@ -52,13 +52,22 @@ class _LibraryDetail extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(title, style: theme.typeScale.headlineSmall),
+          Text(
+            title,
+            style: theme.typeScale.headlineSmall,
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.ellipsis,
+          ),
           SizedBox(height: theme.spacing.xs),
           Text(
             subtitle,
             style: theme.typeScale.bodyMedium.copyWith(
               color: scheme.onSurfaceVariant,
             ),
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

@@ -126,15 +126,127 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
       return _hint(theme, scheme, '音乐库为空', '请在设置-内容中选择目录并扫描');
     }
 
-    //三种视图渲染一致,仅数据不同;统一懒加载卡片列表(只构建可见行)
+    //三种视图:曲目/艺术家为列表,专辑为封面卡片网格
     return switch (_filter) {
       LibraryFilter.track => _buildCardList(theme, scheme, _trackRows(st.tracks)),
       LibraryFilter.artist => _buildCardList(theme, scheme, _artistRows(st.tracks)),
-      LibraryFilter.album => _buildCardList(theme, scheme, _albumRows(st.tracks)),
+      LibraryFilter.album => _buildAlbumGrid(theme, scheme, _albumRows(st.tracks)),
     };
   }
 
-  //统一懒加载卡片列表(曲目/艺术家/专辑共用),仅构建可见行
+  //专辑视图:封面卡片网格。列数随可用宽度自适应,卡片高度=正方形封面+文字区,
+  //保证封面始终显示为完整正方形。
+  Widget _buildAlbumGrid(
+    M3EThemeData theme,
+    M3EColorScheme scheme,
+    List<_LibRow> albums,
+  ) {
+    final spacing = theme.spacing.md;
+    final titleStyle = theme.typeScale.titleMedium;
+    final subStyle = theme.typeScale.bodyMedium;
+    final scaler = MediaQuery.textScalerOf(context);
+
+    //文字区高度:标题 + 间距 + 副标题 + 上下内边距,按当前文字缩放计算,
+    //并额外留一点余量,避免字体行高差异导致网格单元内纵向溢出。
+    final textBlock = scaler.scale(titleStyle.fontSize ?? 16) *
+            (titleStyle.height ?? 1.4) +
+        theme.spacing.xs +
+        scaler.scale(subStyle.fontSize ?? 14) * (subStyle.height ?? 1.4) +
+        theme.spacing.sm * 2 +
+        8;
+
+    return LayoutBuilder(
+      builder: (context, c) {
+        //目标单卡宽度约 170,列数四舍五入,单卡宽度保持 140~200 区间
+        final columns = (c.maxWidth / 170).round().clamp(1, 8);
+        final itemWidth =
+            (c.maxWidth - spacing * (columns - 1)) / columns;
+        return ScrollConfiguration(
+          behavior:
+              ScrollConfiguration.of(context).copyWith(scrollbars: false),
+          child: GridView.builder(
+            padding: EdgeInsets.only(bottom: theme.spacing.sm),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: columns,
+              mainAxisSpacing: spacing,
+              crossAxisSpacing: spacing,
+              mainAxisExtent: itemWidth + textBlock,
+            ),
+            itemCount: albums.length,
+            itemBuilder: (context, i) =>
+                _albumCard(theme, scheme, albums[i]),
+          ),
+        );
+      },
+    );
+  }
+
+  //单张专辑卡片:上方完整正方形封面,下方专辑名 + 艺术家名
+  Widget _albumCard(
+    M3EThemeData theme,
+    M3EColorScheme scheme,
+    _LibRow album,
+  ) {
+    final titleStyle = theme.typeScale.titleMedium;
+    final subStyle = theme.typeScale.bodyMedium;
+
+    return M3ECard(
+      key: ValueKey('${album.headline}|${album.supporting}'),
+      variant: M3ECardVariant.filled,
+      color: scheme.surfaceContainer,
+      borderRadius: M3EDimensions.borderRadiusMedium,
+      padding: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      expanded: true,
+      semanticLabel: '${album.headline}, ${album.supporting}',
+      onPressed: () => widget.onSelect?.call(album.headline, album.supporting),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          //完整正方形封面:宽度铺满卡片,高度同比
+          AspectRatio(
+            aspectRatio: 1,
+            child: album.track == null
+                ? ColoredBox(
+                    color: scheme.secondaryContainer,
+                    child: Icon(
+                      M3EIcons.music_note,
+                      size: 48,
+                      color: scheme.onSecondaryContainer,
+                    ),
+                  )
+                : _AlbumCover(track: album.track!),
+          ),
+          Padding(
+            padding: EdgeInsets.all(theme.spacing.sm),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  album.headline,
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.ellipsis,
+                  style: titleStyle,
+                ),
+                SizedBox(height: theme.spacing.xs),
+                Text(
+                  album.supporting,
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.ellipsis,
+                  style: subStyle.copyWith(color: scheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  //统一懒加载卡片列表(曲目/艺术家共用),仅构建可见行
   Widget _buildCardList(
     M3EThemeData theme,
     M3EColorScheme scheme,
@@ -220,17 +332,20 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
     return rows;
   }
 
-  //专辑视图:按专辑去重一行,副文本为所属艺术家,取每张专辑的一首代表曲目取封面
+  //专辑视图:按「专辑名 + 艺术家」去重(同名不同艺术家的专辑不合并),
+  //取每张专辑的一首代表曲目取封面
   List<_LibRow> _albumRows(List<rust.UiTrack> tracks) {
-    final byAlbum = <String, rust.UiTrack>{};
+    final byAlbum = <(String, String), rust.UiTrack>{};
     for (final t in tracks) {
-      byAlbum.putIfAbsent(t.album, () => t);
+      final album = t.album.trim().isEmpty ? '未知专辑' : t.album;
+      final artist = t.artist.trim().isEmpty ? '未知艺术家' : t.artist;
+      byAlbum.putIfAbsent((album, artist), () => t);
     }
     final rows = [
       for (final e in byAlbum.entries)
         _LibRow(
-          e.key,
-          e.value.artist,
+          e.key.$1,
+          e.key.$2,
           M3EIcons.music_note,
           track: e.value,
         ),
@@ -326,6 +441,41 @@ class _RowCover extends ConsumerWidget {
                 ),
               ),
       ),
+    );
+  }
+}
+
+//专辑卡片封面:铺满正方形区域(由外层 AspectRatio 保证 1:1),
+//沿用曲目封面来源与缓存,无封面回退占位图标
+class _AlbumCover extends ConsumerWidget {
+  const _AlbumCover({required this.track});
+
+  final rust.UiTrack track;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = M3ETheme.of(context);
+    final scheme = theme.colorScheme;
+    final bytes = ref.watch(trackCoverProvider(track)).value;
+    final hasArt = bytes != null && bytes.isNotEmpty;
+
+    return ColoredBox(
+      color: scheme.secondaryContainer,
+      child: hasArt
+          ? Image.memory(
+              bytes,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              gaplessPlayback: true,
+            )
+          : Center(
+              child: Icon(
+                M3EIcons.music_note,
+                size: 48,
+                color: scheme.onSecondaryContainer,
+              ),
+            ),
     );
   }
 }
