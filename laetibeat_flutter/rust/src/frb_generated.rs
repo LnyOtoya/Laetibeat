@@ -39,7 +39,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 2146598857;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1186313833;
 
 // Section: executor
 
@@ -606,6 +606,41 @@ fn wire__crate__api__subsonic__subsonic_get_artists_impl(
         },
     )
 }
+fn wire__crate__api__subsonic__subsonic_stream_url_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "subsonic_stream_url",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_source_id = <String>::sse_decode(&mut deserializer);
+            let api_track_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok =
+                        crate::api::subsonic::subsonic_stream_url(api_source_id, api_track_id)?;
+                    std::result::Result::Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 
 // Section: dart2rust
 
@@ -1139,6 +1174,9 @@ impl SseDecode for crate::api::simple::UiTrack {
         let mut var_duration = <String>::sse_decode(deserializer);
         let mut var_durationSeconds = <u64>::sse_decode(deserializer);
         let mut var_path = <String>::sse_decode(deserializer);
+        let mut var_source = <String>::sse_decode(deserializer);
+        let mut var_sourceId = <String>::sse_decode(deserializer);
+        let mut var_coverId = <Option<String>>::sse_decode(deserializer);
         let mut var_bitrate = <Option<u32>>::sse_decode(deserializer);
         let mut var_sampleRate = <Option<u32>>::sse_decode(deserializer);
         let mut var_channels = <Option<u8>>::sse_decode(deserializer);
@@ -1160,6 +1198,9 @@ impl SseDecode for crate::api::simple::UiTrack {
             duration: var_duration,
             duration_seconds: var_durationSeconds,
             path: var_path,
+            source: var_source,
+            source_id: var_sourceId,
+            cover_id: var_coverId,
             bitrate: var_bitrate,
             sample_rate: var_sampleRate,
             channels: var_channels,
@@ -1240,6 +1281,9 @@ fn pde_ffi_dispatcher_primary_impl(
         }
         16 => {
             wire__crate__api__subsonic__subsonic_get_artists_impl(port, ptr, rust_vec_len, data_len)
+        }
+        17 => {
+            wire__crate__api__subsonic__subsonic_stream_url_impl(port, ptr, rust_vec_len, data_len)
         }
         _ => unreachable!(),
     }
@@ -1590,6 +1634,9 @@ impl flutter_rust_bridge::IntoDart for crate::api::simple::UiTrack {
             self.duration.into_into_dart().into_dart(),
             self.duration_seconds.into_into_dart().into_dart(),
             self.path.into_into_dart().into_dart(),
+            self.source.into_into_dart().into_dart(),
+            self.source_id.into_into_dart().into_dart(),
+            self.cover_id.into_into_dart().into_dart(),
             self.bitrate.into_into_dart().into_dart(),
             self.sample_rate.into_into_dart().into_dart(),
             self.channels.into_into_dart().into_dart(),
@@ -2032,6 +2079,9 @@ impl SseEncode for crate::api::simple::UiTrack {
         <String>::sse_encode(self.duration, serializer);
         <u64>::sse_encode(self.duration_seconds, serializer);
         <String>::sse_encode(self.path, serializer);
+        <String>::sse_encode(self.source, serializer);
+        <String>::sse_encode(self.source_id, serializer);
+        <Option<String>>::sse_encode(self.cover_id, serializer);
         <Option<u32>>::sse_encode(self.bitrate, serializer);
         <Option<u32>>::sse_encode(self.sample_rate, serializer);
         <Option<u8>>::sse_encode(self.channels, serializer);

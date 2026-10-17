@@ -197,6 +197,38 @@ class SubsonicServersNotifier
       ref.read(subsonicServerStoreProvider).readSecret(id);
 }
 
+/// 启动时后台重连可能尚未完成;播放远端曲目前按需补一次配置。
+Future<void> ensureSubsonicConfigured(Ref ref, String sourceId) async {
+  final prefs = ref.read(sharedPreferencesProvider);
+  final store = SubsonicServerStore(prefs);
+
+  SubsonicServerConfig? config;
+  for (final item in store.loadConfigs()) {
+    if (item.id == sourceId) {
+      config = item;
+      break;
+    }
+  }
+  if (config == null) {
+    throw Exception('找不到远端服务器配置');
+  }
+
+  final secret = await store.readSecret(sourceId);
+  if (secret == null || secret.isEmpty) {
+    throw Exception('远端服务器密钥不可用');
+  }
+
+  await rust_subsonic.configureSubsonic(
+    sourceId: config.id,
+    baseUrl: config.baseUrl,
+    authMode: config.authMode.wireName,
+    username:
+        config.authMode == SubsonicAuthMode.token ? config.username : null,
+    secret: secret,
+    clientName: 'laetibeat',
+  );
+}
+
 /// 应用启动后在后台重新连接已保存的服务器。
 /// 失败只记录日志,不影响本地功能。
 Future<void> reconnectSubsonicServers(SharedPreferences prefs) async {

@@ -33,6 +33,12 @@ pub struct  UiTrack {
     pub duration_seconds: u64,
     // 本地文件的原始绝对路径;非本地音源(如opensubsonic)为空串
     pub path: String,
+    /// 音源类型: local / opensubsonic
+    pub source: String,
+    /// 音源实例 id;远端为服务器配置 id
+    pub source_id: String,
+    /// 远端封面 id
+    pub cover_id: Option<String>,
     /// 音频码率(kbps)
     pub bitrate: Option<u32>,
     /// 采样率(Hz)
@@ -162,6 +168,9 @@ pub fn scan_local_music_folder(
             duration: format_duration(track.duration),
             duration_seconds: track.duration,
             path,
+            source: "local".to_string(),
+            source_id: String::new(),
+            cover_id: None,
             bitrate: track.bitrate,
             sample_rate: track.sample_rate,
             channels: track.channels,

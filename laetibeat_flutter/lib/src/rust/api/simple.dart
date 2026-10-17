@@ -200,6 +200,15 @@ class UiTrack {
   final BigInt durationSeconds;
   final String path;
 
+  /// 音源类型: local / opensubsonic
+  final String source;
+
+  /// 音源实例 id;远端为服务器配置 id
+  final String sourceId;
+
+  /// 远端封面 id
+  final String? coverId;
+
   /// 音频码率(kbps)
   final int? bitrate;
 
@@ -231,6 +240,9 @@ class UiTrack {
     required this.duration,
     required this.durationSeconds,
     required this.path,
+    required this.source,
+    required this.sourceId,
+    this.coverId,
     this.bitrate,
     this.sampleRate,
     this.channels,
@@ -255,6 +267,9 @@ class UiTrack {
       duration.hashCode ^
       durationSeconds.hashCode ^
       path.hashCode ^
+      source.hashCode ^
+      sourceId.hashCode ^
+      coverId.hashCode ^
       bitrate.hashCode ^
       sampleRate.hashCode ^
       channels.hashCode ^
@@ -281,6 +296,9 @@ class UiTrack {
           duration == other.duration &&
           durationSeconds == other.durationSeconds &&
           path == other.path &&
+          source == other.source &&
+          sourceId == other.sourceId &&
+          coverId == other.coverId &&
           bitrate == other.bitrate &&
           sampleRate == other.sampleRate &&
           channels == other.channels &&

@@ -69,7 +69,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => 2146598857;
+  int get rustContentHash => -1186313833;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -141,6 +141,11 @@ abstract class RustLibApi extends BaseApi {
 
   Future<List<UiRemoteArtist>> crateApiSubsonicSubsonicGetArtists({
     required String sourceId,
+  });
+
+  Future<String> crateApiSubsonicSubsonicStreamUrl({
+    required String sourceId,
+    required String trackId,
   });
 }
 
@@ -671,6 +676,41 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         argNames: ["sourceId"],
       );
 
+  @override
+  Future<String> crateApiSubsonicSubsonicStreamUrl({
+    required String sourceId,
+    required String trackId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(sourceId, serializer);
+          sse_encode_String(trackId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 17,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiSubsonicSubsonicStreamUrlConstMeta,
+        argValues: [sourceId, trackId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSubsonicSubsonicStreamUrlConstMeta =>
+      const TaskConstMeta(
+        debugName: "subsonic_stream_url",
+        argNames: ["sourceId", "trackId"],
+      );
+
   @protected
   String dco_decode_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
@@ -1065,8 +1105,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   UiTrack dco_decode_ui_track(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 20)
-      throw Exception('unexpected arr length: expect 20 but see ${arr.length}');
+    if (arr.length != 23)
+      throw Exception('unexpected arr length: expect 23 but see ${arr.length}');
     return UiTrack(
       id: dco_decode_String(arr[0]),
       relativePath: dco_decode_opt_String(arr[1]),
@@ -1083,11 +1123,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       duration: dco_decode_String(arr[12]),
       durationSeconds: dco_decode_u_64(arr[13]),
       path: dco_decode_String(arr[14]),
-      bitrate: dco_decode_opt_box_autoadd_u_32(arr[15]),
-      sampleRate: dco_decode_opt_box_autoadd_u_32(arr[16]),
-      channels: dco_decode_opt_box_autoadd_u_8(arr[17]),
-      modifiedMs: dco_decode_opt_box_autoadd_u_64(arr[18]),
-      fileSize: dco_decode_opt_box_autoadd_u_64(arr[19]),
+      source: dco_decode_String(arr[15]),
+      sourceId: dco_decode_String(arr[16]),
+      coverId: dco_decode_opt_String(arr[17]),
+      bitrate: dco_decode_opt_box_autoadd_u_32(arr[18]),
+      sampleRate: dco_decode_opt_box_autoadd_u_32(arr[19]),
+      channels: dco_decode_opt_box_autoadd_u_8(arr[20]),
+      modifiedMs: dco_decode_opt_box_autoadd_u_64(arr[21]),
+      fileSize: dco_decode_opt_box_autoadd_u_64(arr[22]),
     );
   }
 
@@ -1659,6 +1702,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_duration = sse_decode_String(deserializer);
     var var_durationSeconds = sse_decode_u_64(deserializer);
     var var_path = sse_decode_String(deserializer);
+    var var_source = sse_decode_String(deserializer);
+    var var_sourceId = sse_decode_String(deserializer);
+    var var_coverId = sse_decode_opt_String(deserializer);
     var var_bitrate = sse_decode_opt_box_autoadd_u_32(deserializer);
     var var_sampleRate = sse_decode_opt_box_autoadd_u_32(deserializer);
     var var_channels = sse_decode_opt_box_autoadd_u_8(deserializer);
@@ -1680,6 +1726,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       duration: var_duration,
       durationSeconds: var_durationSeconds,
       path: var_path,
+      source: var_source,
+      sourceId: var_sourceId,
+      coverId: var_coverId,
       bitrate: var_bitrate,
       sampleRate: var_sampleRate,
       channels: var_channels,
@@ -2171,6 +2220,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.duration, serializer);
     sse_encode_u_64(self.durationSeconds, serializer);
     sse_encode_String(self.path, serializer);
+    sse_encode_String(self.source, serializer);
+    sse_encode_String(self.sourceId, serializer);
+    sse_encode_opt_String(self.coverId, serializer);
     sse_encode_opt_box_autoadd_u_32(self.bitrate, serializer);
     sse_encode_opt_box_autoadd_u_32(self.sampleRate, serializer);
     sse_encode_opt_box_autoadd_u_8(self.channels, serializer);

@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:laetibeat/src/rust/api/simple.dart' as rust;
 import '../animations.dart';
+import 'remote_library_view.dart';
 import 'settings/music_library_provider.dart';
+import 'settings/subsonic_provider.dart';
 import 'player/player_provider.dart';
 import 'player/cover_provider.dart';
 
@@ -25,7 +27,12 @@ class LibraryBrowser extends ConsumerStatefulWidget {
 }
 
 class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
+  static const String _localSource = '__local__';
+
   LibraryFilter _filter = LibraryFilter.track;
+
+  /// 当前音源;null 表示本地音乐库
+  String? _sourceId;
 
   /// 当前在左侧面板内打开的专辑;非 null 时专辑视图显示详情而非网格
   rust.UiAlbum? _openedAlbum;
@@ -50,6 +57,18 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
     final theme = M3ETheme.of(context);
     final scheme = theme.colorScheme;
     final music = ref.watch(musicLibraryProvider);
+    final servers =
+        ref.watch(subsonicServersProvider).value ??
+            const <SubsonicServerConfig>[];
+
+    SubsonicServerConfig? selectedServer;
+    for (final server in servers) {
+      if (server.id == _sourceId) {
+        selectedServer = server;
+        break;
+      }
+    }
+    final remoteSourceId = selectedServer?.id;
 
     return AnimatedContainer(
       duration: kSectionAnimDuration,
@@ -63,41 +82,79 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          //筛选按钮
-          M3ESplitButton<LibraryFilter>(
-            items: const [
-              M3ESplitButtonItem(
-                value: LibraryFilter.track,
-                child: Text('曲目'),
-              ),
-              M3ESplitButtonItem(
-                value: LibraryFilter.artist,
-                child: Text('艺术家'),
-              ),
-              M3ESplitButtonItem(
-                value: LibraryFilter.album,
-                child: Text('专辑'),
-              ),
-            ],
-            selectedValue: _filter,
-            label: _filterLabel,
-            style: M3EButtonStyle.filled,
-            size: M3EButtonSize.md,
-            shape: M3EButtonShape.round,
-            onSelected: (v) => setState(() {
-              _selectionController.clear();
-              _filter = v;
-              // 切换筛选时退出专辑详情,避免状态残留
-              _openedAlbum = null;
-            }),
-          ),
-          SizedBox(height: theme.spacing.lg),
-          Expanded(
-            child: ScrollConfiguration(
-              behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-              child: _buildBody(theme, scheme, music.value),
+          //音源切换:配置了远端服务器后才显示
+          if (servers.isNotEmpty) ...[
+            M3ESplitButton<String>(
+              items: [
+                const M3ESplitButtonItem(
+                  value: _localSource,
+                  child: Text('本地音乐'),
+                ),
+                for (final server in servers)
+                  M3ESplitButtonItem(
+                    value: server.id,
+                    child: Text(server.name),
+                  ),
+              ],
+              selectedValue: remoteSourceId ?? _localSource,
+              label: selectedServer?.name ?? '本地音乐',
+              style: M3EButtonStyle.filled,
+              size: M3EButtonSize.md,
+              shape: M3EButtonShape.round,
+              onSelected: (value) => setState(() {
+                _sourceId = value == _localSource ? null : value;
+                _openedAlbum = null;
+                _selectionController.clear();
+              }),
             ),
-          ),
+            SizedBox(height: theme.spacing.md),
+          ],
+          if (remoteSourceId != null) ...[
+            Expanded(
+              child: RemoteLibraryView(
+                key: ValueKey(remoteSourceId),
+                sourceId: remoteSourceId,
+                serverName: selectedServer!.name,
+              ),
+            ),
+          ] else ...[
+            //筛选按钮
+            M3ESplitButton<LibraryFilter>(
+              items: const [
+                M3ESplitButtonItem(
+                  value: LibraryFilter.track,
+                  child: Text('曲目'),
+                ),
+                M3ESplitButtonItem(
+                  value: LibraryFilter.artist,
+                  child: Text('艺术家'),
+                ),
+                M3ESplitButtonItem(
+                  value: LibraryFilter.album,
+                  child: Text('专辑'),
+                ),
+              ],
+              selectedValue: _filter,
+              label: _filterLabel,
+              style: M3EButtonStyle.filled,
+              size: M3EButtonSize.md,
+              shape: M3EButtonShape.round,
+              onSelected: (v) => setState(() {
+                _selectionController.clear();
+                _filter = v;
+                // 切换筛选时退出专辑详情,避免状态残留
+                _openedAlbum = null;
+              }),
+            ),
+            SizedBox(height: theme.spacing.lg),
+            Expanded(
+              child: ScrollConfiguration(
+                behavior:
+                    ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                child: _buildBody(theme, scheme, music.value),
+              ),
+            ),
+          ],
         ],
       ),
     );

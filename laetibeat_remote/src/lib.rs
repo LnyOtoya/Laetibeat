@@ -3,7 +3,7 @@
 use opensubsonic::data::{
     AlbumId3, AlbumWithSongsId3, ArtistId3, ArtistWithAlbumsId3, Child, ServerInfo as OsServerInfo,
 };
-use opensubsonic::{Auth, Client};
+use opensubsonic::{Auth, Client, StreamOptions};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 use tokio::runtime::{Builder, Runtime};
@@ -164,6 +164,16 @@ pub fn ping(source_id: &str) -> Result<RemoteServerInfo, String> {
         .block_on(client.server_info())
         .map_err(map_err)?;
     Ok(map_server_info(info))
+}
+
+/// 生成带鉴权的播放地址。
+/// URL 含凭据,不持久化,每次播放前重新生成。
+pub fn stream_url(source_id: &str, track_id: &str) -> Result<String, String> {
+    let client = client(source_id)?;
+    let url = client
+        .stream_url(track_id, &StreamOptions::default())
+        .map_err(map_err)?;
+    Ok(url.to_string())
 }
 
 /// 获取艺术家列表(懒加载浏览的入口)

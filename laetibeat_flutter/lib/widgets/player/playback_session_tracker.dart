@@ -57,9 +57,12 @@ class PlaybackSessionTracker {
   void onTrackChanged(rust.UiTrack? track) {
     _finalize(completed: false);
     if (track == null) return;
+    final isRemote = track.source == 'opensubsonic';
     _session = _Session(
       track: track,
-      sourceId: sourceId(),
+      source: isRemote ? track.source : 'local',
+      sourceId: isRemote ? track.sourceId : sourceId(),
+      trackId: isRemote ? track.id : (track.relativePath ?? track.id),
       queueSource: queueSource(),
       startedAt: DateTime.now().millisecondsSinceEpoch,
       durationMs: track.durationSeconds.toInt() * 1000,
@@ -110,9 +113,9 @@ class PlaybackSessionTracker {
     final track = session.track;
     onEvent(
       PlaySessionEvent(
-        source: 'local',
+        source: session.source,
         sourceId: session.sourceId,
-        trackId: track.relativePath ?? track.id,
+        trackId: session.trackId,
         startedAt: session.startedAt,
         listenedMs: session.listenedMs,
         durationMs: session.durationMs,
@@ -135,14 +138,18 @@ class PlaybackSessionTracker {
 class _Session {
   _Session({
     required this.track,
+    required this.source,
     required this.sourceId,
+    required this.trackId,
     required this.queueSource,
     required this.startedAt,
     required this.durationMs,
   });
 
   final rust.UiTrack track;
+  final String source;
   final String sourceId;
+  final String trackId;
   final String queueSource;
   final int startedAt;
   final int durationMs;

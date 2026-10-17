@@ -101,6 +101,11 @@ pub fn ping_subsonic(source_id: String) -> Result<UiSubsonicServerInfo, String> 
     remote::ping(&source_id).map(map_server_info)
 }
 
+/// 生成远端曲目播放地址(含鉴权参数,不应持久化)
+pub fn subsonic_stream_url(source_id: String, track_id: String) -> Result<String, String> {
+    remote::stream_url(&source_id, &track_id)
+}
+
 /// 获取艺术家列表
 pub fn subsonic_get_artists(source_id: String) -> Result<Vec<UiRemoteArtist>, String> {
     let artists = remote::get_artists(&source_id)?;

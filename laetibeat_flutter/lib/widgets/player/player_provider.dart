@@ -3,7 +3,9 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:laetibeat/src/rust/api/simple.dart' as rust;
+import 'package:laetibeat/src/rust/api/subsonic.dart' as rust_subsonic;
 import '../settings/persistence.dart';
+import '../settings/subsonic_provider.dart';
 import 'playback_backend.dart';
 import 'playback_session_tracker.dart';
 import 'playback_stats.dart';
@@ -118,6 +120,9 @@ class PlayerNotifier extends Notifier<PlayerState> {
 
   /// 防止恢复时连点播放触发多次装载
   bool _loadingMedia = false;
+
+  // 每次打开曲目递增;异步解析远端 URL 时用于丢弃过期结果
+  int _openGeneration = 0;
 
   bool _savingQueue = false;
   bool _queueSavePending = false;
@@ -275,9 +280,13 @@ class PlayerNotifier extends Notifier<PlayerState> {
     if (track == null) return;
 
     _loadingMedia = true;
+    final generation = ++_openGeneration;
     try {
       final savedPosition = _pendingPosition;
-      await _backend.open(_trackOf(track), play: false);
+      final playbackTrack = await _resolveTrack(track);
+      if (generation != _openGeneration) return;
+      await _backend.open(playbackTrack, play: false);
+      if (generation != _openGeneration) return;
       _mediaLoaded = true;
 
       // 上次停在结尾(顺序播完)时,本次播放从头开始
@@ -301,6 +310,15 @@ class PlayerNotifier extends Notifier<PlayerState> {
       _sessionTracker.onSeek(resumeAt);
       await _backend.play();
       _pendingPosition = Duration.zero;
+    } catch (e) {
+      if (generation == _openGeneration) {
+        debugPrint('恢复播放失败: $e');
+        _mediaLoaded = false;
+        state = state.copyWith(isPlaying: false);
+        try {
+          await _backend.stop();
+        } catch (_) {}
+      }
     } finally {
       _loadingMedia = false;
     }
@@ -340,7 +358,7 @@ class PlayerNotifier extends Notifier<PlayerState> {
     _mediaLoaded = true;
     _pendingPosition = Duration.zero;
     _sessionTracker.onTrackChanged(tracks[idx]);
-    _backend.open(_trackOf(tracks[idx]));
+    unawaited(_openResolved(tracks[idx]));
     // 队列内容变化才写队列文件;状态文件另写
     unawaited(_saveQueue());
     unawaited(_saveState());
@@ -373,12 +391,54 @@ class PlayerNotifier extends Notifier<PlayerState> {
     _mediaLoaded = true;
     _pendingPosition = Duration.zero;
     _sessionTracker.onTrackChanged(track);
-    _backend.open(_trackOf(track));
+    unawaited(_openResolved(track));
     unawaited(_saveState());
   }
 
-  //由曲目拼出 PlaybackTrack:path 转 file:// URI,时长先用元数据粗值兜底
-  PlaybackTrack _trackOf(rust.UiTrack t) {
+  /// 异步解析播放源(本地文件或远端 stream URL)后打开。
+  /// 用 generation 防止快速切歌时旧请求覆盖新曲目。
+  Future<void> _openResolved(rust.UiTrack track) async {
+    final generation = ++_openGeneration;
+    try {
+      // 远端要先解析 stream URL;期间暂停旧音频,避免旧曲继续出声
+      if (track.source == 'opensubsonic') {
+        await _backend.pause();
+        if (generation != _openGeneration) return;
+      }
+
+      final playbackTrack = await _resolveTrack(track);
+      if (generation != _openGeneration) return;
+      await _backend.open(playbackTrack);
+    } catch (e) {
+      if (generation != _openGeneration) return;
+      debugPrint('打开曲目失败: $e');
+      _mediaLoaded = false;
+      state = state.copyWith(isPlaying: false);
+      try {
+        await _backend.stop();
+      } catch (_) {}
+    }
+  }
+
+  /// 本地曲目走 file://,远端曲目走 OpenSubsonic stream URL。
+  Future<PlaybackTrack> _resolveTrack(rust.UiTrack t) async {
+    if (t.source == 'opensubsonic' && t.sourceId.isNotEmpty) {
+      String url;
+      try {
+        url = await rust_subsonic.subsonicStreamUrl(
+          sourceId: t.sourceId,
+          trackId: t.id,
+        );
+      } catch (_) {
+        // 启动重连可能还没完成,按需配置后重试一次
+        await ensureSubsonicConfigured(ref, t.sourceId);
+        url = await rust_subsonic.subsonicStreamUrl(
+          sourceId: t.sourceId,
+          trackId: t.id,
+        );
+      }
+      return PlaybackTrack(uri: url, fallbackDuration: _durationOf(t));
+    }
     final uri = t.path.isEmpty ? t.id : Uri.file(t.path).toString();
     return PlaybackTrack(uri: uri, fallbackDuration: _durationOf(t));
   }

@@ -34,6 +34,15 @@ Future<void> removeSubsonic({required String sourceId}) =>
 Future<UiSubsonicServerInfo> pingSubsonic({required String sourceId}) =>
     RustLib.instance.api.crateApiSubsonicPingSubsonic(sourceId: sourceId);
 
+/// 生成远端曲目播放地址(含鉴权参数,不应持久化)
+Future<String> subsonicStreamUrl({
+  required String sourceId,
+  required String trackId,
+}) => RustLib.instance.api.crateApiSubsonicSubsonicStreamUrl(
+  sourceId: sourceId,
+  trackId: trackId,
+);
+
 /// 获取艺术家列表
 Future<List<UiRemoteArtist>> subsonicGetArtists({required String sourceId}) =>
     RustLib.instance.api.crateApiSubsonicSubsonicGetArtists(sourceId: sourceId);
