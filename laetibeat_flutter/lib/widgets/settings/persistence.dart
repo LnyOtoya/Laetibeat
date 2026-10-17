@@ -76,10 +76,13 @@ Map<String, Object?> uiTrackToJson(rust.UiTrack t) => <String, Object?>{
       'year': t.year,
       'genre': t.genre,
       'duration': t.duration,
+      'durationSeconds': t.durationSeconds.toInt(),
       'path': t.path,
       'bitrate': t.bitrate,
       'sampleRate': t.sampleRate,
       'channels': t.channels,
+      'modifiedMs': t.modifiedMs?.toInt(),
+      'fileSize': t.fileSize?.toInt(),
     };
 
 rust.UiTrack uiTrackFromJson(Map<String, dynamic> m) => rust.UiTrack(
@@ -95,15 +98,76 @@ rust.UiTrack uiTrackFromJson(Map<String, dynamic> m) => rust.UiTrack(
       year: m['year'] as int?,
       genre: m['genre'] as String?,
       duration: m['duration'] as String,
+      // 旧快照没有 durationSeconds,从 mm:ss 文本回推
+      durationSeconds: BigInt.from(
+        m['durationSeconds'] as int? ??
+            _parseDurationSeconds(m['duration'] as String? ?? ''),
+      ),
       path: m['path'] as String,
       bitrate: m['bitrate'] as int?,
       sampleRate: m['sampleRate'] as int?,
       channels: m['channels'] as int?,
+      modifiedMs: _bigIntOrNull(m['modifiedMs']),
+      fileSize: _bigIntOrNull(m['fileSize']),
     );
+
+BigInt? _bigIntOrNull(Object? value) =>
+    value is int ? BigInt.from(value) : null;
+
+int _parseDurationSeconds(String text) {
+  final parts = text.split(':');
+  if (parts.length != 2) return 0;
+  final minutes = int.tryParse(parts[0]);
+  final seconds = int.tryParse(parts[1]);
+  if (minutes == null || seconds == null) return 0;
+  return minutes * 60 + seconds;
+}
 
 // ---------------------------------------------------------------------------
 // 音乐库快照
 // ---------------------------------------------------------------------------
+
+/// 一次扫描的统计信息(随音乐库快照持久化)
+class LibraryScanStats {
+  const LibraryScanStats({
+    required this.totalFiles,
+    required this.parsedFiles,
+    required this.reusedFiles,
+    required this.removedFiles,
+    required this.elapsed,
+    required this.scannedAt,
+  });
+
+  final int totalFiles;
+  final int parsedFiles;
+  final int reusedFiles;
+  final int removedFiles;
+  final Duration elapsed;
+  final DateTime scannedAt;
+
+  Map<String, Object?> toJson() => <String, Object?>{
+        'totalFiles': totalFiles,
+        'parsedFiles': parsedFiles,
+        'reusedFiles': reusedFiles,
+        'removedFiles': removedFiles,
+        'elapsedMs': elapsed.inMilliseconds,
+        'scannedAt': scannedAt.millisecondsSinceEpoch,
+      };
+
+  static LibraryScanStats? fromJson(Object? value) {
+    if (value is! Map<String, dynamic>) return null;
+    return LibraryScanStats(
+      totalFiles: value['totalFiles'] as int? ?? 0,
+      parsedFiles: value['parsedFiles'] as int? ?? 0,
+      reusedFiles: value['reusedFiles'] as int? ?? 0,
+      removedFiles: value['removedFiles'] as int? ?? 0,
+      elapsed: Duration(milliseconds: value['elapsedMs'] as int? ?? 0),
+      scannedAt: DateTime.fromMillisecondsSinceEpoch(
+        value['scannedAt'] as int? ?? 0,
+      ),
+    );
+  }
+}
 
 /// 一次扫描结果的磁盘快照
 class LibrarySnapshot {
@@ -111,6 +175,7 @@ class LibrarySnapshot {
     this.directory,
     this.hasScanned = false,
     this.scannedAt,
+    this.scanStats,
     this.tracks = const <rust.UiTrack>[],
     this.albums = const <rust.UiAlbum>[],
     this.artists = const <rust.UiArtist>[],
@@ -119,6 +184,7 @@ class LibrarySnapshot {
   final String? directory;
   final bool hasScanned;
   final DateTime? scannedAt;
+  final LibraryScanStats? scanStats;
   final List<rust.UiTrack> tracks;
   final List<rust.UiAlbum> albums;
   final List<rust.UiArtist> artists;
@@ -165,6 +231,7 @@ class LibrarySnapshotStore {
         'directory': snapshot.directory,
         'hasScanned': snapshot.hasScanned,
         'scannedAt': snapshot.scannedAt?.millisecondsSinceEpoch,
+        'scanStats': snapshot.scanStats?.toJson(),
         'tracks': [for (final t in snapshot.tracks) uiTrackToJson(t)],
         'albums': [for (final a in snapshot.albums) _albumToJson(a)],
         'artists': [for (final a in snapshot.artists) _artistToJson(a)],
@@ -177,6 +244,7 @@ class LibrarySnapshotStore {
       scannedAt: map['scannedAt'] is int
           ? DateTime.fromMillisecondsSinceEpoch(map['scannedAt'] as int)
           : null,
+      scanStats: LibraryScanStats.fromJson(map['scanStats']),
       tracks: <rust.UiTrack>[
         for (final item in map['tracks'] as List? ?? const <dynamic>[])
           uiTrackFromJson(item as Map<String, dynamic>),

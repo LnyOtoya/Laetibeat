@@ -6,13 +6,18 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `format_duration`
+// These functions are ignored because they are not marked as `pub`: `format_duration`, `ui_track_to_track`
 
 Future<String?> pickDirectory() =>
     RustLib.instance.api.crateApiSimplePickDirectory();
 
-Future<UiLibrary> scanLocalMusicFolder({required String dirPath}) =>
-    RustLib.instance.api.crateApiSimpleScanLocalMusicFolder(dirPath: dirPath);
+Future<UiScanResult> scanLocalMusicFolder({
+  required String dirPath,
+  required List<UiTrack> knownTracks,
+}) => RustLib.instance.api.crateApiSimpleScanLocalMusicFolder(
+  dirPath: dirPath,
+  knownTracks: knownTracks,
+);
 
 class UiAlbum {
   final String id;
@@ -115,6 +120,59 @@ class UiLibrary {
           artists == other.artists;
 }
 
+class UiScanResult {
+  final UiLibrary library_;
+  final UiScanStats stats;
+
+  const UiScanResult({required this.library_, required this.stats});
+
+  @override
+  int get hashCode => library_.hashCode ^ stats.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is UiScanResult &&
+          runtimeType == other.runtimeType &&
+          library_ == other.library_ &&
+          stats == other.stats;
+}
+
+class UiScanStats {
+  final int totalFiles;
+  final int parsedFiles;
+  final int reusedFiles;
+  final int removedFiles;
+  final BigInt elapsedMs;
+
+  const UiScanStats({
+    required this.totalFiles,
+    required this.parsedFiles,
+    required this.reusedFiles,
+    required this.removedFiles,
+    required this.elapsedMs,
+  });
+
+  @override
+  int get hashCode =>
+      totalFiles.hashCode ^
+      parsedFiles.hashCode ^
+      reusedFiles.hashCode ^
+      removedFiles.hashCode ^
+      elapsedMs.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is UiScanStats &&
+          runtimeType == other.runtimeType &&
+          totalFiles == other.totalFiles &&
+          parsedFiles == other.parsedFiles &&
+          reusedFiles == other.reusedFiles &&
+          removedFiles == other.removedFiles &&
+          elapsedMs == other.elapsedMs;
+}
+
 class UiTrack {
   final String id;
   final String title;
@@ -134,6 +192,9 @@ class UiTrack {
   final int? year;
   final String? genre;
   final String duration;
+
+  /// 原始时长(秒),用于增量扫描与快照重建
+  final BigInt durationSeconds;
   final String path;
 
   /// 音频码率(kbps)
@@ -144,6 +205,12 @@ class UiTrack {
 
   /// 声道数
   final int? channels;
+
+  /// 文件修改时间(Unix 毫秒),增量扫描判据
+  final BigInt? modifiedMs;
+
+  /// 文件大小(字节),增量扫描判据
+  final BigInt? fileSize;
 
   const UiTrack({
     required this.id,
@@ -158,10 +225,13 @@ class UiTrack {
     this.year,
     this.genre,
     required this.duration,
+    required this.durationSeconds,
     required this.path,
     this.bitrate,
     this.sampleRate,
     this.channels,
+    this.modifiedMs,
+    this.fileSize,
   });
 
   @override
@@ -178,10 +248,13 @@ class UiTrack {
       year.hashCode ^
       genre.hashCode ^
       duration.hashCode ^
+      durationSeconds.hashCode ^
       path.hashCode ^
       bitrate.hashCode ^
       sampleRate.hashCode ^
-      channels.hashCode;
+      channels.hashCode ^
+      modifiedMs.hashCode ^
+      fileSize.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -200,8 +273,11 @@ class UiTrack {
           year == other.year &&
           genre == other.genre &&
           duration == other.duration &&
+          durationSeconds == other.durationSeconds &&
           path == other.path &&
           bitrate == other.bitrate &&
           sampleRate == other.sampleRate &&
-          channels == other.channels;
+          channels == other.channels &&
+          modifiedMs == other.modifiedMs &&
+          fileSize == other.fileSize;
 }

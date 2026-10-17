@@ -18,6 +18,9 @@ class MusicLibraryState {
   final String? error;
   final bool hasScanned; //标记是否执行过扫描,用于控制状态项显隐
 
+  /// 最近一次扫描的统计(复用/解析/移除/耗时)
+  final LibraryScanStats? scanStats;
+
   const MusicLibraryState({
     this.directory,
     this.tracks = const <rust.UiTrack>[],
@@ -26,6 +29,7 @@ class MusicLibraryState {
     this.isLoading = false,
     this.error,
     this.hasScanned = false,
+    this.scanStats,
   });
 
   /// copyWith 哨兵:区分"未传参"与"显式传入 null"
@@ -39,6 +43,7 @@ class MusicLibraryState {
     bool? isLoading,
     Object? error = _unset,
     bool? hasScanned,
+    Object? scanStats = _unset,
   }) {
     return MusicLibraryState(
       directory: identical(directory, _unset)
@@ -50,6 +55,9 @@ class MusicLibraryState {
       isLoading: isLoading ?? this.isLoading,
       error: identical(error, _unset) ? this.error : error as String?,
       hasScanned: hasScanned ?? this.hasScanned,
+      scanStats: identical(scanStats, _unset)
+          ? this.scanStats
+          : scanStats as LibraryScanStats?,
     );
   }
 }
@@ -83,6 +91,7 @@ class MusicLibraryNotifier extends AsyncNotifier<MusicLibraryState> {
       albums: snapshot.albums,
       artists: snapshot.artists,
       hasScanned: snapshot.hasScanned,
+      scanStats: snapshot.scanStats,
     );
   }
 
@@ -104,6 +113,7 @@ class MusicLibraryNotifier extends AsyncNotifier<MusicLibraryState> {
         artists: const <rust.UiArtist>[],
         hasScanned: false,
         error: null,
+        scanStats: null,
       ),
     );
     await ref.read(sharedPreferencesProvider).setString(
@@ -123,13 +133,27 @@ class MusicLibraryNotifier extends AsyncNotifier<MusicLibraryState> {
       current!.copyWith(isLoading: true, error: null, hasScanned: true),
     );
     try {
-      final library = await rust.scanLocalMusicFolder(dirPath: dir);
+      // 把上次扫描结果作为增量缓存:未变化的文件由 Rust 直接复用
+      final result = await rust.scanLocalMusicFolder(
+        dirPath: dir,
+        knownTracks: current.tracks,
+      );
+      final library = result.library_;
+      final stats = LibraryScanStats(
+        totalFiles: result.stats.totalFiles,
+        parsedFiles: result.stats.parsedFiles,
+        reusedFiles: result.stats.reusedFiles,
+        removedFiles: result.stats.removedFiles,
+        elapsed: Duration(milliseconds: result.stats.elapsedMs.toInt()),
+        scannedAt: DateTime.now(),
+      );
       final next = state.value!.copyWith(
         tracks: library.tracks,
         albums: library.albums,
         artists: library.artists,
         isLoading: false,
         error: null,
+        scanStats: stats,
       );
       state = AsyncValue.data(next);
 
@@ -139,7 +163,8 @@ class MusicLibraryNotifier extends AsyncNotifier<MusicLibraryState> {
               LibrarySnapshot(
                 directory: dir,
                 hasScanned: true,
-                scannedAt: DateTime.now(),
+                scannedAt: stats.scannedAt,
+                scanStats: stats,
                 tracks: next.tracks,
                 albums: next.albums,
                 artists: next.artists,

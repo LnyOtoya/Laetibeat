@@ -93,21 +93,29 @@ class ContentSettings extends ConsumerWidget {
           ),
         );
       } else {
-        //结束:展示结果
+        //结束:展示结果与增量扫描统计
         final String label;
-        String error = '';
+        String? detail;
         if (st == null) {
           label = '未开始扫描';
         } else if (st.error != null) {
           label = '扫描失败';
-          error = st.error!;
+          detail = st.error;
         } else {
           label = '扫描完成，共 ${st.tracks.length} 首歌曲';
+          final stats = st.scanStats;
+          if (st.tracks.isEmpty) {
+            detail = '尚未发现歌曲';
+          } else if (stats != null) {
+            final seconds =
+                (stats.elapsed.inMilliseconds / 1000).toStringAsFixed(1);
+            detail =
+                '复用 ${stats.reusedFiles} · 解析 ${stats.parsedFiles} · 移除 ${stats.removedFiles} · 耗时 ${seconds}s';
+          }
         }
         item = M3EListItem(
           headline: label,
-          supportingText:
-              st == null ? null : (error.isNotEmpty ? error : (st.tracks.isEmpty ? '尚未发现歌曲' : null)),
+          supportingText: detail,
           leading: leading(
             Icon(
               st == null

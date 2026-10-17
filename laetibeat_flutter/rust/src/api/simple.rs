@@ -1,6 +1,7 @@
 use flutter_rust_bridge::frb;
-use laetibeat_core::model::{MusicLibrary, SourceType};
-use laetibeat_core::scan_directory;
+use std::path::PathBuf;
+use laetibeat_core::model::{MusicLibrary, SourceType, Track};
+use laetibeat_core::scanner::scan_directory_incremental;
 
 // 弹出系统原生文件夹选择框,选中返回其路径,取消返回None
 pub fn pick_directory() -> Option<String> {
@@ -26,6 +27,8 @@ pub struct  UiTrack {
     pub year: Option<u32>,
     pub genre: Option<String>,
     pub duration: String,
+    /// 原始时长(秒),用于增量扫描与快照重建
+    pub duration_seconds: u64,
     // 本地文件的原始绝对路径;非本地音源(如opensubsonic)为空串
     pub path: String,
     /// 音频码率(kbps)
@@ -34,6 +37,10 @@ pub struct  UiTrack {
     pub sample_rate: Option<u32>,
     /// 声道数
     pub channels: Option<u8>,
+    /// 文件修改时间(Unix 毫秒),增量扫描判据
+    pub modified_ms: Option<u64>,
+    /// 文件大小(字节),增量扫描判据
+    pub file_size: Option<u64>,
 }
 
 // 简化版专辑结构体(由 Rust 侧聚合)
@@ -68,11 +75,65 @@ pub struct UiLibrary {
     pub artists: Vec<UiArtist>,
 }
 
-// 扫描本地音乐文件夹,异步执行不阻塞UI
-pub fn scan_local_music_folder(dir_path: String) -> Result<UiLibrary, String> {
-    let mut library = MusicLibrary::new();
+// 增量扫描统计
+#[frb(non_opaque)]
+pub struct UiScanStats {
+    pub total_files: u32,
+    pub parsed_files: u32,
+    pub reused_files: u32,
+    pub removed_files: u32,
+    pub elapsed_ms: u64,
+}
 
-    scan_directory(&mut library, &dir_path)?;
+// 扫描结果:音乐库 + 统计
+#[frb(non_opaque)]
+pub struct UiScanResult {
+    pub library: UiLibrary,
+    pub stats: UiScanStats,
+}
+
+// 把上次返回给前端的 UiTrack 还原成 core Track,用于增量复用。
+// 只处理本地文件;path 为空的(网络音源)不参与本地扫描缓存。
+fn ui_track_to_track(track: UiTrack) -> Option<Track> {
+    if track.path.is_empty() {
+        return None;
+    }
+    let path = PathBuf::from(&track.path);
+    Some(Track {
+        id: track.id,
+        title: track.title,
+        artist: track.artist,
+        album: track.album,
+        album_artist: track.album_artist,
+        album_id: track.album_id,
+        artist_id: track.artist_id,
+        track_number: track.track_number,
+        disc_number: track.disc_number,
+        year: track.year,
+        genre: track.genre,
+        duration: track.duration_seconds,
+        bitrate: track.bitrate,
+        sample_rate: track.sample_rate,
+        channels: track.channels,
+        modified_ms: track.modified_ms,
+        file_size: track.file_size,
+        source_type: SourceType::LocalFile(path),
+    })
+}
+
+// 扫描本地音乐文件夹,异步执行不阻塞UI。
+// known_tracks 传上次扫描结果,未变化的文件会直接复用,实现增量扫描。
+pub fn scan_local_music_folder(
+    dir_path: String,
+    known_tracks: Vec<UiTrack>,
+) -> Result<UiScanResult, String> {
+    let known: Vec<Track> = known_tracks
+        .into_iter()
+        .filter_map(ui_track_to_track)
+        .collect();
+
+    let mut library = MusicLibrary::new();
+    let stats = scan_directory_incremental(&mut library, &dir_path, &known)?;
     // 由 Rust 侧完成专辑/艺术家聚合与曲目排序
     library.rebuild_aggregates();
 
@@ -95,10 +156,13 @@ pub fn scan_local_music_folder(dir_path: String) -> Result<UiLibrary, String> {
             year: track.year,
             genre: track.genre,
             duration: format_duration(track.duration),
+            duration_seconds: track.duration,
             path,
             bitrate: track.bitrate,
             sample_rate: track.sample_rate,
             channels: track.channels,
+            modified_ms: track.modified_ms,
+            file_size: track.file_size,
         }
     }).collect();
 
@@ -119,10 +183,19 @@ pub fn scan_local_music_folder(dir_path: String) -> Result<UiLibrary, String> {
         cover_track_id: artist.cover_track_id,
     }).collect();
 
-    Ok(UiLibrary {
-        tracks,
-        albums,
-        artists,
+    Ok(UiScanResult {
+        library: UiLibrary {
+            tracks,
+            albums,
+            artists,
+        },
+        stats: UiScanStats {
+            total_files: stats.total_files,
+            parsed_files: stats.parsed_files,
+            reused_files: stats.reused_files,
+            removed_files: stats.removed_files,
+            elapsed_ms: stats.elapsed_ms,
+        },
     })
 }
 

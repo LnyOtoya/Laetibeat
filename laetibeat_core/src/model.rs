@@ -127,6 +127,10 @@ pub struct Track {
     pub sample_rate: Option<u32>,
     /// 声道数
     pub channels: Option<u8>,
+    /// 文件修改时间(Unix 毫秒),用于增量扫描判断是否需要重新解析
+    pub modified_ms: Option<u64>,
+    /// 文件大小(字节),与 mtime 一起作为增量扫描的复用条件
+    pub file_size: Option<u64>,
     pub source_type: SourceType,
 }
 
