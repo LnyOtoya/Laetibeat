@@ -2,10 +2,11 @@ import 'package:flutter/widgets.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:laetibeat/src/rust/api/simple.dart';
 import 'package:laetibeat/src/rust/frb_generated.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'nav_shell.dart';
 import 'widgets/integration/media_integration_host.dart';
+import 'widgets/settings/persistence.dart';
 import 'widgets/settings/settings_provider.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -25,7 +26,16 @@ Future<void> main() async {
     await windowManager.focus();
   });
   await RustLib.init();
-  runApp(const ProviderScope(child: MyApp()));
+  // 预加载本地设置,供 Riverpod provider 同步读取
+  final prefs = await SharedPreferences.getInstance();
+  runApp(
+    ProviderScope(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends ConsumerWidget {

@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'persistence.dart';
+
 //设置页分类
 enum SettingsCategory {
   appearance, //外观
@@ -38,10 +40,18 @@ enum AppThemeMode {
 
 class AppThemeModeNotifier extends Notifier<AppThemeMode> {
   @override
-  AppThemeMode build() => AppThemeMode.light;
+  AppThemeMode build() {
+    // 启动时从本地设置恢复主题;非法/缺失值回退亮色
+    final saved = ref.read(sharedPreferencesProvider).getString(kThemeModeKey);
+    return AppThemeMode.values.firstWhere(
+      (mode) => mode.name == saved,
+      orElse: () => AppThemeMode.light,
+    );
+  }
 
   void select(AppThemeMode mode) {
     state = mode;
+    ref.read(sharedPreferencesProvider).setString(kThemeModeKey, mode.name);
   }
 }
 

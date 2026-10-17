@@ -44,6 +44,8 @@ dependencies:
   media_kit_libs_linux: ^1.2.1
   dbus: ^0.8.0
   flutter_lyric: ^4.1.0
+  shared_preferences: ^2.5.6
+  path_provider: ^2.1.6
 
 dev_dependencies:
   flutter_test:

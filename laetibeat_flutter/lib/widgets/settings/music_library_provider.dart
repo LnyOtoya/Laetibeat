@@ -1,5 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:laetibeat/src/rust/api/simple.dart' as rust;
+
+import 'persistence.dart';
 
 //本地音乐库状态:记录选中的目录与扫描出的单曲/专辑/艺术家
 class MusicLibraryState {
@@ -25,22 +28,27 @@ class MusicLibraryState {
     this.hasScanned = false,
   });
 
+  /// copyWith 哨兵:区分"未传参"与"显式传入 null"
+  static const Object _unset = Object();
+
   MusicLibraryState copyWith({
-    String? directory,
+    Object? directory = _unset,
     List<rust.UiTrack>? tracks,
     List<rust.UiAlbum>? albums,
     List<rust.UiArtist>? artists,
     bool? isLoading,
-    String? error,
+    Object? error = _unset,
     bool? hasScanned,
   }) {
     return MusicLibraryState(
-      directory: directory ?? this.directory,
+      directory: identical(directory, _unset)
+          ? this.directory
+          : directory as String?,
       tracks: tracks ?? this.tracks,
       albums: albums ?? this.albums,
       artists: artists ?? this.artists,
       isLoading: isLoading ?? this.isLoading,
-      error: error ?? this.error,
+      error: identical(error, _unset) ? this.error : error as String?,
       hasScanned: hasScanned ?? this.hasScanned,
     );
   }
@@ -49,20 +57,60 @@ class MusicLibraryState {
 class MusicLibraryNotifier extends AsyncNotifier<MusicLibraryState> {
   @override
   Future<MusicLibraryState> build() async {
-    return const MusicLibraryState();
+    final prefs = ref.read(sharedPreferencesProvider);
+    final savedDirectory = prefs.getString(kMusicDirectoryKey);
+
+    // 启动时优先恢复上次扫描的快照,避免每次都重新扫描
+    final snapshot = await ref.read(librarySnapshotStoreProvider).load();
+
+    // 快照加载期间用户可能已切换目录:以最新目录为准,丢弃旧快照
+    final latestDirectory = prefs.getString(kMusicDirectoryKey);
+    if (latestDirectory != savedDirectory) {
+      return MusicLibraryState(directory: latestDirectory);
+    }
+
+    final directory = snapshot?.directory ?? savedDirectory;
+    if (directory != null && directory != savedDirectory) {
+      await prefs.setString(kMusicDirectoryKey, directory);
+    }
+
+    if (snapshot == null) {
+      return MusicLibraryState(directory: directory);
+    }
+    return MusicLibraryState(
+      directory: directory,
+      tracks: snapshot.tracks,
+      albums: snapshot.albums,
+      artists: snapshot.artists,
+      hasScanned: snapshot.hasScanned,
+    );
   }
 
   //选择本地音乐目录
   Future<void> pickDirectory() async {
     final path = await rust.pickDirectory();
     if (path == null) return;
+
+    final current = state.value ?? const MusicLibraryState();
+    // 目录未变则保持现有库;换目录时旧库数据/快照不再有效
+    if (path == current.directory) return;
+
     //仅记录目录,不自动扫描
     state = AsyncValue.data(
-      (state.value ?? const MusicLibraryState()).copyWith(
+      current.copyWith(
         directory: path,
+        tracks: const <rust.UiTrack>[],
+        albums: const <rust.UiAlbum>[],
+        artists: const <rust.UiArtist>[],
+        hasScanned: false,
         error: null,
       ),
     );
+    await ref.read(sharedPreferencesProvider).setString(
+          kMusicDirectoryKey,
+          path,
+        );
+    await ref.read(librarySnapshotStoreProvider).clear();
   }
 
   //重新扫描当前目录
@@ -76,14 +124,30 @@ class MusicLibraryNotifier extends AsyncNotifier<MusicLibraryState> {
     );
     try {
       final library = await rust.scanLocalMusicFolder(dirPath: dir);
-      state = AsyncValue.data(
-        state.value!.copyWith(
-          tracks: library.tracks,
-          albums: library.albums,
-          artists: library.artists,
-          isLoading: false,
-        ),
+      final next = state.value!.copyWith(
+        tracks: library.tracks,
+        albums: library.albums,
+        artists: library.artists,
+        isLoading: false,
+        error: null,
       );
+      state = AsyncValue.data(next);
+
+      // 扫描成功后写快照;写盘失败不影响本次扫描结果
+      try {
+        await ref.read(librarySnapshotStoreProvider).save(
+              LibrarySnapshot(
+                directory: dir,
+                hasScanned: true,
+                scannedAt: DateTime.now(),
+                tracks: next.tracks,
+                albums: next.albums,
+                artists: next.artists,
+              ),
+            );
+      } catch (e) {
+        debugPrint('保存音乐库快照失败: $e');
+      }
     } catch (e) {
       state = AsyncValue.data(
         state.value!.copyWith(
