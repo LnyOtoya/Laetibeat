@@ -1,11 +1,9 @@
-import 'dart:io';
-import 'dart:isolate';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
-import 'package:audio_metadata_reader/audio_metadata_reader.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:laetibeat/src/rust/api/metadata.dart' as rust_meta;
 import 'package:laetibeat/src/rust/api/simple.dart' as rust;
 
 import 'player_provider.dart';
@@ -39,48 +37,46 @@ class PlaybackCover {
   const PlaybackCover(this.bytes, this.coverColor);
 }
 
-/// 本地封面来源:从 track.path 的音频文件元数据读内嵌封面,按曲目 id 缓存。
-/// 网络源接入时新增一个实现即可,接口不变。
+/// 本地封面来源:从 track.path 的音频文件读内嵌封面,按曲目 id 做 LRU 缓存。
+/// 封面解析在 Rust 侧完成(与扫描共用 lofty),网络源接入时新增实现即可。
 class FileCoverProvider implements CoverProvider {
   FileCoverProvider();
 
-  /// 接口级缓存:按曲目 id 缓存封面,切回/重复展示不再重读文件
-  final Map<String, Uint8List> _cache = {};
+  /// 封面缓存上限(字节)。原图通常几百 KB,限制总量避免整库浏览后内存膨胀。
+  static const int _maxCacheBytes = 64 * 1024 * 1024;
+
+  /// Dart Map 保持插入顺序:命中时删掉再插回末尾即为"最近使用",
+  /// 超限时从头部淘汰最久未使用的条目。
+  final Map<String, Uint8List> _cache = <String, Uint8List>{};
+  int _cachedBytes = 0;
 
   @override
   Future<Uint8List?> cover(rust.UiTrack track) async {
-    final cached = _cache[track.id];
-    if (cached != null) return cached;
+    final cached = _cache.remove(track.id);
+    if (cached != null) {
+      _cache[track.id] = cached; // 刷新为最近使用
+      return cached;
+    }
     if (track.path.isEmpty) return null; // 未来网络源:url 分支
 
     final bytes = await _readEmbeddedArt(track.path);
-    if (bytes != null && bytes.isNotEmpty) {
-      _cache[track.id] = bytes;
+    if (bytes == null || bytes.isEmpty) return null;
+
+    _cache[track.id] = bytes;
+    _cachedBytes += bytes.length;
+    while (_cachedBytes > _maxCacheBytes && _cache.isNotEmpty) {
+      final oldestKey = _cache.keys.first;
+      final removed = _cache.remove(oldestKey);
+      _cachedBytes -= removed?.length ?? 0;
     }
     return bytes;
   }
 }
 
-/// 从本地文件读内嵌封面字节。放到独立 isolate 里跑,避免全库逐张读封面时
-/// 阻塞 UI 线程(仅对"可见行"懒加载,读完按曲目缓存)。
-Future<Uint8List?> _readEmbeddedArt(String path) {
-  return Isolate.run(() {
-    try {
-      final file = File(path);
-      if (!file.existsSync()) return null;
-      final meta = readMetadata(file, getImage: true);
-      final pictures = meta.pictures;
-      if (pictures.isEmpty) return null;
-      // 优先取前置封面,否则用第一张
-      for (final Picture p in pictures) {
-        if (p.pictureType == PictureType.coverFront) return p.bytes;
-      }
-      return pictures.first.bytes;
-    } catch (_) {
-      return null; // 解析失败按无封面处理
-    }
-  });
-}
+/// 从本地文件读内嵌封面字节。
+/// 解析在 Rust 侧完成,FRB 调用在后台线程执行,不阻塞 UI。
+Future<Uint8List?> _readEmbeddedArt(String path) =>
+    rust_meta.readCover(path: path);
 
 // ---------------------------------------------------------------------------
 // Riverpod 接线
@@ -121,7 +117,12 @@ final trackCoverProvider =
 /// 从封面字节提取一个代表性主色(采样数最多的量化桶的平均色)。
 Future<Color> _dominantColor(Uint8List bytes) async {
   const int grid = 24;
-  final codec = await ui.instantiateImageCodec(bytes);
+  // 只解码到 64px 宽:取色只需要缩略采样,避免在 UI 线程解码整张大图
+  final codec = await ui.instantiateImageCodec(
+    bytes,
+    targetWidth: 64,
+    allowUpscaling: false,
+  );
   final frame = await codec.getNextFrame();
   final ui.Image img = frame.image;
   final w = img.width;

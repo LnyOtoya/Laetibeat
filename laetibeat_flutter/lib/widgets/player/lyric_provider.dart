@@ -1,8 +1,5 @@
-import 'dart:io';
-import 'dart:isolate';
-
-import 'package:audio_metadata_reader/audio_metadata_reader.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:laetibeat/src/rust/api/metadata.dart' as rust_meta;
 import 'package:laetibeat/src/rust/api/simple.dart' as rust;
 
 import 'player_provider.dart';
@@ -32,8 +29,8 @@ abstract class LyricProvider {
   Future<Lyrics?> lyrics(rust.UiTrack track);
 }
 
-/// 本地歌词来源:先读音频内嵌标签,再回退读同目录同名 .lrc/.txt,按曲目 id 缓存。
-/// 网络源接入时新增一个实现即可,接口不变。
+/// 本地歌词来源:内嵌标签 -> 同目录同名 .lrc/.txt,按曲目 id 缓存。
+/// 解析在 Rust 侧完成(与扫描共用 lofty),网络源接入时新增实现即可。
 class FileLyricProvider implements LyricProvider {
   FileLyricProvider();
 
@@ -54,59 +51,13 @@ class FileLyricProvider implements LyricProvider {
   }
 }
 
-/// 按优先级取歌词:内嵌标签 -> sidecar .lrc/.txt。
-/// 放到独立 isolate 里跑,避免解析大文件时阻塞 UI 线程。
-Future<Lyrics?> _readLyrics(String audioPath) {
-  return Isolate.run(() {
-    try {
-      final audio = File(audioPath);
-      if (!audio.existsSync()) return null;
-
-      // 1. 内嵌歌词优先(与封面共用 audio_metadata_reader,零新增依赖)
-      final embedded = _readEmbeddedLyrics(audio);
-      if (embedded != null) return Lyrics(embedded);
-
-      // 2. sidecar .lrc / .txt 回退
-      final sidecar = _readSidecarLyrics(audio);
-      if (sidecar != null) return Lyrics(sidecar);
-      return null;
-    } catch (_) {
-      return null; // 读盘/解析失败按无歌词处理
-    }
-  });
-}
-
-/// 读音频内嵌歌词标签(ID3 USLT / MP4 ©lyr / APE / FLAC LYRICS)。
-/// 内容可能是纯文本,也可能是一段 LRC 文本,统一交给上层判定。
-String? _readEmbeddedLyrics(File audio) {
-  try {
-    final meta = readMetadata(audio, getImage: false);
-    final text = meta.lyrics?.trim();
-    if (text == null || text.isEmpty) return null;
-    return text;
-  } catch (_) {
-    return null; // 无内嵌或解析失败,继续尝试 sidecar
-  }
-}
-
-/// 读音频同目录的同名 .lrc / .txt sidecar 歌词。
-String? _readSidecarLyrics(File audio) {
-  final base = audio.path.substring(0, audio.path.length - _extLen(audio.path));
-  for (final ext in const ['.lrc', '.txt']) {
-    final f = File('$base$ext');
-    if (!f.existsSync()) continue;
-    final content = f.readAsStringSync().trim();
-    if (content.isEmpty) continue;
-    return content;
-  }
-  return null;
-}
-
-/// 取路径扩展名长度(含点),用于替换成 .lrc/.txt
-int _extLen(String path) {
-  final i = path.lastIndexOf('.');
-  if (i < 0) return 0;
-  return path.length - i;
+/// 读取歌词:内嵌标签 -> sidecar .lrc/.txt。
+/// 解析在 Rust 侧完成,FRB 调用在后台线程执行,不阻塞 UI。
+Future<Lyrics?> _readLyrics(String audioPath) async {
+  final text = await rust_meta.readLyrics(path: audioPath);
+  if (text == null) return null;
+  final trimmed = text.trim();
+  return trimmed.isEmpty ? null : Lyrics(trimmed);
 }
 
 // ---------------------------------------------------------------------------

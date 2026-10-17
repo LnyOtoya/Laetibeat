@@ -43,7 +43,6 @@ dependencies:
   media_kit: ^1.2.6
   media_kit_libs_linux: ^1.2.1
   dbus: ^0.8.0
-  audio_metadata_reader: ^1.8.0
   flutter_lyric: ^4.1.0
 
 dev_dependencies:
