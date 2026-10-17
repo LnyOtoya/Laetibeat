@@ -121,25 +121,25 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
     final onBg = scheme.onSecondaryContainer;
     return base.copyWith(
       textStyle: TextStyle(
-        fontSize: 17,
+        fontSize: 32,
         height: 1.45,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w700,
         color: onBg.withValues(alpha: 0.5),
       ),
       activeTextStyle: TextStyle(
-        fontSize: 17,
+        fontSize: 32,
         height: 1.45,
         fontWeight: FontWeight.w700,
-        color: onBg,
+        color: onBg.withValues(alpha: 0.5),
       ),
       translationTextStyle: TextStyle(
-        fontSize: 12,
+        fontSize: 16,
         height: 1.4,
         fontWeight: FontWeight.w500,
         color: onBg.withValues(alpha: 0.42),
       ),
       activeTranslationTextStyle: TextStyle(
-        fontSize: 13,
+        fontSize: 16,
         height: 1.4,
         fontWeight: FontWeight.w600,
         color: onBg.withValues(alpha: 0.72),
@@ -147,7 +147,7 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
       highlight: LyricHighlight.solid(onBg, tailFadeWidth: 12),
       padding: const EdgeInsets.symmetric(horizontal: 8),
       lineSpacing: 12,
-      translationSpacing: 4,
+      translationSpacing: 8,
       activeAnchor:
           const LyricAnchor.fraction(.45, target: LyricAnchorTarget.mainText),
       selectionAnchor:

@@ -35,6 +35,10 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
   /// 按歌词按钮切换为歌词区,再按切回封面。不进入全屏,全屏方案另做。
   bool _showLyrics = false;
 
+  /// 歌词沉浸模式:仅歌词页生效。隐藏底部控制区(上一曲/播放/下一曲、
+  /// 循环顺序栏、底部按钮),把释放的高度让给歌词。与全屏播放页状态无关。
+  bool _lyricsImmersive = false;
+
   @override
   Widget build(BuildContext context) {
     final baseTheme = M3ETheme.of(context);
@@ -85,12 +89,24 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _sourceRegion(theme, scheme, player),
-                      SizedBox(height: theme.spacing.lg),
-                      // 封面/歌词区:封面向上滑出淡出,歌词平滑进入(反向亦然)
-                      ConstrainedBox(
-                        constraints:
-                            BoxConstraints(maxHeight: c.maxHeight * 0.45),
+                      _sourceArea(theme, scheme, player),
+                      // 封面/歌词区:封面向上滑出淡出,歌词平滑进入(反向亦然)。
+                      // 歌词态同时放大可用高度,把来源区收起释放的空间让给歌词;
+                      // 沉浸模式下底部控件再收起,歌词进一步扩展。
+                      TweenAnimationBuilder<double>(
+                        tween: Tween<double>(
+                          begin: 0.45,
+                          end: _lyricsImmersive
+                              ? 0.82
+                              : (_showLyrics ? 0.65 : 0.45),
+                        ),
+                        duration: kSectionAnimDuration,
+                        curve: kSectionAnimCurve,
+                        builder: (context, factor, child) => ConstrainedBox(
+                          constraints:
+                              BoxConstraints(maxHeight: c.maxHeight * factor),
+                          child: child,
+                        ),
                         child: _mainArea(theme, bytes),
                       ),
                       SizedBox(height: theme.spacing.xxl),
@@ -110,11 +126,9 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // 来源区顶部留缝,整体稍下移
-                    SizedBox(height: theme.spacing.xl),
-                    _sourceRegion(theme, scheme, player),
-                    // 来源距离封面: 间距稍小
-                    SizedBox(height: theme.spacing.lg),
+                    // 来源区顶部留缝,整体稍下移;歌词态整体收起,空间让给歌词
+                    _sourceArea(theme, scheme, player,
+                        topGap: theme.spacing.xl),
                     Expanded(child: _mainArea(theme, bytes)),
                     // 信息行距离控制区: 间距稍大
                     SizedBox(height: theme.spacing.xxl),
@@ -160,6 +174,41 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
             ),
             textAlign: TextAlign.center,
           ),
+        ],
+      ),
+    );
+  }
+
+  // 来源区外壳:歌词态整体收起(高度+透明度同步收缩),把纵向空间让给歌词。
+  // 默认态显示"正在播放"与来源名;收起用 Align.heightFactor + ClipRect,
+  // 固定尺寸内容不会被压缩变形。
+  Widget _sourceArea(
+    M3EThemeData theme,
+    M3EColorScheme scheme,
+    PlayerState player, {
+    double topGap = 0,
+  }) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 1, end: _showLyrics ? 0 : 1),
+      duration: kSectionAnimDuration,
+      curve: kSectionAnimCurve,
+      builder: (context, t, child) {
+        if (t == 0) return const SizedBox.shrink();
+        return ClipRect(
+          child: Align(
+            alignment: Alignment.topCenter,
+            heightFactor: t,
+            child: Opacity(opacity: t, child: child),
+          ),
+        );
+      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (topGap > 0) SizedBox(height: topGap),
+          _sourceRegion(theme, scheme, player),
+          SizedBox(height: theme.spacing.lg),
         ],
       ),
     );
@@ -317,11 +366,21 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
           // 仅用点击回调做瞬时命令(全屏/歌词),不会恒亮
           onSelectedIndexChanged: (idx) {
             if (idx == 0) {
-              _openFullscreen(context);
+              if (_showLyrics) {
+                // 歌词页:全屏按钮 = 歌词沉浸模式开关(不进入全屏页)
+                setState(() => _lyricsImmersive = !_lyricsImmersive);
+              } else {
+                // 播放页(封面):保持原有全屏播放页行为
+                _openFullscreen(context);
+              }
             }
             if (idx == 1) {
               // 歌词按钮:在面板内切换封面/歌词,不进入全屏
-              setState(() => _showLyrics = !_showLyrics);
+              setState(() {
+                _showLyrics = !_showLyrics;
+                // 返回普通播放页时退出沉浸模式,避免隐藏状态残留
+                if (!_showLyrics) _lyricsImmersive = false;
+              });
             }
           },
           actions: [
@@ -413,114 +472,146 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
             Text(_fmt(player.duration), style: theme.typeScale.labelMedium),
           ],
         ),
-        SizedBox(height: theme.spacing.md),
-        //上一首 / 播放暂停 / 下一首 - 横向内边距已由全页统一 Padding 提供
-        //复刻 neighbor-squish 效果;内部用 FittedBox 兜底窄屏不横向溢出
-        SquishButtonRow(
-          isPlaying: player.isPlaying,
-          previousEnabled: player.queue.isNotEmpty,
-          toggleEnabled: player.current != null,
-          nextEnabled: player.queue.isNotEmpty,
-          onPrevious: notifier.prev,
-          onToggle: notifier.toggle,
-          onNext: notifier.next,
-        ),
-        SizedBox(height: theme.spacing.md),
-        //第一行:随机 / 重复(单曲-列表循环切换) / 添加到歌单(仅图标,逻辑未接入)
-        //受控 multiSelect 表达: selectedIndices 含 0=随机开, 含 1=循环开;
-        //中间按钮 icon 依 repeatMode 动态切换(repeat_one=单曲, repeat=列表)
-        Center(
-          // ConstrainedBox 让 connected 组不铺满表面,而收缩到固定宽度
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 340),
-            child: Container(
-            padding: EdgeInsets.all(theme.spacing.sm),
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainer,
-              // 超大圆角值:左右两侧呈完美半圆(胶囊形)
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: M3EButtonGroup(
-          type: M3EButtonGroupType.connected,
-          direction: Axis.horizontal,
-          shape: M3EButtonShape.round,
-          size: M3EButtonSize.md,
-          style: M3EButtonStyle.tonal,
-          density: M3EButtonGroupDensity.regular,
-          neighborSquish: false,
-          overflow: M3EButtonGroupOverflow.scroll,
-          // overflow: M3EButtonGroupOverflow.experimentalPaging,
-          haptic: M3EHapticFeedback.light,
-          selectionRequired: false,
-          multiSelect: true,
-          selectedIndices: {
-            if (player.shuffle) 0,
-            if (player.repeatMode != PlaybackRepeatMode.off) 1,
-          },
-          onSelectedIndicesChanged: (indices) {
-            //动作1: 随机开关
-            if (indices.contains(0) != player.shuffle) {
-              notifier.toggleShuffle();
-            }
-            //动作2: 重复模式轮换(每次点击都轮换,不管是否已在选中)
-            if (indices.contains(1) !=
-                (player.repeatMode != PlaybackRepeatMode.off)) {
-              notifier.cycleRepeat();
-            }
-            //动作3: 添加到歌单 - 仅图标,暂无逻辑
-          },
-          actions: [
-            M3EButtonGroupAction(
-              icon: const Icon(Icons.shuffle),
-              selectedIcon: const Icon(Icons.shuffle),
-              // label 缺省即纯 icon
-              semanticLabel: '随机播放',
-              tooltip: '随机播放',
-            ),
-            M3EButtonGroupAction(
-              icon: Icon(
-                player.repeatMode == PlaybackRepeatMode.single
-                    ? Icons.repeat_one
-                    : Icons.repeat,
+        // 沉浸模式下,以下三块(切歌 / 循环顺序 / 底部按钮)整体向下滑出
+        // 并收起布局高度,释放的空间交给上方歌词区。
+        _collapsibleControls(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(height: theme.spacing.md),
+              //上一首 / 播放暂停 / 下一首 - 横向内边距已由全页统一 Padding 提供
+              //复刻 neighbor-squish 效果;内部用 FittedBox 兜底窄屏不横向溢出
+              SquishButtonRow(
+                isPlaying: player.isPlaying,
+                previousEnabled: player.queue.isNotEmpty,
+                toggleEnabled: player.current != null,
+                nextEnabled: player.queue.isNotEmpty,
+                onPrevious: notifier.prev,
+                onToggle: notifier.toggle,
+                onNext: notifier.next,
               ),
-              selectedIcon: Icon(
-                player.repeatMode == PlaybackRepeatMode.single
-                    ? Icons.repeat_one
-                    : Icons.repeat,
+              SizedBox(height: theme.spacing.md),
+              //第一行:随机 / 重复(单曲-列表循环切换) / 添加到歌单(仅图标,逻辑未接入)
+              //受控 multiSelect 表达: selectedIndices 含 0=随机开, 含 1=循环开;
+              //中间按钮 icon 依 repeatMode 动态切换(repeat_one=单曲, repeat=列表)
+              Center(
+                // ConstrainedBox 让 connected 组不铺满表面,而收缩到固定宽度
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 340),
+                  child: Container(
+                    padding: EdgeInsets.all(theme.spacing.sm),
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainer,
+                      // 超大圆角值:左右两侧呈完美半圆(胶囊形)
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: M3EButtonGroup(
+                      type: M3EButtonGroupType.connected,
+                      direction: Axis.horizontal,
+                      shape: M3EButtonShape.round,
+                      size: M3EButtonSize.md,
+                      style: M3EButtonStyle.tonal,
+                      density: M3EButtonGroupDensity.regular,
+                      neighborSquish: false,
+                      overflow: M3EButtonGroupOverflow.scroll,
+                      // overflow: M3EButtonGroupOverflow.experimentalPaging,
+                      haptic: M3EHapticFeedback.light,
+                      selectionRequired: false,
+                      multiSelect: true,
+                      selectedIndices: {
+                        if (player.shuffle) 0,
+                        if (player.repeatMode != PlaybackRepeatMode.off) 1,
+                      },
+                      onSelectedIndicesChanged: (indices) {
+                        //动作1: 随机开关
+                        if (indices.contains(0) != player.shuffle) {
+                          notifier.toggleShuffle();
+                        }
+                        //动作2: 重复模式轮换(每次点击都轮换,不管是否已在选中)
+                        if (indices.contains(1) !=
+                            (player.repeatMode != PlaybackRepeatMode.off)) {
+                          notifier.cycleRepeat();
+                        }
+                        //动作3: 添加到歌单 - 仅图标,暂无逻辑
+                      },
+                      actions: [
+                        M3EButtonGroupAction(
+                          icon: const Icon(Icons.shuffle),
+                          selectedIcon: const Icon(Icons.shuffle),
+                          // label 缺省即纯 icon
+                          semanticLabel: '随机播放',
+                          tooltip: '随机播放',
+                        ),
+                        M3EButtonGroupAction(
+                          icon: Icon(
+                            player.repeatMode == PlaybackRepeatMode.single
+                                ? Icons.repeat_one
+                                : Icons.repeat,
+                          ),
+                          selectedIcon: Icon(
+                            player.repeatMode == PlaybackRepeatMode.single
+                                ? Icons.repeat_one
+                                : Icons.repeat,
+                          ),
+                          // label 缺省即纯 icon
+                          semanticLabel: '重复',
+                          tooltip: '重复',
+                        ),
+                        const M3EButtonGroupAction(
+                          icon: Icon(Icons.playlist_add),
+                          // label 缺省即纯 icon
+                          semanticLabel: '添加到歌单',
+                          tooltip: '添加到歌单',
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-              // label 缺省即纯 icon
-              semanticLabel: '重复',
-              tooltip: '重复',
-            ),
-            const M3EButtonGroupAction(
-              icon: Icon(Icons.playlist_add),
-              // label 缺省即纯 icon
-              semanticLabel: '添加到歌单',
-              tooltip: '添加到歌单',
-            ),
-          ],
+              SizedBox(height: theme.spacing.md),
+              //第二行:左侧播放队列 + 右侧三点菜单(均文字+图标, sm 方形规格)
+              //队列按钮不做 compact 隐藏,小窗口也始终保留(入口固定可见)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  M3EButton(
+                    size: M3EButtonSize.sm,
+                    icon: const Icon(Icons.playlist_play),
+                    label: const Text('队列'),
+                    style: M3EButtonStyle.filled,
+                    shape: M3EButtonShape.square,
+                    onPressed: () {},
+                  ),
+                  _moreMenu(context),
+                ],
+              ),
+            ],
           ),
-          ),
-          ),
-        ),
-        SizedBox(height: theme.spacing.md),
-        //第二行:左侧播放队列 + 右侧三点菜单(均文字+图标, sm 方形规格)
-        //队列按钮不做 compact 隐藏,小窗口也始终保留(入口固定可见)
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            M3EButton(
-              size: M3EButtonSize.sm,
-              icon: const Icon(Icons.playlist_play),
-              label: const Text('队列'),
-              style: M3EButtonStyle.filled,
-              shape: M3EButtonShape.square,
-              onPressed: () {},
-            ),
-            _moreMenu(context),
-          ],
         ),
       ],
+    );
+  }
+
+  /// 歌词沉浸模式:把底部三块控件整体向下滑出并收起布局高度。
+  /// 用 Align.heightFactor 收缩高度(随 Column 重排向下移动),
+  /// ClipRect 剪裁溢出,因此既能下滑又真正释放空间
+  /// (不是仅用 Transform 把控件绘到屏幕外、仍占着原来的空白)。
+  Widget _collapsibleControls(Widget child) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 1, end: _lyricsImmersive ? 0 : 1),
+      duration: kSectionAnimDuration,
+      curve: kSectionAnimCurve,
+      builder: (context, t, child) {
+        if (t == 0) return const SizedBox.shrink();
+        return ClipRect(
+          child: Align(
+            alignment: Alignment.topCenter,
+            heightFactor: t,
+            child: child,
+          ),
+        );
+      },
+      child: child,
     );
   }
 
@@ -532,7 +623,11 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
         const M3EMenuEntry(label: '添加到播放队列'),
         M3EMenuEntry(
           label: _showLyrics ? '收起歌词' : '查看歌词',
-          onPressed: () => setState(() => _showLyrics = !_showLyrics),
+          onPressed: () => setState(() {
+            _showLyrics = !_showLyrics;
+            // 收起歌词即返回普通播放页,同步退出沉浸模式
+            if (!_showLyrics) _lyricsImmersive = false;
+          }),
         ),
       ],
       anchorBuilder: (context, open) => M3EButton(
