@@ -8,6 +8,7 @@ import '../widgets/settings/appearance_settings.dart';
 import '../widgets/settings/about_settings.dart';
 import '../widgets/settings/content_settings.dart';
 import '../widgets/settings/settings_pane.dart';
+import '../widgets/settings/subsonic_settings.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -34,6 +35,7 @@ class _SettingsDetail extends ConsumerWidget {
     final Widget content = switch (category) {
       SettingsCategory.appearance => const AppearanceSettings(),
       SettingsCategory.playerAudio => const _PlaceholderSettings(title: '播放器与音频'),
+      SettingsCategory.servers => const SubsonicSettings(),
       SettingsCategory.content => const ContentSettings(),
       SettingsCategory.storage => const _PlaceholderSettings(title: '储存'),
       SettingsCategory.backup => const _PlaceholderSettings(title: '备份与还原'),

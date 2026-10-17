@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
@@ -10,6 +12,7 @@ import 'nav_shell.dart';
 import 'widgets/integration/media_integration_host.dart';
 import 'widgets/settings/persistence.dart';
 import 'widgets/settings/settings_provider.dart';
+import 'widgets/settings/subsonic_provider.dart';
 import 'package:window_manager/window_manager.dart';
 
 Future<void> main() async {
@@ -43,6 +46,10 @@ Future<void> main() async {
   final prefs = await SharedPreferences.getInstance();
   final playbackStore = PlaybackSnapshotStore();
   final playbackSnapshot = await playbackStore.load();
+
+  // 后台重连已保存的 OpenSubsonic 服务器,不阻塞启动
+  unawaited(reconnectSubsonicServers(prefs));
+
   runApp(
     ProviderScope(
       overrides: [

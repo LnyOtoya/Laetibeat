@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'settings_pane.dart';
+import 'settings_provider.dart';
 import 'music_library_provider.dart';
 
 //内容设置:音乐来源
@@ -160,7 +161,13 @@ class ContentSettings extends ConsumerWidget {
         group(
           title: 'navidrome音乐库',
           items: [
-            item(label: '连接配置', icon: M3EIcons.link),
+            item(
+              label: '连接配置',
+              icon: M3EIcons.link,
+              onTap: () => ref
+                  .read(settingsCategoryProvider.notifier)
+                  .select(SettingsCategory.servers),
+            ),
             SizedBox(height: theme.spacing.md),
             item(label: '同步音乐', icon: M3EIcons.sync),
           ],
