@@ -1,43 +1,160 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
+import 'package:flutter_lyric/flutter_lyric.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 
-import '../../animations.dart';
 import 'lyric_provider.dart';
 import 'player_provider.dart';
 
 /// 歌词渲染视图(可复用):供播放面板内联展示使用。
-/// 加载态 / 无歌词 / 同步歌词(跟随进度高亮滚动) / 纯文本 四态。
+/// 同步歌词由 flutter_lyric 的 [LyricView] 渲染(Apple Music 预设);
+/// 纯文本歌词保留静态滚动展示;加载/无歌词沿用原有占位。
 /// 只负责"画歌词",不负责容器外壳与配色(由调用方提供)。
-class LyricsView extends ConsumerWidget {
+class LyricsView extends ConsumerStatefulWidget {
   const LyricsView({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LyricsView> createState() => _LyricsViewState();
+}
+
+class _LyricsViewState extends ConsumerState<LyricsView> {
+  late final LyricController _controller;
+  late final _PlayerProgressSource _progress;
+
+  /// 最近一次解析的原始文本与结果(结果为空表示按纯文本展示)。
+  String? _parsedRaw;
+  LyricDocument? _parsedDoc;
+
+  /// 已同步进 controller 的原始文本。
+  String? _loadedRaw;
+
+  @override
+  void initState() {
+    super.initState();
+    _progress = _PlayerProgressSource(() => ref.read(playerProvider));
+    _controller = LyricController(progressSource: _progress);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _progress.dispose();
+    super.dispose();
+  }
+
+  /// 同一份文本只解析一次;解析异常按纯文本处理。
+  LyricDocument? _documentFor(String raw) {
+    if (_parsedRaw == raw) return _parsedDoc;
+    _parsedRaw = raw;
+    try {
+      return _parsedDoc = LyricDocument.parse(raw);
+    } catch (_) {
+      return _parsedDoc = null;
+    }
+  }
+
+  /// 把文档同步进 controller。放在帧后调用,避免 build 期间触发视图通知。
+  void _syncDocument(String? raw) {
+    if (raw == _loadedRaw) return;
+    _loadedRaw = raw;
+    final doc = raw == null ? null : _documentFor(raw);
+    if (doc == null || doc.lines.isEmpty) {
+      _controller.clear();
+    } else {
+      _controller.loadDocument(doc);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = M3ETheme.of(context);
     final track = ref.watch(playerProvider.select((s) => s.current));
     if (track == null) {
       return _empty(theme, '未在播放', '从音乐库选择一首歌曲后查看歌词');
     }
 
+    // 播放/暂停/seek 等状态变化时通知控制器重新采样;
+    // 播放中的位置推进由 progressSource 逐帧读取。
+    ref.listen(playerProvider, (_, _) => _progress.notify());
+
     final lyricsAsync = ref.watch(lyricsProvider);
+    final raw = lyricsAsync.value?.rawText;
+
+    // 文档同步放到帧后:loadDocument/clear 会通知各视图,不能发生在 build 中。
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _syncDocument(raw);
+    });
+
     return lyricsAsync.when(
       loading: () => const Center(
         child: M3EProgressIndicator.circular(semanticsLabel: '歌词加载中'),
       ),
       error: (e, _) => _empty(theme, '歌词加载失败', e.toString()),
       data: (lyrics) {
-        final hasText = lyrics != null &&
-            (lyrics.lines.isNotEmpty || lyrics.plainText.isNotEmpty);
-        if (!hasText) {
+        final text = lyrics?.rawText ?? '';
+        if (text.trim().isEmpty) {
           return _empty(theme, '暂无歌词', '当前曲目没有可显示的歌词');
         }
-        if (!lyrics.isSynced) {
-          return _plainLyrics(theme, lyrics.plainText);
+        final doc = _documentFor(text);
+        if (doc == null || doc.lines.isEmpty) {
+          return _plainLyrics(theme, text.trim());
         }
-        return _SyncedLyrics(lines: lyrics.lines);
+        return LyricView(
+          controller: _controller,
+          preset: _preset(theme),
+          onLineTap: (details) =>
+              ref.read(playerProvider.notifier).seek(details.seekPosition),
+        );
       },
+    );
+  }
+
+  /// Apple Music 预设的紧凑版:多行滚动 + 小字号,并映射到播放页封面配色。
+  /// 内置预设使用深色背景的浅色文字;这里改用 secondaryContainer 上的
+  /// onSecondaryContainer,保证浅色/深色主题下都可读。
+  LyricPreset _preset(M3EThemeData theme) {
+    final scheme = theme.colorScheme;
+    final base = LyricPresets.appleMusic;
+    final onBg = scheme.onSecondaryContainer;
+    return base.copyWith(
+      textStyle: TextStyle(
+        fontSize: 17,
+        height: 1.45,
+        fontWeight: FontWeight.w600,
+        color: onBg.withValues(alpha: 0.5),
+      ),
+      activeTextStyle: TextStyle(
+        fontSize: 17,
+        height: 1.45,
+        fontWeight: FontWeight.w700,
+        color: onBg,
+      ),
+      translationTextStyle: TextStyle(
+        fontSize: 12,
+        height: 1.4,
+        fontWeight: FontWeight.w500,
+        color: onBg.withValues(alpha: 0.42),
+      ),
+      activeTranslationTextStyle: TextStyle(
+        fontSize: 13,
+        height: 1.4,
+        fontWeight: FontWeight.w600,
+        color: onBg.withValues(alpha: 0.72),
+      ),
+      highlight: LyricHighlight.solid(onBg, tailFadeWidth: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      lineSpacing: 12,
+      translationSpacing: 4,
+      activeAnchor:
+          const LyricAnchor.fraction(.45, target: LyricAnchorTarget.mainText),
+      selectionAnchor:
+          const LyricAnchor.fraction(.45, target: LyricAnchorTarget.mainText),
+      edgeFade: const LyricEdgeFade.fraction(top: .12, bottom: .16),
+      // 前奏/间奏圆点:沿用预设默认配置,颜色跟随主题主色。
+      countdown: base.countdown.copyWith(color: scheme.primary),
     );
   }
 
@@ -87,95 +204,30 @@ class LyricsView extends ConsumerWidget {
   }
 }
 
-/// 同步歌词:按播放进度高亮当前行,并自动居中滚动到可视区。
-/// 持有 ScrollController,当前行变化时平滑滚动,不打断用户手动拖动。
-class _SyncedLyrics extends ConsumerStatefulWidget {
-  const _SyncedLyrics({required this.lines});
+/// 把 PlayerNotifier 的播放状态适配成 flutter_lyric 的进度源。
+/// position 由控制器在播放中逐帧读取;changes 用于播放/暂停/seek 事件。
+class _PlayerProgressSource implements LyricProgressSource {
+  _PlayerProgressSource(this._read);
 
-  final List<LyricLine> lines;
-
-  @override
-  ConsumerState<_SyncedLyrics> createState() => _SyncedLyricsState();
-}
-
-class _SyncedLyricsState extends ConsumerState<_SyncedLyrics> {
-  final ScrollController _controller = ScrollController();
-
-  /// 只标记"当前高亮行"的 key:每帧把它挂到 active 行上,
-  /// 帧后按该行真实渲染位置精确居中,避免固定行高估算累积误差导致漂移。
-  final GlobalKey _activeKey = GlobalKey();
+  final PlayerState Function() _read;
+  final StreamController<void> _changes = StreamController<void>.broadcast();
+  bool _disposed = false;
 
   @override
+  Duration get position => _read().position;
+
+  @override
+  bool get isAdvancing => _read().isPlaying;
+
+  @override
+  Stream<void> get changes => _changes.stream;
+
+  void notify() {
+    if (!_disposed) _changes.add(null);
+  }
+
   void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = M3ETheme.of(context);
-    final scheme = theme.colorScheme;
-    final position = ref.watch(playerProvider.select((s) => s.position));
-
-    // 当前行:最后一处带时间戳且 time <= position 的行
-    var active = 0;
-    for (var i = 0; i < widget.lines.length; i++) {
-      final t = widget.lines[i].time;
-      if (t != null && t <= position) active = i;
-    }
-
-    // 当前行变化时,平滑滚动让高亮行处于视口中部(用户已手动拖动则不打扰)
-    WidgetsBinding.instance.addPostFrameCallback((_) => _revealActive());
-
-    return ListView.builder(
-      controller: _controller,
-      padding: EdgeInsets.symmetric(
-        horizontal: theme.spacing.xl,
-        vertical: theme.spacing.xl,
-      ),
-      itemCount: widget.lines.length,
-      itemBuilder: (context, i) {
-        final line = widget.lines[i];
-        final isActive = i == active;
-        return AnimatedDefaultTextStyle(
-          key: isActive ? _activeKey : null,
-          duration: kSectionAnimDuration,
-          style: (isActive
-                  ? theme.typeScale.headlineSmall
-                  : theme.typeScale.titleMedium)
-              .copyWith(
-                color: isActive ? scheme.primary : scheme.onSurfaceVariant,
-                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-              ),
-          child: Padding(
-            padding: EdgeInsets.symmetric(vertical: theme.spacing.sm),
-            child: Text(
-              line.text,
-              textAlign: TextAlign.center,
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  /// 把当前高亮行滚动到视口正中。用 viewport 的真实布局位置计算目标偏移,
-  /// 而非以固定行高估算,避免长歌词逐行累积误差把当前行顶出屏幕。
-  void _revealActive() {
-    if (!_controller.hasClients) return;
-    // 拖拽/滚动中不强制跳动,避免抢夺用户输入
-    if (_controller.position.isScrollingNotifier.value) return;
-
-    final ctx = _activeKey.currentContext;
-    if (ctx == null) return; // 该行尚未布局(如大跨度 seek 未构建)
-    final ro = ctx.findRenderObject();
-    if (ro == null) return;
-
-    final viewport = RenderAbstractViewport.of(ro);
-    // alignment 0.5 = 目标对象居于视口正中
-    final target = viewport.getOffsetToReveal(ro, 0.5).offset;
-    _controller.jumpTo(
-      target.clamp(0.0, _controller.position.maxScrollExtent),
-    );
+    _disposed = true;
+    _changes.close();
   }
 }
