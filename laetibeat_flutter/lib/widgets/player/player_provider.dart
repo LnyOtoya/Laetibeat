@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:laetibeat/src/rust/api/simple.dart' as rust;
 import 'playback_backend.dart';
@@ -87,6 +88,9 @@ class PlayerNotifier extends Notifier<PlayerState> {
   late final PlaybackBackend _backend;
   final List<StreamSubscription> _subs = [];
 
+  /// 随机播放选曲用
+  final Random _random = Random();
+
   @override
   PlayerState build() {
     _backend = createPlaybackBackend();
@@ -170,7 +174,9 @@ class PlayerNotifier extends Notifier<PlayerState> {
   }
 
   //用真实扫描到的曲目整体替换队列并从 startIndex 开始播放
-  void load(List<rust.UiTrack> tracks, int startIndex, {String? source}) {
+  //shuffle 传 null 时保持当前随机状态,传值则同时切换随机模式
+  void load(List<rust.UiTrack> tracks, int startIndex,
+      {String? source, bool? shuffle}) {
     if (tracks.isEmpty) return;
     final idx = (startIndex + tracks.length) % tracks.length;
     state = state.copyWith(
@@ -180,8 +186,22 @@ class PlayerNotifier extends Notifier<PlayerState> {
       position: Duration.zero,
       duration: _durationOf(tracks[idx]),
       source: source ?? state.source,
+      shuffle: shuffle,
     );
     _backend.open(_trackOf(tracks[idx]));
+  }
+
+  //以给定曲目为队列顺序播放(重置随机模式)
+  void playSequential(List<rust.UiTrack> tracks, {String? source}) {
+    if (tracks.isEmpty) return;
+    load(tracks, 0, source: source, shuffle: false);
+  }
+
+  //以给定曲目为队列随机播放:随机起点,之后 next/播完都随机选曲
+  void playShuffled(List<rust.UiTrack> tracks, {String? source}) {
+    if (tracks.isEmpty) return;
+    load(tracks, _random.nextInt(tracks.length),
+        source: source, shuffle: true);
   }
 
   void _openAndPlay(int idx, String source) {
@@ -222,8 +242,19 @@ class PlayerNotifier extends Notifier<PlayerState> {
     _backend.seek(Duration(milliseconds: ms));
   }
 
-  //下一首
-  void next() => play(state.currentIndex + 1);
+  //下一首:随机模式下从队列随机选曲(避开当前曲),否则顺序下一首
+  void next() {
+    if (state.queue.isEmpty) return;
+    if (state.shuffle && state.queue.length > 1) {
+      var idx = _random.nextInt(state.queue.length);
+      if (idx == state.currentIndex) {
+        idx = (idx + 1) % state.queue.length;
+      }
+      play(idx);
+      return;
+    }
+    play(state.currentIndex + 1);
+  }
 
   //上一首
   void prev() => play(state.currentIndex - 1);

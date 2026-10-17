@@ -27,6 +27,9 @@ class LibraryBrowser extends ConsumerStatefulWidget {
 class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
   LibraryFilter _filter = LibraryFilter.track;
 
+  /// 当前在左侧面板内打开的专辑;非 null 时专辑视图显示详情而非网格
+  _LibRow? _openedAlbum;
+
   //控制列表选中高亮(长按/点leading切换);曲目与艺术家/专辑共用,切换筛选时清空
   final M3ESelectionController _selectionController = M3ESelectionController();
 
@@ -84,6 +87,8 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
             onSelected: (v) => setState(() {
               _selectionController.clear();
               _filter = v;
+              // 切换筛选时退出专辑详情,避免状态残留
+              _openedAlbum = null;
             }),
           ),
           SizedBox(height: theme.spacing.lg),
@@ -126,13 +131,207 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
       return _hint(theme, scheme, '音乐库为空', '请在设置-内容中选择目录并扫描');
     }
 
-    //三种视图:曲目/艺术家为列表,专辑为封面卡片网格
+    //三种视图:曲目/艺术家为列表,专辑为封面卡片网格(点卡片在面板内进详情)
     return switch (_filter) {
       LibraryFilter.track => _buildCardList(theme, scheme, _trackRows(st.tracks)),
       LibraryFilter.artist => _buildCardList(theme, scheme, _artistRows(st.tracks)),
-      LibraryFilter.album => _buildAlbumGrid(theme, scheme, _albumRows(st.tracks)),
+      LibraryFilter.album => _openedAlbum == null
+          ? _buildAlbumGrid(theme, scheme, _albumRows(st.tracks))
+          : _buildAlbumDetail(theme, scheme, st.tracks, _openedAlbum!),
     };
   }
+
+  //专辑详情:在左侧面板内展示(返回 + 封面 + 专辑信息 + 曲目列表),
+  //替代原先右侧面板的占位详情。
+  Widget _buildAlbumDetail(
+    M3EThemeData theme,
+    M3EColorScheme scheme,
+    List<rust.UiTrack> allTracks,
+    _LibRow album,
+  ) {
+    final tracks = [
+      for (final t in allTracks)
+        if (_albumNameOf(t) == album.headline &&
+            _artistNameOf(t) == album.supporting)
+          t,
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        //返回专辑网格
+        Row(
+          children: [
+            M3EIconButton(
+              size: M3EIconButtonSize.sm,
+              icon: const Icon(Icons.arrow_back),
+              tooltip: '返回专辑',
+              onPressed: () => setState(() => _openedAlbum = null),
+            ),
+            SizedBox(width: theme.spacing.sm),
+            Text('专辑', style: theme.typeScale.titleMedium),
+          ],
+        ),
+        SizedBox(height: theme.spacing.lg),
+        //专辑信息:封面 + 名称/艺术家/曲目数
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: M3EDimensions.borderRadiusMedium,
+              child: SizedBox(
+                width: 132,
+                height: 132,
+                child: album.track == null
+                    ? ColoredBox(
+                        color: scheme.secondaryContainer,
+                        child: Icon(
+                          M3EIcons.music_note,
+                          size: 48,
+                          color: scheme.onSecondaryContainer,
+                        ),
+                      )
+                    : _AlbumCover(track: album.track!),
+              ),
+            ),
+            SizedBox(width: theme.spacing.lg),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    album.headline,
+                    style: theme.typeScale.headlineSmall,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: theme.spacing.xs),
+                  Text(
+                    album.supporting,
+                    style: theme.typeScale.bodyLarge.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: theme.spacing.sm),
+                  Text(
+                    '${tracks.length} 首曲目',
+                    style: theme.typeScale.labelMedium.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                  // 专辑操作:立即播放 / 随机播放 / 添加到歌单 / 下载
+                  SizedBox(height: theme.spacing.md),
+                  Wrap(
+                    spacing: theme.spacing.sm,
+                    runSpacing: theme.spacing.sm,
+                    children: [
+                      M3EButton(
+                        size: M3EButtonSize.sm,
+                        icon: const Icon(Icons.play_arrow),
+                        label: const Text('立即播放'),
+                        style: M3EButtonStyle.filled,
+                        onPressed: tracks.isEmpty
+                            ? null
+                            : () => _playAlbumSequential(
+                                  tracks,
+                                  album.headline,
+                                ),
+                      ),
+                      M3EButton(
+                        size: M3EButtonSize.sm,
+                        icon: const Icon(Icons.shuffle),
+                        label: const Text('随机播放'),
+                        style: M3EButtonStyle.tonal,
+                        onPressed: tracks.isEmpty
+                            ? null
+                            : () => _playAlbumShuffled(
+                                  tracks,
+                                  album.headline,
+                                ),
+                      ),
+                      M3EButton(
+                        size: M3EButtonSize.sm,
+                        icon: const Icon(Icons.playlist_add),
+                        label: const Text('添加到歌单'),
+                        style: M3EButtonStyle.tonal,
+                        // 仅按钮占位,逻辑后续接入
+                        onPressed: () {},
+                      ),
+                      M3EButton(
+                        size: M3EButtonSize.sm,
+                        icon: const Icon(Icons.download),
+                        label: const Text('下载'),
+                        style: M3EButtonStyle.tonal,
+                        // 仅按钮占位,逻辑后续接入
+                        onPressed: () {},
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: theme.spacing.lg),
+        //曲目列表:点击整行以该专辑为播放队列并从该曲开始
+        Expanded(
+          child: tracks.isEmpty
+              ? _hint(theme, scheme, '暂无曲目', null)
+              : M3EList.scrollable(
+                  itemCount: tracks.length,
+                  onTap: (i) => _playAlbum(tracks, i, album.headline),
+                  itemBuilder: (context, i) => M3EListItem(
+                    // 左侧:序号 + 歌名 + 歌手名
+                    leading: SizedBox(
+                      width: 28,
+                      child: Text(
+                        '${i + 1}'.padLeft(2, '0'),
+                        textAlign: TextAlign.center,
+                        style: theme.typeScale.labelMedium.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    headline: tracks[i].title,
+                    supportingText: _artistNameOf(tracks[i]),
+                    // 右侧:时长 + 三点菜单
+                    trailingText: tracks[i].duration,
+                    trailing: _moreMenu(),
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+
+  void _playAlbum(List<rust.UiTrack> tracks, int index, String albumName) {
+    ref
+        .read(playerProvider.notifier)
+        .load(tracks, index, source: albumName);
+  }
+
+  //立即播放:队列仅含该专辑曲目,顺序播放(关闭随机)
+  void _playAlbumSequential(List<rust.UiTrack> tracks, String albumName) {
+    ref
+        .read(playerProvider.notifier)
+        .playSequential(tracks, source: albumName);
+  }
+
+  //随机播放:队列仅含该专辑曲目,随机起点并随机切歌
+  void _playAlbumShuffled(List<rust.UiTrack> tracks, String albumName) {
+    ref
+        .read(playerProvider.notifier)
+        .playShuffled(tracks, source: albumName);
+  }
+
+  static String _albumNameOf(rust.UiTrack t) =>
+      t.album.trim().isEmpty ? '未知专辑' : t.album;
+
+  static String _artistNameOf(rust.UiTrack t) =>
+      t.artist.trim().isEmpty ? '未知艺术家' : t.artist;
 
   //专辑视图:封面卡片网格。列数随可用宽度自适应,卡片高度=正方形封面+文字区,
   //保证封面始终显示为完整正方形。
@@ -199,7 +398,8 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
       clipBehavior: Clip.antiAlias,
       expanded: true,
       semanticLabel: '${album.headline}, ${album.supporting}',
-      onPressed: () => widget.onSelect?.call(album.headline, album.supporting),
+      // 专辑不再打开右侧详情,改为在左侧面板内切换到专辑详情
+      onPressed: () => setState(() => _openedAlbum = album),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -337,9 +537,7 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
   List<_LibRow> _albumRows(List<rust.UiTrack> tracks) {
     final byAlbum = <(String, String), rust.UiTrack>{};
     for (final t in tracks) {
-      final album = t.album.trim().isEmpty ? '未知专辑' : t.album;
-      final artist = t.artist.trim().isEmpty ? '未知艺术家' : t.artist;
-      byAlbum.putIfAbsent((album, artist), () => t);
+      byAlbum.putIfAbsent((_albumNameOf(t), _artistNameOf(t)), () => t);
     }
     final rows = [
       for (final e in byAlbum.entries)
