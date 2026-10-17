@@ -39,6 +39,9 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
   /// 循环顺序栏、底部按钮),把释放的高度让给歌词。与全屏播放页状态无关。
   bool _lyricsImmersive = false;
 
+  /// 是否显示播放队列浮层。浮层只覆盖播放面板自身,不弹到窗口底部。
+  bool _showQueue = false;
+
   @override
   Widget build(BuildContext context) {
     final baseTheme = M3ETheme.of(context);
@@ -80,35 +83,60 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
               final hPad = theme.spacing.xl;
               final vPad = theme.spacing.lg;
 
-              // 竖直空间极小(矮窗口被下方队列压缩):退化为可滚动布局,保证不溢出
-              if (c.maxHeight < _tightHeight) {
-                return SingleChildScrollView(
+              // 面板主体:矮窗口退化为可滚动,否则用 Expanded 流式填充
+              Widget body() {
+                // 竖直空间极小(矮窗口被下方队列压缩):退化为可滚动布局,保证不溢出
+                if (c.maxHeight < _tightHeight) {
+                  return SingleChildScrollView(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _sourceArea(theme, scheme, player),
+                        // 封面/歌词区:封面向上滑出淡出,歌词平滑进入(反向亦然)。
+                        // 歌词态同时放大可用高度,把来源区收起释放的空间让给歌词;
+                        // 沉浸模式下底部控件再收起,歌词进一步扩展。
+                        TweenAnimationBuilder<double>(
+                          tween: Tween<double>(
+                            begin: 0.45,
+                            end: _lyricsImmersive
+                                ? 0.82
+                                : (_showLyrics ? 0.65 : 0.45),
+                          ),
+                          duration: kSectionAnimDuration,
+                          curve: kSectionAnimCurve,
+                          builder: (context, factor, child) => ConstrainedBox(
+                            constraints:
+                                BoxConstraints(maxHeight: c.maxHeight * factor),
+                            child: child,
+                          ),
+                          child: _mainArea(theme, bytes),
+                        ),
+                        SizedBox(height: theme.spacing.xxl),
+                        _infoRow(context, theme, track, bytes),
+                        SizedBox(height: theme.spacing.xxl),
+                        _controlRegion(context, theme, scheme, player, ref,
+                            compact: compact),
+                      ],
+                    ),
+                  );
+                }
+
+                // 常规流式填充布局:封面 Expanded 吸收所有高度余量,
+                // AspectRatio(1) 保证正方形、不拉伸,文字/图标始终原生像素渲染
+                return Padding(
                   padding:
                       EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
                   child: Column(
-                    mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _sourceArea(theme, scheme, player),
-                      // 封面/歌词区:封面向上滑出淡出,歌词平滑进入(反向亦然)。
-                      // 歌词态同时放大可用高度,把来源区收起释放的空间让给歌词;
-                      // 沉浸模式下底部控件再收起,歌词进一步扩展。
-                      TweenAnimationBuilder<double>(
-                        tween: Tween<double>(
-                          begin: 0.45,
-                          end: _lyricsImmersive
-                              ? 0.82
-                              : (_showLyrics ? 0.65 : 0.45),
-                        ),
-                        duration: kSectionAnimDuration,
-                        curve: kSectionAnimCurve,
-                        builder: (context, factor, child) => ConstrainedBox(
-                          constraints:
-                              BoxConstraints(maxHeight: c.maxHeight * factor),
-                          child: child,
-                        ),
-                        child: _mainArea(theme, bytes),
-                      ),
+                      // 来源区顶部留缝,整体稍下移;歌词态整体收起,空间让给歌词
+                      _sourceArea(theme, scheme, player,
+                          topGap: theme.spacing.xl),
+                      Expanded(child: _mainArea(theme, bytes)),
+                      // 信息行距离控制区: 间距稍大
                       SizedBox(height: theme.spacing.xxl),
                       _infoRow(context, theme, track, bytes),
                       SizedBox(height: theme.spacing.xxl),
@@ -119,25 +147,42 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
                 );
               }
 
-              // 常规流式填充布局:封面 Expanded 吸收所有高度余量,
-              // AspectRatio(1) 保证正方形、不拉伸,文字/图标始终原生像素渲染
-              return Padding(
-                padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // 来源区顶部留缝,整体稍下移;歌词态整体收起,空间让给歌词
-                    _sourceArea(theme, scheme, player,
-                        topGap: theme.spacing.xl),
-                    Expanded(child: _mainArea(theme, bytes)),
-                    // 信息行距离控制区: 间距稍大
-                    SizedBox(height: theme.spacing.xxl),
-                    _infoRow(context, theme, track, bytes),
-                    SizedBox(height: theme.spacing.xxl),
-                    _controlRegion(context, theme, scheme, player, ref,
-                        compact: compact),
-                  ],
-                ),
+              final content = body();
+
+              // 队列浮层只覆盖播放面板自身(右侧播放区或全屏面板),
+              // 不弹到整个窗口底部。
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  content,
+                  Positioned.fill(
+                    child: ClipRRect(
+                      borderRadius: M3EDimensions.borderRadiusMedium,
+                      child: AnimatedSwitcher(
+                        duration: kSectionAnimDuration,
+                        switchInCurve: kSectionAnimCurve,
+                        switchOutCurve: kSectionAnimCurve,
+                        transitionBuilder: (child, animation) {
+                          return FadeTransition(
+                            opacity: animation,
+                            child: SlideTransition(
+                              position: Tween<Offset>(
+                                begin: const Offset(0, 0.06),
+                                end: Offset.zero,
+                              ).animate(animation),
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: _showQueue
+                            ? _queueOverlay(theme, scheme, player)
+                            : const SizedBox.shrink(
+                                key: ValueKey('queue-closed'),
+                              ),
+                      ),
+                    ),
+                  ),
+                ],
               );
             },
           );
@@ -580,7 +625,7 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
                     label: const Text('队列'),
                     style: M3EButtonStyle.filled,
                     shape: M3EButtonShape.square,
-                    onPressed: () {},
+                    onPressed: () => setState(() => _showQueue = !_showQueue),
                   ),
                   _moreMenu(context),
                 ],
@@ -613,6 +658,162 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
       },
       child: child,
     );
+  }
+
+  // -------------------------------------------------------------------------
+  // 播放队列浮层
+  // -------------------------------------------------------------------------
+
+  /// 面板内遮罩 + 底部队列卡片。覆盖范围就是当前播放面板,
+  /// 不会像 showModalBottomSheet 那样弹到整个窗口底部。
+  Widget _queueOverlay(
+    M3EThemeData theme,
+    M3EColorScheme scheme,
+    PlayerState player,
+  ) {
+    return GestureDetector(
+      key: const ValueKey('queue-open'),
+      behavior: HitTestBehavior.opaque,
+      onTap: _closeQueue,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // 面板内遮罩
+          ColoredBox(color: scheme.scrim.withValues(alpha: 0.22)),
+          // 底部浮层:高度约占面板 2/3,四周留出与面板一致的内边距
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              // 点卡片空白处不冒泡到遮罩,避免误关闭
+              onTap: () {},
+              child: FractionallySizedBox(
+                heightFactor: 0.68,
+                widthFactor: 1,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    theme.spacing.md,
+                    0,
+                    theme.spacing.md,
+                    theme.spacing.md,
+                  ),
+                  child: _queueSheet(theme, scheme, player),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _queueSheet(
+    M3EThemeData theme,
+    M3EColorScheme scheme,
+    PlayerState player,
+  ) {
+    final queue = player.queue;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(theme.spacing.lg),
+      ),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          theme.spacing.lg,
+          theme.spacing.md,
+          theme.spacing.md,
+          theme.spacing.sm,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 标题行:标题 + 数量 + 关闭
+            Row(
+              children: [
+                Expanded(
+                  child: Text('播放队列', style: theme.typeScale.titleLarge),
+                ),
+                Text(
+                  '${queue.length} 首',
+                  style: theme.typeScale.labelMedium.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                SizedBox(width: theme.spacing.sm),
+                M3EIconButton(
+                  size: M3EIconButtonSize.xs,
+                  icon: const Icon(Icons.close),
+                  tooltip: '关闭队列',
+                  onPressed: _closeQueue,
+                ),
+              ],
+            ),
+            SizedBox(height: theme.spacing.sm),
+            Expanded(
+              child: queue.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.queue_music,
+                            size: 40,
+                            color: scheme.onSurfaceVariant.withValues(
+                              alpha: 0.4,
+                            ),
+                          ),
+                          SizedBox(height: theme.spacing.sm),
+                          Text('队列为空', style: theme.typeScale.titleMedium),
+                          SizedBox(height: theme.spacing.xs),
+                          Text(
+                            '从音乐库选择歌曲开始播放',
+                            style: theme.typeScale.bodyMedium.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : M3EList.scrollable(
+                      itemCount: queue.length,
+                      onTap: (i) {
+                        ref.read(playerProvider.notifier).play(i);
+                        _closeQueue();
+                      },
+                      itemBuilder: (context, i) {
+                        final track = queue[i];
+                        final selected = i == player.currentIndex;
+                        return M3EListItem(
+                          selected: selected,
+                          leading: Icon(
+                            selected
+                                ? (player.isPlaying
+                                    ? Icons.graphic_eq
+                                    : Icons.pause_circle_outline)
+                                : Icons.music_note,
+                            size: 20,
+                            color: selected
+                                ? scheme.primary
+                                : scheme.onSurfaceVariant,
+                          ),
+                          headline: track.title,
+                          supportingText: track.artist,
+                          trailingText: track.duration,
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _closeQueue() {
+    if (_showQueue) {
+      setState(() => _showQueue = false);
+    }
   }
 
   //竖向三点菜单
