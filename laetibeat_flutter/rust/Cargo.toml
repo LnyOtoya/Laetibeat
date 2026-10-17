@@ -9,6 +9,7 @@ crate-type = ["cdylib", "staticlib"]
 [dependencies]
 flutter_rust_bridge = "=2.13.0"
 laetibeat_core = { path = "../../laetibeat_core" }
+laetibeat_remote = { path = "../../laetibeat_remote" }
 rfd = "0.15"
 
 [lints.rust]

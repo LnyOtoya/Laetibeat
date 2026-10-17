@@ -6,6 +6,7 @@
 import 'api/metadata.dart';
 import 'api/simple.dart';
 import 'api/stats.dart';
+import 'api/subsonic.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
@@ -68,7 +69,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => -1201117798;
+  int get rustContentHash => 2146598857;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -80,11 +81,24 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
+  Future<UiSubsonicServerInfo> crateApiSubsonicConfigureSubsonic({
+    required String sourceId,
+    required String baseUrl,
+    required String authMode,
+    String? username,
+    required String secret,
+    String? clientName,
+  });
+
   Future<void> crateApiSimpleInitApp();
 
   Future<void> crateApiStatsInitStatsDb({required String path});
 
   Future<String?> crateApiSimplePickDirectory();
+
+  Future<UiSubsonicServerInfo> crateApiSubsonicPingSubsonic({
+    required String sourceId,
+  });
 
   Future<UiHistorySummary> crateApiStatsQueryHistorySummary({
     required String source,
@@ -108,9 +122,25 @@ abstract class RustLibApi extends BaseApi {
 
   Future<void> crateApiStatsRecordPlayEvent({required UiPlayEvent event});
 
+  Future<void> crateApiSubsonicRemoveSubsonic({required String sourceId});
+
   Future<UiScanResult> crateApiSimpleScanLocalMusicFolder({
     required String dirPath,
     required List<UiTrack> knownTracks,
+  });
+
+  Future<UiRemoteAlbumDetail> crateApiSubsonicSubsonicGetAlbum({
+    required String sourceId,
+    required String albumId,
+  });
+
+  Future<UiRemoteArtistDetail> crateApiSubsonicSubsonicGetArtist({
+    required String sourceId,
+    required String artistId,
+  });
+
+  Future<List<UiRemoteArtist>> crateApiSubsonicSubsonicGetArtists({
+    required String sourceId,
   });
 }
 
@@ -123,6 +153,56 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
+  Future<UiSubsonicServerInfo> crateApiSubsonicConfigureSubsonic({
+    required String sourceId,
+    required String baseUrl,
+    required String authMode,
+    String? username,
+    required String secret,
+    String? clientName,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(sourceId, serializer);
+          sse_encode_String(baseUrl, serializer);
+          sse_encode_String(authMode, serializer);
+          sse_encode_opt_String(username, serializer);
+          sse_encode_String(secret, serializer);
+          sse_encode_opt_String(clientName, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 1,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_ui_subsonic_server_info,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiSubsonicConfigureSubsonicConstMeta,
+        argValues: [sourceId, baseUrl, authMode, username, secret, clientName],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSubsonicConfigureSubsonicConstMeta =>
+      const TaskConstMeta(
+        debugName: "configure_subsonic",
+        argNames: [
+          "sourceId",
+          "baseUrl",
+          "authMode",
+          "username",
+          "secret",
+          "clientName",
+        ],
+      );
+
+  @override
   Future<void> crateApiSimpleInitApp() {
     return handler.executeNormal(
       NormalTask(
@@ -131,7 +211,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 1,
+            funcId: 2,
             port: port_,
           );
         },
@@ -159,7 +239,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 2,
+            funcId: 3,
             port: port_,
           );
         },
@@ -186,7 +266,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 4,
             port: port_,
           );
         },
@@ -203,6 +283,36 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiSimplePickDirectoryConstMeta =>
       const TaskConstMeta(debugName: "pick_directory", argNames: []);
+
+  @override
+  Future<UiSubsonicServerInfo> crateApiSubsonicPingSubsonic({
+    required String sourceId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(sourceId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 5,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_ui_subsonic_server_info,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiSubsonicPingSubsonicConstMeta,
+        argValues: [sourceId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSubsonicPingSubsonicConstMeta =>
+      const TaskConstMeta(debugName: "ping_subsonic", argNames: ["sourceId"]);
 
   @override
   Future<UiHistorySummary> crateApiStatsQueryHistorySummary({
@@ -222,7 +332,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 6,
             port: port_,
           );
         },
@@ -255,7 +365,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 7,
             port: port_,
           );
         },
@@ -290,7 +400,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 8,
             port: port_,
           );
         },
@@ -321,7 +431,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 9,
             port: port_,
           );
         },
@@ -349,7 +459,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 10,
             port: port_,
           );
         },
@@ -377,7 +487,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 11,
             port: port_,
           );
         },
@@ -396,6 +506,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "record_play_event", argNames: ["event"]);
 
   @override
+  Future<void> crateApiSubsonicRemoveSubsonic({required String sourceId}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(sourceId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 12,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiSubsonicRemoveSubsonicConstMeta,
+        argValues: [sourceId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSubsonicRemoveSubsonicConstMeta =>
+      const TaskConstMeta(debugName: "remove_subsonic", argNames: ["sourceId"]);
+
+  @override
   Future<UiScanResult> crateApiSimpleScanLocalMusicFolder({
     required String dirPath,
     required List<UiTrack> knownTracks,
@@ -409,7 +547,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 13,
             port: port_,
           );
         },
@@ -430,6 +568,109 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         argNames: ["dirPath", "knownTracks"],
       );
 
+  @override
+  Future<UiRemoteAlbumDetail> crateApiSubsonicSubsonicGetAlbum({
+    required String sourceId,
+    required String albumId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(sourceId, serializer);
+          sse_encode_String(albumId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 14,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_ui_remote_album_detail,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiSubsonicSubsonicGetAlbumConstMeta,
+        argValues: [sourceId, albumId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSubsonicSubsonicGetAlbumConstMeta =>
+      const TaskConstMeta(
+        debugName: "subsonic_get_album",
+        argNames: ["sourceId", "albumId"],
+      );
+
+  @override
+  Future<UiRemoteArtistDetail> crateApiSubsonicSubsonicGetArtist({
+    required String sourceId,
+    required String artistId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(sourceId, serializer);
+          sse_encode_String(artistId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 15,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_ui_remote_artist_detail,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiSubsonicSubsonicGetArtistConstMeta,
+        argValues: [sourceId, artistId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSubsonicSubsonicGetArtistConstMeta =>
+      const TaskConstMeta(
+        debugName: "subsonic_get_artist",
+        argNames: ["sourceId", "artistId"],
+      );
+
+  @override
+  Future<List<UiRemoteArtist>> crateApiSubsonicSubsonicGetArtists({
+    required String sourceId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(sourceId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 16,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_ui_remote_artist,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiSubsonicSubsonicGetArtistsConstMeta,
+        argValues: [sourceId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSubsonicSubsonicGetArtistsConstMeta =>
+      const TaskConstMeta(
+        debugName: "subsonic_get_artists",
+        argNames: ["sourceId"],
+      );
+
   @protected
   String dco_decode_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
@@ -440,6 +681,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   bool dco_decode_bool(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as bool;
+  }
+
+  @protected
+  int dco_decode_box_autoadd_i_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
   }
 
   @protected
@@ -479,6 +726,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  int dco_decode_i_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
+  }
+
+  @protected
   PlatformInt64 dco_decode_i_64(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dcoDecodeI64(raw);
@@ -515,6 +768,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<UiRemoteAlbum> dco_decode_list_ui_remote_album(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_ui_remote_album).toList();
+  }
+
+  @protected
+  List<UiRemoteArtist> dco_decode_list_ui_remote_artist(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_ui_remote_artist).toList();
+  }
+
+  @protected
+  List<UiRemoteTrack> dco_decode_list_ui_remote_track(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_ui_remote_track).toList();
+  }
+
+  @protected
   List<UiTrack> dco_decode_list_ui_track(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_ui_track).toList();
@@ -530,6 +801,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   String? dco_decode_opt_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_String(raw);
+  }
+
+  @protected
+  int? dco_decode_opt_box_autoadd_i_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_i_32(raw);
   }
 
   @protected
@@ -663,6 +940,87 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  UiRemoteAlbum dco_decode_ui_remote_album(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 8)
+      throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
+    return UiRemoteAlbum(
+      id: dco_decode_String(arr[0]),
+      title: dco_decode_String(arr[1]),
+      artist: dco_decode_String(arr[2]),
+      artistId: dco_decode_opt_String(arr[3]),
+      coverId: dco_decode_opt_String(arr[4]),
+      songCount: dco_decode_opt_box_autoadd_i_64(arr[5]),
+      durationSeconds: dco_decode_opt_box_autoadd_i_64(arr[6]),
+      year: dco_decode_opt_box_autoadd_i_32(arr[7]),
+    );
+  }
+
+  @protected
+  UiRemoteAlbumDetail dco_decode_ui_remote_album_detail(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return UiRemoteAlbumDetail(
+      album: dco_decode_ui_remote_album(arr[0]),
+      tracks: dco_decode_list_ui_remote_track(arr[1]),
+    );
+  }
+
+  @protected
+  UiRemoteArtist dco_decode_ui_remote_artist(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return UiRemoteArtist(
+      id: dco_decode_String(arr[0]),
+      name: dco_decode_String(arr[1]),
+      coverId: dco_decode_opt_String(arr[2]),
+      albumCount: dco_decode_opt_box_autoadd_i_64(arr[3]),
+    );
+  }
+
+  @protected
+  UiRemoteArtistDetail dco_decode_ui_remote_artist_detail(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return UiRemoteArtistDetail(
+      artist: dco_decode_ui_remote_artist(arr[0]),
+      albums: dco_decode_list_ui_remote_album(arr[1]),
+    );
+  }
+
+  @protected
+  UiRemoteTrack dco_decode_ui_remote_track(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 15)
+      throw Exception('unexpected arr length: expect 15 but see ${arr.length}');
+    return UiRemoteTrack(
+      id: dco_decode_String(arr[0]),
+      title: dco_decode_String(arr[1]),
+      artist: dco_decode_String(arr[2]),
+      album: dco_decode_String(arr[3]),
+      albumId: dco_decode_opt_String(arr[4]),
+      artistId: dco_decode_opt_String(arr[5]),
+      coverId: dco_decode_opt_String(arr[6]),
+      durationSeconds: dco_decode_i_64(arr[7]),
+      trackNumber: dco_decode_opt_box_autoadd_i_32(arr[8]),
+      discNumber: dco_decode_opt_box_autoadd_i_32(arr[9]),
+      year: dco_decode_opt_box_autoadd_i_32(arr[10]),
+      genre: dco_decode_opt_String(arr[11]),
+      bitRate: dco_decode_opt_box_autoadd_i_32(arr[12]),
+      suffix: dco_decode_opt_String(arr[13]),
+      size: dco_decode_opt_box_autoadd_i_64(arr[14]),
+    );
+  }
+
+  @protected
   UiScanResult dco_decode_ui_scan_result(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -686,6 +1044,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       reusedFiles: dco_decode_u_32(arr[2]),
       removedFiles: dco_decode_u_32(arr[3]),
       elapsedMs: dco_decode_u_64(arr[4]),
+    );
+  }
+
+  @protected
+  UiSubsonicServerInfo dco_decode_ui_subsonic_server_info(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return UiSubsonicServerInfo(
+      version: dco_decode_opt_String(arr[0]),
+      serverType: dco_decode_opt_String(arr[1]),
+      serverVersion: dco_decode_opt_String(arr[2]),
+      openSubsonic: dco_decode_bool(arr[3]),
     );
   }
 
@@ -758,6 +1130,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  int sse_decode_box_autoadd_i_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_i_32(deserializer));
+  }
+
+  @protected
   PlatformInt64 sse_decode_box_autoadd_i_64(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_i_64(deserializer));
@@ -793,6 +1171,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   double sse_decode_f_64(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getFloat64();
+  }
+
+  @protected
+  int sse_decode_i_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getInt32();
   }
 
   @protected
@@ -859,6 +1243,48 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<UiRemoteAlbum> sse_decode_list_ui_remote_album(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <UiRemoteAlbum>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_ui_remote_album(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<UiRemoteArtist> sse_decode_list_ui_remote_artist(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <UiRemoteArtist>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_ui_remote_artist(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<UiRemoteTrack> sse_decode_list_ui_remote_track(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <UiRemoteTrack>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_ui_remote_track(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   List<UiTrack> sse_decode_list_ui_track(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
@@ -890,6 +1316,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
     if (sse_decode_bool(deserializer)) {
       return (sse_decode_String(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  int? sse_decode_opt_box_autoadd_i_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_i_32(deserializer));
     } else {
       return null;
     }
@@ -1068,6 +1505,101 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  UiRemoteAlbum sse_decode_ui_remote_album(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_title = sse_decode_String(deserializer);
+    var var_artist = sse_decode_String(deserializer);
+    var var_artistId = sse_decode_opt_String(deserializer);
+    var var_coverId = sse_decode_opt_String(deserializer);
+    var var_songCount = sse_decode_opt_box_autoadd_i_64(deserializer);
+    var var_durationSeconds = sse_decode_opt_box_autoadd_i_64(deserializer);
+    var var_year = sse_decode_opt_box_autoadd_i_32(deserializer);
+    return UiRemoteAlbum(
+      id: var_id,
+      title: var_title,
+      artist: var_artist,
+      artistId: var_artistId,
+      coverId: var_coverId,
+      songCount: var_songCount,
+      durationSeconds: var_durationSeconds,
+      year: var_year,
+    );
+  }
+
+  @protected
+  UiRemoteAlbumDetail sse_decode_ui_remote_album_detail(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_album = sse_decode_ui_remote_album(deserializer);
+    var var_tracks = sse_decode_list_ui_remote_track(deserializer);
+    return UiRemoteAlbumDetail(album: var_album, tracks: var_tracks);
+  }
+
+  @protected
+  UiRemoteArtist sse_decode_ui_remote_artist(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_name = sse_decode_String(deserializer);
+    var var_coverId = sse_decode_opt_String(deserializer);
+    var var_albumCount = sse_decode_opt_box_autoadd_i_64(deserializer);
+    return UiRemoteArtist(
+      id: var_id,
+      name: var_name,
+      coverId: var_coverId,
+      albumCount: var_albumCount,
+    );
+  }
+
+  @protected
+  UiRemoteArtistDetail sse_decode_ui_remote_artist_detail(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_artist = sse_decode_ui_remote_artist(deserializer);
+    var var_albums = sse_decode_list_ui_remote_album(deserializer);
+    return UiRemoteArtistDetail(artist: var_artist, albums: var_albums);
+  }
+
+  @protected
+  UiRemoteTrack sse_decode_ui_remote_track(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_title = sse_decode_String(deserializer);
+    var var_artist = sse_decode_String(deserializer);
+    var var_album = sse_decode_String(deserializer);
+    var var_albumId = sse_decode_opt_String(deserializer);
+    var var_artistId = sse_decode_opt_String(deserializer);
+    var var_coverId = sse_decode_opt_String(deserializer);
+    var var_durationSeconds = sse_decode_i_64(deserializer);
+    var var_trackNumber = sse_decode_opt_box_autoadd_i_32(deserializer);
+    var var_discNumber = sse_decode_opt_box_autoadd_i_32(deserializer);
+    var var_year = sse_decode_opt_box_autoadd_i_32(deserializer);
+    var var_genre = sse_decode_opt_String(deserializer);
+    var var_bitRate = sse_decode_opt_box_autoadd_i_32(deserializer);
+    var var_suffix = sse_decode_opt_String(deserializer);
+    var var_size = sse_decode_opt_box_autoadd_i_64(deserializer);
+    return UiRemoteTrack(
+      id: var_id,
+      title: var_title,
+      artist: var_artist,
+      album: var_album,
+      albumId: var_albumId,
+      artistId: var_artistId,
+      coverId: var_coverId,
+      durationSeconds: var_durationSeconds,
+      trackNumber: var_trackNumber,
+      discNumber: var_discNumber,
+      year: var_year,
+      genre: var_genre,
+      bitRate: var_bitRate,
+      suffix: var_suffix,
+      size: var_size,
+    );
+  }
+
+  @protected
   UiScanResult sse_decode_ui_scan_result(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_library_ = sse_decode_ui_library(deserializer);
@@ -1089,6 +1621,23 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       reusedFiles: var_reusedFiles,
       removedFiles: var_removedFiles,
       elapsedMs: var_elapsedMs,
+    );
+  }
+
+  @protected
+  UiSubsonicServerInfo sse_decode_ui_subsonic_server_info(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_version = sse_decode_opt_String(deserializer);
+    var var_serverType = sse_decode_opt_String(deserializer);
+    var var_serverVersion = sse_decode_opt_String(deserializer);
+    var var_openSubsonic = sse_decode_bool(deserializer);
+    return UiSubsonicServerInfo(
+      version: var_version,
+      serverType: var_serverType,
+      serverVersion: var_serverVersion,
+      openSubsonic: var_openSubsonic,
     );
   }
 
@@ -1170,12 +1719,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  int sse_decode_i_32(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getInt32();
-  }
-
-  @protected
   void sse_encode_String(String self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer);
@@ -1185,6 +1728,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_bool(bool self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putUint8(self ? 1 : 0);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_i_32(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self, serializer);
   }
 
   @protected
@@ -1227,6 +1776,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_f_64(double self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putFloat64(self);
+  }
+
+  @protected
+  void sse_encode_i_32(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putInt32(self);
   }
 
   @protected
@@ -1288,6 +1843,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_ui_remote_album(
+    List<UiRemoteAlbum> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_ui_remote_album(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_ui_remote_artist(
+    List<UiRemoteArtist> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_ui_remote_artist(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_ui_remote_track(
+    List<UiRemoteTrack> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_ui_remote_track(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_list_ui_track(List<UiTrack> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
@@ -1315,6 +1906,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self != null, serializer);
     if (self != null) {
       sse_encode_String(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_i_32(int? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_i_32(self, serializer);
     }
   }
 
@@ -1453,6 +2054,77 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_ui_remote_album(
+    UiRemoteAlbum self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.title, serializer);
+    sse_encode_String(self.artist, serializer);
+    sse_encode_opt_String(self.artistId, serializer);
+    sse_encode_opt_String(self.coverId, serializer);
+    sse_encode_opt_box_autoadd_i_64(self.songCount, serializer);
+    sse_encode_opt_box_autoadd_i_64(self.durationSeconds, serializer);
+    sse_encode_opt_box_autoadd_i_32(self.year, serializer);
+  }
+
+  @protected
+  void sse_encode_ui_remote_album_detail(
+    UiRemoteAlbumDetail self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_ui_remote_album(self.album, serializer);
+    sse_encode_list_ui_remote_track(self.tracks, serializer);
+  }
+
+  @protected
+  void sse_encode_ui_remote_artist(
+    UiRemoteArtist self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.name, serializer);
+    sse_encode_opt_String(self.coverId, serializer);
+    sse_encode_opt_box_autoadd_i_64(self.albumCount, serializer);
+  }
+
+  @protected
+  void sse_encode_ui_remote_artist_detail(
+    UiRemoteArtistDetail self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_ui_remote_artist(self.artist, serializer);
+    sse_encode_list_ui_remote_album(self.albums, serializer);
+  }
+
+  @protected
+  void sse_encode_ui_remote_track(
+    UiRemoteTrack self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.title, serializer);
+    sse_encode_String(self.artist, serializer);
+    sse_encode_String(self.album, serializer);
+    sse_encode_opt_String(self.albumId, serializer);
+    sse_encode_opt_String(self.artistId, serializer);
+    sse_encode_opt_String(self.coverId, serializer);
+    sse_encode_i_64(self.durationSeconds, serializer);
+    sse_encode_opt_box_autoadd_i_32(self.trackNumber, serializer);
+    sse_encode_opt_box_autoadd_i_32(self.discNumber, serializer);
+    sse_encode_opt_box_autoadd_i_32(self.year, serializer);
+    sse_encode_opt_String(self.genre, serializer);
+    sse_encode_opt_box_autoadd_i_32(self.bitRate, serializer);
+    sse_encode_opt_String(self.suffix, serializer);
+    sse_encode_opt_box_autoadd_i_64(self.size, serializer);
+  }
+
+  @protected
   void sse_encode_ui_scan_result(UiScanResult self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_ui_library(self.library_, serializer);
@@ -1467,6 +2139,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_u_32(self.reusedFiles, serializer);
     sse_encode_u_32(self.removedFiles, serializer);
     sse_encode_u_64(self.elapsedMs, serializer);
+  }
+
+  @protected
+  void sse_encode_ui_subsonic_server_info(
+    UiSubsonicServerInfo self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_opt_String(self.version, serializer);
+    sse_encode_opt_String(self.serverType, serializer);
+    sse_encode_opt_String(self.serverVersion, serializer);
+    sse_encode_bool(self.openSubsonic, serializer);
   }
 
   @protected
@@ -1511,11 +2195,5 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   void sse_encode_unit(void self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-  }
-
-  @protected
-  void sse_encode_i_32(int self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putInt32(self);
   }
 }

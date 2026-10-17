@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "laetibeat_core",
+    "laetibeat_remote",
     "laetibeat_flutter/rust"
 ]
 resolver = "2"

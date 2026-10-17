@@ -1,0 +1,8 @@
+[package]
+name = "laetibeat_remote"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+opensubsonic = "=0.6.1"
+tokio = { version = "1", features = ["rt-multi-thread", "time", "net"] }

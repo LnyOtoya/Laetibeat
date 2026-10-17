@@ -6,6 +6,7 @@
 import 'api/metadata.dart';
 import 'api/simple.dart';
 import 'api/stats.dart';
+import 'api/subsonic.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi' as ffi;
@@ -27,6 +28,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool dco_decode_bool(dynamic raw);
 
   @protected
+  int dco_decode_box_autoadd_i_32(dynamic raw);
+
+  @protected
   PlatformInt64 dco_decode_box_autoadd_i_64(dynamic raw);
 
   @protected
@@ -43,6 +47,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   double dco_decode_f_64(dynamic raw);
+
+  @protected
+  int dco_decode_i_32(dynamic raw);
 
   @protected
   PlatformInt64 dco_decode_i_64(dynamic raw);
@@ -63,6 +70,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<UiPlayEvent> dco_decode_list_ui_play_event(dynamic raw);
 
   @protected
+  List<UiRemoteAlbum> dco_decode_list_ui_remote_album(dynamic raw);
+
+  @protected
+  List<UiRemoteArtist> dco_decode_list_ui_remote_artist(dynamic raw);
+
+  @protected
+  List<UiRemoteTrack> dco_decode_list_ui_remote_track(dynamic raw);
+
+  @protected
   List<UiTrack> dco_decode_list_ui_track(dynamic raw);
 
   @protected
@@ -70,6 +86,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   String? dco_decode_opt_String(dynamic raw);
+
+  @protected
+  int? dco_decode_opt_box_autoadd_i_32(dynamic raw);
 
   @protected
   PlatformInt64? dco_decode_opt_box_autoadd_i_64(dynamic raw);
@@ -111,10 +130,28 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   UiPlayEvent dco_decode_ui_play_event(dynamic raw);
 
   @protected
+  UiRemoteAlbum dco_decode_ui_remote_album(dynamic raw);
+
+  @protected
+  UiRemoteAlbumDetail dco_decode_ui_remote_album_detail(dynamic raw);
+
+  @protected
+  UiRemoteArtist dco_decode_ui_remote_artist(dynamic raw);
+
+  @protected
+  UiRemoteArtistDetail dco_decode_ui_remote_artist_detail(dynamic raw);
+
+  @protected
+  UiRemoteTrack dco_decode_ui_remote_track(dynamic raw);
+
+  @protected
   UiScanResult dco_decode_ui_scan_result(dynamic raw);
 
   @protected
   UiScanStats dco_decode_ui_scan_stats(dynamic raw);
+
+  @protected
+  UiSubsonicServerInfo dco_decode_ui_subsonic_server_info(dynamic raw);
 
   @protected
   UiTrack dco_decode_ui_track(dynamic raw);
@@ -130,6 +167,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   bool sse_decode_bool(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_box_autoadd_i_32(SseDeserializer deserializer);
 
   @protected
   PlatformInt64 sse_decode_box_autoadd_i_64(SseDeserializer deserializer);
@@ -152,6 +192,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   double sse_decode_f_64(SseDeserializer deserializer);
 
   @protected
+  int sse_decode_i_32(SseDeserializer deserializer);
+
+  @protected
   PlatformInt64 sse_decode_i_64(SseDeserializer deserializer);
 
   @protected
@@ -170,6 +213,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<UiPlayEvent> sse_decode_list_ui_play_event(SseDeserializer deserializer);
 
   @protected
+  List<UiRemoteAlbum> sse_decode_list_ui_remote_album(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<UiRemoteArtist> sse_decode_list_ui_remote_artist(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<UiRemoteTrack> sse_decode_list_ui_remote_track(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   List<UiTrack> sse_decode_list_ui_track(SseDeserializer deserializer);
 
   @protected
@@ -177,6 +235,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   String? sse_decode_opt_String(SseDeserializer deserializer);
+
+  @protected
+  int? sse_decode_opt_box_autoadd_i_32(SseDeserializer deserializer);
 
   @protected
   PlatformInt64? sse_decode_opt_box_autoadd_i_64(SseDeserializer deserializer);
@@ -218,10 +279,34 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   UiPlayEvent sse_decode_ui_play_event(SseDeserializer deserializer);
 
   @protected
+  UiRemoteAlbum sse_decode_ui_remote_album(SseDeserializer deserializer);
+
+  @protected
+  UiRemoteAlbumDetail sse_decode_ui_remote_album_detail(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  UiRemoteArtist sse_decode_ui_remote_artist(SseDeserializer deserializer);
+
+  @protected
+  UiRemoteArtistDetail sse_decode_ui_remote_artist_detail(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  UiRemoteTrack sse_decode_ui_remote_track(SseDeserializer deserializer);
+
+  @protected
   UiScanResult sse_decode_ui_scan_result(SseDeserializer deserializer);
 
   @protected
   UiScanStats sse_decode_ui_scan_stats(SseDeserializer deserializer);
+
+  @protected
+  UiSubsonicServerInfo sse_decode_ui_subsonic_server_info(
+    SseDeserializer deserializer,
+  );
 
   @protected
   UiTrack sse_decode_ui_track(SseDeserializer deserializer);
@@ -233,13 +318,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_decode_unit(SseDeserializer deserializer);
 
   @protected
-  int sse_decode_i_32(SseDeserializer deserializer);
-
-  @protected
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
   void sse_encode_bool(bool self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_i_32(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_box_autoadd_i_64(
@@ -266,6 +351,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_f_64(double self, SseSerializer serializer);
 
   @protected
+  void sse_encode_i_32(int self, SseSerializer serializer);
+
+  @protected
   void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer);
 
   @protected
@@ -290,6 +378,24 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_ui_remote_album(
+    List<UiRemoteAlbum> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_ui_remote_artist(
+    List<UiRemoteArtist> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_ui_remote_track(
+    List<UiRemoteTrack> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_ui_track(List<UiTrack> self, SseSerializer serializer);
 
   @protected
@@ -300,6 +406,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_i_32(int? self, SseSerializer serializer);
 
   @protected
   void sse_encode_opt_box_autoadd_i_64(
@@ -350,10 +459,40 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_ui_play_event(UiPlayEvent self, SseSerializer serializer);
 
   @protected
+  void sse_encode_ui_remote_album(UiRemoteAlbum self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_ui_remote_album_detail(
+    UiRemoteAlbumDetail self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ui_remote_artist(
+    UiRemoteArtist self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ui_remote_artist_detail(
+    UiRemoteArtistDetail self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ui_remote_track(UiRemoteTrack self, SseSerializer serializer);
+
+  @protected
   void sse_encode_ui_scan_result(UiScanResult self, SseSerializer serializer);
 
   @protected
   void sse_encode_ui_scan_stats(UiScanStats self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_ui_subsonic_server_info(
+    UiSubsonicServerInfo self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_ui_track(UiTrack self, SseSerializer serializer);
@@ -363,9 +502,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_unit(void self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_i_32(int self, SseSerializer serializer);
 }
 
 // Section: wire_class
