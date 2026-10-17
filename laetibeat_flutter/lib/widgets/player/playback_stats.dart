@@ -68,3 +68,80 @@ final trackStatsProvider =
     return const <String, rust_stats.UiTrackStat>{};
   }
 });
+
+/// 首页播放记录的时间范围
+enum HistoryPeriod { today, week, month }
+
+/// 某时间段内的播放汇总
+class HistorySummary {
+  const HistorySummary({
+    required this.playCount,
+    required this.trackCount,
+    required this.listenedMs,
+    required this.topArtist,
+    required this.topArtistPlays,
+    required this.topAlbum,
+    required this.topAlbumArtist,
+    required this.topAlbumPlays,
+  });
+
+  const HistorySummary.zero()
+      : playCount = 0,
+        trackCount = 0,
+        listenedMs = 0,
+        topArtist = null,
+        topArtistPlays = 0,
+        topAlbum = null,
+        topAlbumArtist = null,
+        topAlbumPlays = 0;
+
+  final int playCount;
+  final int trackCount;
+  final int listenedMs;
+  final String? topArtist;
+  final int topArtistPlays;
+  final String? topAlbum;
+  final String? topAlbumArtist;
+  final int topAlbumPlays;
+}
+
+/// 首页"播放记录"摘要
+final historySummaryProvider =
+    FutureProvider.family<HistorySummary, HistoryPeriod>((ref, period) async {
+  ref.watch(statsRevisionProvider);
+  final directory =
+      ref.watch(musicLibraryProvider.select((s) => s.value?.directory));
+  if (directory == null) return const HistorySummary.zero();
+
+  final now = DateTime.now();
+  final start = switch (period) {
+    HistoryPeriod.today => DateTime(now.year, now.month, now.day),
+    HistoryPeriod.week =>
+      DateTime(now.year, now.month, now.day - (now.weekday - 1)),
+    HistoryPeriod.month => DateTime(now.year, now.month, 1),
+  };
+  // +1 秒确保刚写入的事件也能被包含
+  final end = now.add(const Duration(seconds: 1));
+
+  try {
+    final summary = await rust_stats.queryHistorySummary(
+      source: 'local',
+      sourceId: directory,
+      startMs: start.millisecondsSinceEpoch,
+      endMs: end.millisecondsSinceEpoch,
+    );
+    return HistorySummary(
+      playCount: summary.playCount.toInt(),
+      trackCount: summary.trackCount.toInt(),
+      listenedMs: summary.listenedMs.toInt(),
+      topArtist: summary.topArtist,
+      topArtistPlays: summary.topArtistPlays.toInt(),
+      topAlbum: summary.topAlbum,
+      topAlbumArtist: summary.topAlbumArtist,
+      topAlbumPlays: summary.topAlbumPlays.toInt(),
+    );
+  } catch (e) {
+    debugPrint('读取播放记录汇总失败: $e');
+    return const HistorySummary.zero();
+  }
+});

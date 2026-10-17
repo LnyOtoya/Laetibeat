@@ -127,9 +127,6 @@ class PlayerNotifier extends Notifier<PlayerState> {
   /// 最近一次落盘的队列指纹,避免同一队列(如整库)每次点歌都重写大文件
   int? _lastSavedQueueSignature;
 
-  /// 播放中按固定间隔落盘进度,避免 position 每次 tick 都写文件
-  DateTime _lastStateSave = DateTime.fromMillisecondsSinceEpoch(0);
-
   @override
   PlayerState build() {
     _backend = createPlaybackBackend();
@@ -186,13 +183,12 @@ class PlayerNotifier extends Notifier<PlayerState> {
       final idx = snapshot.currentIndex.clamp(0, snapshot.queue.length - 1);
       final track = snapshot.queue[idx];
       _mediaLoaded = false;
-      _pendingPosition = snapshot.position;
+      _pendingPosition = Duration.zero;
       _lastSavedQueueSignature = _queueSignature(snapshot.queue);
       return PlayerState(
         queue: snapshot.queue,
         currentIndex: idx,
         isPlaying: false,
-        position: snapshot.position,
         duration: _durationOf(track),
         source: snapshot.source,
         shuffle: snapshot.shuffle,
@@ -209,11 +205,6 @@ class PlayerNotifier extends Notifier<PlayerState> {
     final clamped = (total > Duration.zero && p > total) ? total : p;
     state = state.copyWith(position: clamped);
     _sessionTracker.onPosition(clamped);
-
-    // 播放中节流落盘进度,避免 position 每次 tick 都写文件
-    if (state.isPlaying) {
-      _saveStateSoon(minInterval: const Duration(seconds: 3));
-    }
   }
 
   void _onDuration(Duration d) {
@@ -242,7 +233,6 @@ class PlayerNotifier extends Notifier<PlayerState> {
     if (state.queue.isEmpty) return;
     if (state.isPlaying) {
       await _backend.pause();
-      unawaited(_saveState());
       return;
     }
     // 启动恢复的队列尚未装载:先懒加载到上次进度再播放
@@ -256,14 +246,12 @@ class PlayerNotifier extends Notifier<PlayerState> {
       _pendingPosition = Duration.zero;
     }
     await _backend.play();
-    unawaited(_saveState());
   }
 
   //供外部(如 MPRIS)强制暂停
   Future<void> pause() async {
     if (state.queue.isEmpty || !_mediaLoaded) return;
     await _backend.pause();
-    unawaited(_saveState());
   }
 
   //切换音频输出设备
@@ -277,10 +265,9 @@ class PlayerNotifier extends Notifier<PlayerState> {
       return;
     }
     await _backend.play();
-    unawaited(_saveState());
   }
 
-  /// 恢复后首次播放:先把当前曲目以暂停状态装载,seek 到上次进度后再播放。
+  /// 恢复后首次播放:先把当前曲目以暂停状态装载,seek 到首次播放位置后再播放。
   /// 先 open(play:false) 再 seek,避免从曲首先响一下再跳转。
   Future<void> _loadPendingAndPlay() async {
     if (_loadingMedia) return;
@@ -314,7 +301,6 @@ class PlayerNotifier extends Notifier<PlayerState> {
       _sessionTracker.onSeek(resumeAt);
       await _backend.play();
       _pendingPosition = Duration.zero;
-      unawaited(_saveState());
     } finally {
       _loadingMedia = false;
     }
@@ -418,14 +404,11 @@ class PlayerNotifier extends Notifier<PlayerState> {
     _sessionTracker.onSeek(target);
 
     if (!_mediaLoaded) {
-      // 引擎尚未装载:只记录待恢复进度,首次播放时再 seek
+      // 引擎尚未装载:只记录首次播放时的起播位置
       _pendingPosition = target;
-      _saveStateSoon();
       return;
     }
     _backend.seek(target);
-    // 拖拽会连续触发 seek,这里节流写盘
-    _saveStateSoon();
   }
 
   //手动"下一首":随机模式下随机选曲(避开当前曲),否则顺序下一首并首尾循环。
@@ -469,7 +452,6 @@ class PlayerNotifier extends Notifier<PlayerState> {
       return;
     }
     state = state.copyWith(position: state.duration);
-    unawaited(_saveState());
   }
 
   //随机选一个不同于当前曲目的索引
@@ -487,7 +469,6 @@ class PlayerNotifier extends Notifier<PlayerState> {
     state = state.copyWith(position: Duration.zero, isPlaying: true);
     _backend.seek(Duration.zero);
     _backend.play();
-    unawaited(_saveState());
   }
 
   //上一首
@@ -518,19 +499,17 @@ class PlayerNotifier extends Notifier<PlayerState> {
     );
   }
 
-  /// 只写小状态文件(索引/当前曲 id/进度/模式),可较高频调用
+  /// 只写小状态文件(索引/当前曲 id/来源/模式),不记录播放进度
   Future<void> _saveState() async {
     if (state.queue.isEmpty) return;
     if (_savingState) {
       _stateSavePending = true;
       return;
     }
-    _lastStateSave = DateTime.now();
     final current = state.current;
     final snapshot = PlaybackStateSnapshot(
       currentIndex: state.currentIndex,
       currentTrackId: current?.id,
-      position: state.position,
       source: state.source,
       shuffle: state.shuffle,
       repeatMode: state.repeatMode.name,
@@ -546,16 +525,6 @@ class PlayerNotifier extends Notifier<PlayerState> {
         unawaited(_saveState());
       }
     }
-  }
-
-  /// 按最小间隔节流保存,用于进度 tick 与连续 seek
-  void _saveStateSoon({
-    Duration minInterval = const Duration(milliseconds: 800),
-  }) {
-    final now = DateTime.now();
-    if (now.difference(_lastStateSave) < minInterval) return;
-    _lastStateSave = now;
-    unawaited(_saveState());
   }
 
   /// 队列文件可能较大,只在队列内容变化时写

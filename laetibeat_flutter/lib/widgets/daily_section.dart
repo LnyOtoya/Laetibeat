@@ -79,23 +79,33 @@ class _DailySectionState extends ConsumerState<DailySection> {
           if (recommendations.isEmpty)
             _emptyHint(theme)
           else
-            Row(
-              children: [
-                for (int i = 0; i < recommendations.length; i++) ...[
-                  if (i > 0) SizedBox(width: theme.spacing.md),
-                  Expanded(
-                    flex: 1,
-                    child: AlbumCard(
-                      title: recommendations[i].title,
-                      subtitle: recommendations[i].artist,
-                      cover: _RecommendationCover(
-                        track: byId[recommendations[i].coverTrackId],
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final spacing = theme.spacing.md;
+                // 固定按 4 列槽位计算卡片宽度:推荐数量不足时不会把卡片拉大
+                final available =
+                    constraints.maxWidth.isFinite ? constraints.maxWidth : 800.0;
+                final cardWidth = (available - spacing * 3) / 4;
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (int i = 0; i < recommendations.length; i++) ...[
+                      if (i > 0) SizedBox(width: spacing),
+                      SizedBox(
+                        width: cardWidth,
+                        child: AlbumCard(
+                          title: recommendations[i].title,
+                          subtitle: recommendations[i].artist,
+                          cover: _RecommendationCover(
+                            track: byId[recommendations[i].coverTrackId],
+                          ),
+                          onTap: () => _playAlbum(recommendations[i], byId),
+                        ),
                       ),
-                      onTap: () => _playAlbum(recommendations[i], byId),
-                    ),
-                  ),
-                ],
-              ],
+                    ],
+                  ],
+                );
+              },
             ),
         ],
       ),

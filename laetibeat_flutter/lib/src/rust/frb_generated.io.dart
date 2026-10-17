@@ -102,6 +102,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   UiArtist dco_decode_ui_artist(dynamic raw);
 
   @protected
+  UiHistorySummary dco_decode_ui_history_summary(dynamic raw);
+
+  @protected
   UiLibrary dco_decode_ui_library(dynamic raw);
 
   @protected
@@ -204,6 +207,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   UiArtist sse_decode_ui_artist(SseDeserializer deserializer);
+
+  @protected
+  UiHistorySummary sse_decode_ui_history_summary(SseDeserializer deserializer);
 
   @protected
   UiLibrary sse_decode_ui_library(SseDeserializer deserializer);
@@ -330,6 +336,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_ui_artist(UiArtist self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_ui_history_summary(
+    UiHistorySummary self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_ui_library(UiLibrary self, SseSerializer serializer);

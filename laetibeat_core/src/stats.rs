@@ -1,4 +1,4 @@
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, OptionalExtension};
 use std::sync::{Mutex, OnceLock};
 
 /// 统计库结构版本;后续变更通过 PRAGMA user_version 迁移
@@ -69,6 +69,19 @@ pub struct TrackStat {
     pub first_played_at: i64,
     pub last_played_at: i64,
     pub completion_rate: f64,
+}
+
+/// 某时间段内的播放汇总
+#[derive(Debug, Clone, Default)]
+pub struct HistorySummary {
+    pub play_count: i64,
+    pub track_count: i64,
+    pub listened_ms: i64,
+    pub top_artist: Option<String>,
+    pub top_artist_plays: i64,
+    pub top_album: Option<String>,
+    pub top_album_artist: Option<String>,
+    pub top_album_plays: i64,
 }
 
 fn map_err<E: std::fmt::Display>(error: E) -> String {
@@ -216,6 +229,10 @@ fn query_track_stats_on(
 /// 最近播放事件(供首页 History 等后续功能使用)。
 pub fn query_recent_events(limit: u32) -> Result<Vec<PlayEvent>, String> {
     let conn = db()?;
+    query_recent_events_on(&conn, limit)
+}
+
+fn query_recent_events_on(conn: &Connection, limit: u32) -> Result<Vec<PlayEvent>, String> {
     let mut stmt = conn
         .prepare(
             "SELECT source, source_id, track_id, started_at, listened_ms,
@@ -250,6 +267,97 @@ pub fn query_recent_events(limit: u32) -> Result<Vec<PlayEvent>, String> {
     Ok(events)
 }
 
+/// 统计某个时间段内的播放次数、去重曲目数和累计收听时长。
+pub fn query_history_summary(
+    source: &str,
+    source_id: &str,
+    start_ms: i64,
+    end_ms: i64,
+) -> Result<HistorySummary, String> {
+    let conn = db()?;
+    query_history_summary_on(&conn, source, source_id, start_ms, end_ms)
+}
+
+fn query_history_summary_on(
+    conn: &Connection,
+    source: &str,
+    source_id: &str,
+    start_ms: i64,
+    end_ms: i64,
+) -> Result<HistorySummary, String> {
+    let mut summary = conn
+        .query_row(
+            "SELECT COUNT(*), COUNT(DISTINCT track_id), COALESCE(SUM(listened_ms), 0)
+             FROM play_events
+             WHERE source = ?1 AND source_id = ?2
+               AND started_at >= ?3 AND started_at < ?4",
+            params![source, source_id, start_ms, end_ms],
+            |row| {
+                Ok(HistorySummary {
+                    play_count: row.get(0)?,
+                    track_count: row.get(1)?,
+                    listened_ms: row.get(2)?,
+                    ..HistorySummary::default()
+                })
+            },
+        )
+        .map_err(map_err)?;
+
+    // 播放最多的艺术家(按事件次数)
+    let top_artist: Option<(String, i64)> = conn
+        .query_row(
+            "SELECT json_extract(metadata_json, '$.artist') AS name, COUNT(*) AS plays
+             FROM play_events
+             WHERE source = ?1 AND source_id = ?2
+               AND started_at >= ?3 AND started_at < ?4
+               AND metadata_json IS NOT NULL
+               AND json_valid(metadata_json)
+               AND json_extract(metadata_json, '$.artist') IS NOT NULL
+               AND json_extract(metadata_json, '$.artist') <> ''
+             GROUP BY name
+             ORDER BY plays DESC
+             LIMIT 1",
+            params![source, source_id, start_ms, end_ms],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()
+        .map_err(map_err)?;
+
+    // 播放最多的专辑(按 albumId + 专辑名 + 艺术家分组,避免同名专辑合并)
+    let top_album: Option<(String, Option<String>, i64)> = conn
+        .query_row(
+            "SELECT json_extract(metadata_json, '$.album') AS album,
+                    json_extract(metadata_json, '$.artist') AS artist,
+                    COUNT(*) AS plays
+             FROM play_events
+             WHERE source = ?1 AND source_id = ?2
+               AND started_at >= ?3 AND started_at < ?4
+               AND metadata_json IS NOT NULL
+               AND json_valid(metadata_json)
+               AND json_extract(metadata_json, '$.album') IS NOT NULL
+               AND json_extract(metadata_json, '$.album') <> ''
+             GROUP BY json_extract(metadata_json, '$.albumId'), album, artist
+             ORDER BY plays DESC
+             LIMIT 1",
+            params![source, source_id, start_ms, end_ms],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+        .optional()
+        .map_err(map_err)?;
+
+    if let Some((artist, plays)) = top_artist {
+        summary.top_artist = Some(artist);
+        summary.top_artist_plays = plays;
+    }
+    if let Some((album, artist, plays)) = top_album {
+        summary.top_album = Some(album);
+        summary.top_album_artist = artist;
+        summary.top_album_plays = plays;
+    }
+
+    Ok(summary)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -269,7 +377,9 @@ mod tests {
             completed: false,
             skipped: true,
             queue_source: Some("搜索".to_string()),
-            metadata_json: None,
+            metadata_json: Some(
+                r#"{"artist":"A","album":"Alb","albumId":"aid"}"#.to_string(),
+            ),
         };
         record_event_on(&conn, &event).unwrap();
 
@@ -290,5 +400,14 @@ mod tests {
         assert_eq!(stats[0].play_count, 2);
         assert_eq!(stats[0].completion_rate, 0.5);
         assert_eq!(stats[0].last_played_at, 2_000);
+
+        let summary = query_history_summary_on(&conn, "local", "/music", 0, 10_000).unwrap();
+        assert_eq!(summary.play_count, 2);
+        assert_eq!(summary.track_count, 1);
+        assert_eq!(summary.listened_ms, 60_000);
+        assert_eq!(summary.top_artist.as_deref(), Some("A"));
+        assert_eq!(summary.top_artist_plays, 2);
+        assert_eq!(summary.top_album.as_deref(), Some("Alb"));
+        assert_eq!(summary.top_album_artist.as_deref(), Some("A"));
     }
 }

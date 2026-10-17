@@ -27,6 +27,67 @@ Future<List<UiTrackStat>> queryTrackStats({
 Future<List<UiPlayEvent>> queryRecentPlayEvents({required int limit}) =>
     RustLib.instance.api.crateApiStatsQueryRecentPlayEvents(limit: limit);
 
+/// 某时间段内的播放汇总
+Future<UiHistorySummary> queryHistorySummary({
+  required String source,
+  required String sourceId,
+  required PlatformInt64 startMs,
+  required PlatformInt64 endMs,
+}) => RustLib.instance.api.crateApiStatsQueryHistorySummary(
+  source: source,
+  sourceId: sourceId,
+  startMs: startMs,
+  endMs: endMs,
+);
+
+/// 某时间段内的播放汇总
+class UiHistorySummary {
+  final PlatformInt64 playCount;
+  final PlatformInt64 trackCount;
+  final PlatformInt64 listenedMs;
+  final String? topArtist;
+  final PlatformInt64 topArtistPlays;
+  final String? topAlbum;
+  final String? topAlbumArtist;
+  final PlatformInt64 topAlbumPlays;
+
+  const UiHistorySummary({
+    required this.playCount,
+    required this.trackCount,
+    required this.listenedMs,
+    this.topArtist,
+    required this.topArtistPlays,
+    this.topAlbum,
+    this.topAlbumArtist,
+    required this.topAlbumPlays,
+  });
+
+  @override
+  int get hashCode =>
+      playCount.hashCode ^
+      trackCount.hashCode ^
+      listenedMs.hashCode ^
+      topArtist.hashCode ^
+      topArtistPlays.hashCode ^
+      topAlbum.hashCode ^
+      topAlbumArtist.hashCode ^
+      topAlbumPlays.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is UiHistorySummary &&
+          runtimeType == other.runtimeType &&
+          playCount == other.playCount &&
+          trackCount == other.trackCount &&
+          listenedMs == other.listenedMs &&
+          topArtist == other.topArtist &&
+          topArtistPlays == other.topArtistPlays &&
+          topAlbum == other.topAlbum &&
+          topAlbumArtist == other.topAlbumArtist &&
+          topAlbumPlays == other.topAlbumPlays;
+}
+
 /// 播放事件(已通过记录阈值)
 class UiPlayEvent {
   final String source;

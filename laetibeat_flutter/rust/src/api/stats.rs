@@ -32,6 +32,19 @@ pub struct UiTrackStat {
     pub completion_rate: f64,
 }
 
+/// 某时间段内的播放汇总
+#[frb(non_opaque)]
+pub struct UiHistorySummary {
+    pub play_count: i64,
+    pub track_count: i64,
+    pub listened_ms: i64,
+    pub top_artist: Option<String>,
+    pub top_artist_plays: i64,
+    pub top_album: Option<String>,
+    pub top_album_artist: Option<String>,
+    pub top_album_plays: i64,
+}
+
 /// 初始化统计库(Dart 启动时传入应用数据目录下的 db 路径)
 pub fn init_stats_db(path: String) -> Result<(), String> {
     core_stats::init_db(&path)
@@ -93,4 +106,24 @@ pub fn query_recent_play_events(limit: u32) -> Result<Vec<UiPlayEvent>, String> 
             metadata_json: event.metadata_json,
         })
         .collect())
+}
+
+/// 某时间段内的播放汇总
+pub fn query_history_summary(
+    source: String,
+    source_id: String,
+    start_ms: i64,
+    end_ms: i64,
+) -> Result<UiHistorySummary, String> {
+    let summary = core_stats::query_history_summary(&source, &source_id, start_ms, end_ms)?;
+    Ok(UiHistorySummary {
+        play_count: summary.play_count,
+        track_count: summary.track_count,
+        listened_ms: summary.listened_ms,
+        top_artist: summary.top_artist,
+        top_artist_plays: summary.top_artist_plays,
+        top_album: summary.top_album,
+        top_album_artist: summary.top_album_artist,
+        top_album_plays: summary.top_album_plays,
+    })
 }

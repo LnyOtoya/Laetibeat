@@ -39,7 +39,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 666213648;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1201117798;
 
 // Section: executor
 
@@ -140,6 +140,47 @@ fn wire__crate__api__simple__pick_directory_impl(
             move |context| {
                 transform_result_sse::<_, ()>((move || {
                     let output_ok = Ok::<_, ()>(crate::api::simple::pick_directory())?;
+                    std::result::Result::Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__stats__query_history_summary_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "query_history_summary",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_source = <String>::sse_decode(&mut deserializer);
+            let api_source_id = <String>::sse_decode(&mut deserializer);
+            let api_start_ms = <i64>::sse_decode(&mut deserializer);
+            let api_end_ms = <i64>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::stats::query_history_summary(
+                        api_source,
+                        api_source_id,
+                        api_start_ms,
+                        api_end_ms,
+                    )?;
                     std::result::Result::Ok(output_ok)
                 })())
             }
@@ -592,6 +633,30 @@ impl SseDecode for crate::api::simple::UiArtist {
     }
 }
 
+impl SseDecode for crate::api::stats::UiHistorySummary {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_playCount = <i64>::sse_decode(deserializer);
+        let mut var_trackCount = <i64>::sse_decode(deserializer);
+        let mut var_listenedMs = <i64>::sse_decode(deserializer);
+        let mut var_topArtist = <Option<String>>::sse_decode(deserializer);
+        let mut var_topArtistPlays = <i64>::sse_decode(deserializer);
+        let mut var_topAlbum = <Option<String>>::sse_decode(deserializer);
+        let mut var_topAlbumArtist = <Option<String>>::sse_decode(deserializer);
+        let mut var_topAlbumPlays = <i64>::sse_decode(deserializer);
+        return crate::api::stats::UiHistorySummary {
+            play_count: var_playCount,
+            track_count: var_trackCount,
+            listened_ms: var_listenedMs,
+            top_artist: var_topArtist,
+            top_artist_plays: var_topArtistPlays,
+            top_album: var_topAlbum,
+            top_album_artist: var_topAlbumArtist,
+            top_album_plays: var_topAlbumPlays,
+        };
+    }
+}
+
 impl SseDecode for crate::api::simple::UiLibrary {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -762,17 +827,18 @@ fn pde_ffi_dispatcher_primary_impl(
         1 => wire__crate__api__simple__init_app_impl(port, ptr, rust_vec_len, data_len),
         2 => wire__crate__api__stats__init_stats_db_impl(port, ptr, rust_vec_len, data_len),
         3 => wire__crate__api__simple__pick_directory_impl(port, ptr, rust_vec_len, data_len),
-        4 => wire__crate__api__stats__query_recent_play_events_impl(
+        4 => wire__crate__api__stats__query_history_summary_impl(port, ptr, rust_vec_len, data_len),
+        5 => wire__crate__api__stats__query_recent_play_events_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        5 => wire__crate__api__stats__query_track_stats_impl(port, ptr, rust_vec_len, data_len),
-        6 => wire__crate__api__metadata__read_cover_impl(port, ptr, rust_vec_len, data_len),
-        7 => wire__crate__api__metadata__read_lyrics_impl(port, ptr, rust_vec_len, data_len),
-        8 => wire__crate__api__stats__record_play_event_impl(port, ptr, rust_vec_len, data_len),
-        9 => wire__crate__api__simple__scan_local_music_folder_impl(
+        6 => wire__crate__api__stats__query_track_stats_impl(port, ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__metadata__read_cover_impl(port, ptr, rust_vec_len, data_len),
+        8 => wire__crate__api__metadata__read_lyrics_impl(port, ptr, rust_vec_len, data_len),
+        9 => wire__crate__api__stats__record_play_event_impl(port, ptr, rust_vec_len, data_len),
+        10 => wire__crate__api__simple__scan_local_music_folder_impl(
             port,
             ptr,
             rust_vec_len,
@@ -836,6 +902,33 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::simple::UiArtist>
     for crate::api::simple::UiArtist
 {
     fn into_into_dart(self) -> crate::api::simple::UiArtist {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::stats::UiHistorySummary {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.play_count.into_into_dart().into_dart(),
+            self.track_count.into_into_dart().into_dart(),
+            self.listened_ms.into_into_dart().into_dart(),
+            self.top_artist.into_into_dart().into_dart(),
+            self.top_artist_plays.into_into_dart().into_dart(),
+            self.top_album.into_into_dart().into_dart(),
+            self.top_album_artist.into_into_dart().into_dart(),
+            self.top_album_plays.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::stats::UiHistorySummary
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::stats::UiHistorySummary>
+    for crate::api::stats::UiHistorySummary
+{
+    fn into_into_dart(self) -> crate::api::stats::UiHistorySummary {
         self
     }
 }
@@ -1196,6 +1289,20 @@ impl SseEncode for crate::api::simple::UiArtist {
         <String>::sse_encode(self.name, serializer);
         <u32>::sse_encode(self.track_count, serializer);
         <String>::sse_encode(self.cover_track_id, serializer);
+    }
+}
+
+impl SseEncode for crate::api::stats::UiHistorySummary {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i64>::sse_encode(self.play_count, serializer);
+        <i64>::sse_encode(self.track_count, serializer);
+        <i64>::sse_encode(self.listened_ms, serializer);
+        <Option<String>>::sse_encode(self.top_artist, serializer);
+        <i64>::sse_encode(self.top_artist_plays, serializer);
+        <Option<String>>::sse_encode(self.top_album, serializer);
+        <Option<String>>::sse_encode(self.top_album_artist, serializer);
+        <i64>::sse_encode(self.top_album_plays, serializer);
     }
 }
 

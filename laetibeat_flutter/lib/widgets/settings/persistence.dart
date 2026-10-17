@@ -298,15 +298,14 @@ class LibrarySnapshotStore {
 }
 
 // ---------------------------------------------------------------------------
-// 播放队列/位置快照
+// 播放队列/播放状态快照
 // ---------------------------------------------------------------------------
 
-/// 播放状态快照(小文件,随播放进度更新)
+/// 播放状态快照(只记当前曲目与播放模式,不记播放进度)
 class PlaybackStateSnapshot {
   const PlaybackStateSnapshot({
     required this.currentIndex,
     required this.currentTrackId,
-    required this.position,
     required this.source,
     required this.shuffle,
     required this.repeatMode,
@@ -314,7 +313,6 @@ class PlaybackStateSnapshot {
 
   final int currentIndex;
   final String? currentTrackId;
-  final Duration position;
   final String source;
   final bool shuffle;
 
@@ -327,7 +325,6 @@ class PlaybackSnapshot {
   const PlaybackSnapshot({
     required this.queue,
     required this.currentIndex,
-    required this.position,
     required this.source,
     required this.shuffle,
     required this.repeatMode,
@@ -335,16 +332,15 @@ class PlaybackSnapshot {
 
   final List<rust.UiTrack> queue;
   final int currentIndex;
-  final Duration position;
   final String source;
   final bool shuffle;
   final String repeatMode;
 }
 
-/// 播放队列/位置存储。
+/// 播放队列/状态存储。
 ///
 /// 队列文件只在队列内容变化时写(可能几 MB),状态文件很小,
-/// 随播放进度每几秒写一次,避免反复序列化整个队列。
+/// 只在切歌/切换播放模式时写;不持久化播放进度。
 class PlaybackSnapshotStore {
   static const int schemaVersion = 1;
   static const String _queueFileName = 'playback_queue.json';
@@ -370,7 +366,6 @@ class PlaybackSnapshotStore {
       if (tracks.isEmpty) return null;
 
       var currentIndex = 0;
-      var position = Duration.zero;
       var source = '曲目';
       var shuffle = false;
       var repeatMode = 'off';
@@ -387,18 +382,10 @@ class PlaybackSnapshotStore {
           repeatMode = stateMap['repeatMode'] as String? ?? repeatMode;
 
           final savedTrackId = stateMap['currentTrackId'] as String?;
-          if (savedTrackId != null) {
+          if (savedTrackId != null && tracks[currentIndex].id != savedTrackId) {
             // 优先信任保存的索引(队列允许重复曲目);只有索引对不上时才按 id 查找
-            if (tracks[currentIndex].id != savedTrackId) {
-              final found = tracks.indexWhere((t) => t.id == savedTrackId);
-              if (found >= 0) currentIndex = found;
-            }
-            // 只有状态文件与当前曲目一致时才恢复进度
-            if (savedTrackId == tracks[currentIndex].id) {
-              position = Duration(
-                milliseconds: stateMap['positionMs'] as int? ?? 0,
-              );
-            }
+            final found = tracks.indexWhere((t) => t.id == savedTrackId);
+            if (found >= 0) currentIndex = found;
           }
         }
       }
@@ -406,7 +393,6 @@ class PlaybackSnapshotStore {
       return PlaybackSnapshot(
         queue: tracks,
         currentIndex: currentIndex,
-        position: position,
         source: source,
         shuffle: shuffle,
         repeatMode: repeatMode,
@@ -438,7 +424,6 @@ class PlaybackSnapshotStore {
         'schemaVersion': schemaVersion,
         'currentIndex': state.currentIndex,
         'currentTrackId': state.currentTrackId,
-        'positionMs': state.position.inMilliseconds,
         'source': state.source,
         'shuffle': state.shuffle,
         'repeatMode': state.repeatMode,
@@ -446,7 +431,7 @@ class PlaybackSnapshotStore {
       // 状态文件很小,直接编码,不必开 isolate
       await _writeAtomically(file, jsonEncode(payload));
     } catch (e) {
-      debugPrint('保存播放位置失败: $e');
+      debugPrint('保存播放状态失败: $e');
     }
   }
 
