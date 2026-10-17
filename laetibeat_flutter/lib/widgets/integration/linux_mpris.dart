@@ -31,6 +31,8 @@ class LinuxMprisIntegration {
   DBusClient? _client;
   _MprisObject? _object;
   DBusRequestNameReply? _nameReply;
+  StreamSubscription<String>? _nameAcquiredSub;
+  StreamSubscription<String>? _nameLostSub;
 
   LinuxMprisIntegration({
     required MprisStateReader readState,
@@ -59,7 +61,19 @@ class LinuxMprisIntegration {
       _client = DBusClient.session();
       _object = _MprisObject(this);
       await _client!.registerObject(_object!);
-      _nameReply = await _client!.requestName(busName);
+      // 名字所有权自愈:被抢占/异常丢失时自动重新申请,避免 waybar 一直
+      // 读到"ServiceUnknown"而永久不显示;重新拿到时立即补推一次属性。
+      _nameAcquiredSub = _client!.nameAcquired.listen((name) {
+        if (name != busName) return;
+        _nameReply = DBusRequestNameReply.primaryOwner;
+        push();
+      });
+      _nameLostSub = _client!.nameLost.listen((name) {
+        if (name != busName) return;
+        _nameReply = null;
+        _requestName();
+      });
+      await _requestName();
     } catch (_) {
       _nameReply = null;
     }
@@ -68,10 +82,23 @@ class LinuxMprisIntegration {
     }
   }
 
+  Future<void> _requestName() async {
+    try {
+      _nameReply = await _client?.requestName(busName);
+    } catch (_) {
+      _nameReply = null;
+    }
+  }
+
   Future<void> stop() async {
     try {
+      await _nameAcquiredSub?.cancel();
+      await _nameLostSub?.cancel();
+      _nameAcquiredSub = null;
+      _nameLostSub = null;
       final client = _client;
       if (client != null) {
+        if (_ownsName) await client.releaseName(busName);
         await client.unregisterObject(_object!);
         await client.close();
       }
@@ -141,6 +168,7 @@ class _MprisObject extends DBusObject {
     'CanSetFullscreen',
     'CanRaise',
     'Fullscreen',
+    'HasTrackList',
     'Identity',
     'DesktopEntry',
     'SupportedUriSchemes',
@@ -290,6 +318,8 @@ class _MprisObject extends DBusObject {
         case 'CanRaise':
           return DBusBoolean(false);
         case 'Fullscreen':
+          return DBusBoolean(false);
+        case 'HasTrackList':
           return DBusBoolean(false);
         case 'Identity':
           return DBusString(_identity);

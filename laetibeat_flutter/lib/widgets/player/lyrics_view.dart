@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 
@@ -100,6 +101,10 @@ class _SyncedLyrics extends ConsumerStatefulWidget {
 class _SyncedLyricsState extends ConsumerState<_SyncedLyrics> {
   final ScrollController _controller = ScrollController();
 
+  /// 只标记"当前高亮行"的 key:每帧把它挂到 active 行上,
+  /// 帧后按该行真实渲染位置精确居中,避免固定行高估算累积误差导致漂移。
+  final GlobalKey _activeKey = GlobalKey();
+
   @override
   void dispose() {
     _controller.dispose();
@@ -120,21 +125,7 @@ class _SyncedLyricsState extends ConsumerState<_SyncedLyrics> {
     }
 
     // 当前行变化时,平滑滚动让高亮行处于视口中部(用户已手动拖动则不打扰)
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_controller.hasClients) return;
-      final itemHeight = theme.spacing.xxl + theme.spacing.lg;
-      final target = (active * itemHeight) -
-          (_controller.position.viewportDimension / 2) +
-          (itemHeight / 2);
-      // 拖拽/滚动中不强制跳动,避免抢夺用户输入
-      if (_controller.position.isScrollingNotifier.value) {
-        return;
-      }
-      _controller.jumpTo(target.clamp(
-        0.0,
-        _controller.position.maxScrollExtent,
-      ));
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _revealActive());
 
     return ListView.builder(
       controller: _controller,
@@ -147,6 +138,7 @@ class _SyncedLyricsState extends ConsumerState<_SyncedLyrics> {
         final line = widget.lines[i];
         final isActive = i == active;
         return AnimatedDefaultTextStyle(
+          key: isActive ? _activeKey : null,
           duration: kSectionAnimDuration,
           style: (isActive
                   ? theme.typeScale.headlineSmall
@@ -164,6 +156,26 @@ class _SyncedLyricsState extends ConsumerState<_SyncedLyrics> {
           ),
         );
       },
+    );
+  }
+
+  /// 把当前高亮行滚动到视口正中。用 viewport 的真实布局位置计算目标偏移,
+  /// 而非以固定行高估算,避免长歌词逐行累积误差把当前行顶出屏幕。
+  void _revealActive() {
+    if (!_controller.hasClients) return;
+    // 拖拽/滚动中不强制跳动,避免抢夺用户输入
+    if (_controller.position.isScrollingNotifier.value) return;
+
+    final ctx = _activeKey.currentContext;
+    if (ctx == null) return; // 该行尚未布局(如大跨度 seek 未构建)
+    final ro = ctx.findRenderObject();
+    if (ro == null) return;
+
+    final viewport = RenderAbstractViewport.of(ro);
+    // alignment 0.5 = 目标对象居于视口正中
+    final target = viewport.getOffsetToReveal(ro, 0.5).offset;
+    _controller.jumpTo(
+      target.clamp(0.0, _controller.position.maxScrollExtent),
     );
   }
 }

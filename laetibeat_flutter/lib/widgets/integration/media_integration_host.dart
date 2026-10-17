@@ -19,31 +19,36 @@ class MediaIntegrationHost extends ConsumerStatefulWidget {
 
 class _MediaIntegrationHostState extends ConsumerState<MediaIntegrationHost> {
   LinuxMprisIntegration? _mpris;
-  bool _started = false;
 
   @override
   Widget build(BuildContext context) {
-    // 播放状态一旦变化就向 MPRIS 推送(合并信号,不逐帧高频推送)
-    ref.listen(playerProvider, (prev, next) {
-      _mpris?.push();
-    });
+    // 仅在 MPRIS 真正关心的字段(当前曲目/播放状态/时长)变化时才推送,
+    // 避免播放进度 position 每次 tick(~12 次/秒)都触发 PropertiesChanged
+    // 高频信号风暴:position 属轮询型,由客户端自行查询,不作变更信号。
+    ref.listen(
+      playerProvider.select((s) => (s.current?.id, s.isPlaying, s.duration)),
+      (prev, next) => _mpris?.push(),
+    );
     _maybeStart();
     return widget.child;
   }
 
   void _maybeStart() {
-    if (_started) return;
-    _started = true;
-    _mpris = LinuxMprisIntegration(
-      readState: () => ref.read(playerProvider),
-      onPlay: () => ref.read(playerProvider.notifier).resume(),
-      onPause: () => ref.read(playerProvider.notifier).pause(),
-      onNext: () => ref.read(playerProvider.notifier).next(),
-      onPrevious: () => ref.read(playerProvider.notifier).prev(),
-      onSeek: (d) => ref.read(playerProvider.notifier).seek(d),
-    );
-    // 无 D-Bus 会话时内部静默降级,不炸应用
-    _mpris!.start();
+    // TODO(mpris): 自研 D-Bus 服务端(linux_mpris.dart)在启动时会卡死 waybar,
+    // 且已证明难以修复。临时停用;待接入移动端后台播放时,统一改用
+    // audio_service + audio_service_mpris 替换整层后再启用。
+    return;
+    // if (_started) return;
+    // _mpris = LinuxMprisIntegration(
+    //   readState: () => ref.read(playerProvider),
+    //   onPlay: () => ref.read(playerProvider.notifier).resume(),
+    //   onPause: () => ref.read(playerProvider.notifier).pause(),
+    //   onNext: () => ref.read(playerProvider.notifier).next(),
+    //   onPrevious: () => ref.read(playerProvider.notifier).prev(),
+    //   onSeek: (d) => ref.read(playerProvider.notifier).seek(d),
+    // );
+    // // 无 D-Bus 会话时内部静默降级,不炸应用
+    // _mpris!.start();
   }
 
   @override
