@@ -26,12 +26,16 @@ Future<void> main() async {
     await windowManager.focus();
   });
   await RustLib.init();
-  // 预加载本地设置,供 Riverpod provider 同步读取
+  // 预加载本地设置与播放快照,供 Riverpod provider 构建时同步恢复
   final prefs = await SharedPreferences.getInstance();
+  final playbackStore = PlaybackSnapshotStore();
+  final playbackSnapshot = await playbackStore.load();
   runApp(
     ProviderScope(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
+        playbackSnapshotStoreProvider.overrideWithValue(playbackStore),
+        initialPlaybackSnapshotProvider.overrideWithValue(playbackSnapshot),
       ],
       child: const MyApp(),
     ),

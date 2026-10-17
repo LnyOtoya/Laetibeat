@@ -67,8 +67,8 @@ abstract class PlaybackBackend {
   /// 切换音频输出设备(id 即设备的唯一标识)
   Future<void> setAudioDevice(String id);
 
-  /// 装载并开始播放一首曲目
-  Future<void> open(PlaybackTrack track);
+  /// 装载一首曲目。[play] 为 false 时只加载不播放(用于恢复上次进度)。
+  Future<void> open(PlaybackTrack track, {bool play = true});
 
   Future<void> play();
 
@@ -138,9 +138,8 @@ class MediaKitBackend implements PlaybackBackend {
       _player.setAudioDevice(mk.AudioDevice(id, ''));
 
   @override
-  Future<void> open(PlaybackTrack track) async {
-    await _player.open(mk.Media(track.uri));
-    await _player.play();
+  Future<void> open(PlaybackTrack track, {bool play = true}) async {
+    await _player.open(mk.Media(track.uri), play: play);
   }
 
   @override
