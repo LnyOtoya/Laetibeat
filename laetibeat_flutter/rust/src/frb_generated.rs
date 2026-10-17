@@ -157,6 +157,18 @@ impl SseDecode for String {
     }
 }
 
+impl SseDecode for Vec<String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = Vec::with_capacity(len_ as usize);
+        for idx_ in 0..len_ {
+            ans_.push(<String>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for Vec<u8> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -164,6 +176,30 @@ impl SseDecode for Vec<u8> {
         let mut ans_ = Vec::with_capacity(len_ as usize);
         for idx_ in 0..len_ {
             ans_.push(<u8>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::simple::UiAlbum> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = Vec::with_capacity(len_ as usize);
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::simple::UiAlbum>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::api::simple::UiArtist> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = Vec::with_capacity(len_ as usize);
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::simple::UiArtist>::sse_decode(deserializer));
         }
         return ans_;
     }
@@ -192,10 +228,91 @@ impl SseDecode for Option<String> {
     }
 }
 
+impl SseDecode for Option<u32> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<u32>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<u8> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<u8>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for u32 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_u32::<NativeEndian>().unwrap()
+    }
+}
+
 impl SseDecode for u8 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         deserializer.cursor.read_u8().unwrap()
+    }
+}
+
+impl SseDecode for crate::api::simple::UiAlbum {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <String>::sse_decode(deserializer);
+        let mut var_title = <String>::sse_decode(deserializer);
+        let mut var_artist = <String>::sse_decode(deserializer);
+        let mut var_year = <Option<u32>>::sse_decode(deserializer);
+        let mut var_trackCount = <u32>::sse_decode(deserializer);
+        let mut var_coverTrackId = <String>::sse_decode(deserializer);
+        let mut var_trackIds = <Vec<String>>::sse_decode(deserializer);
+        return crate::api::simple::UiAlbum {
+            id: var_id,
+            title: var_title,
+            artist: var_artist,
+            year: var_year,
+            track_count: var_trackCount,
+            cover_track_id: var_coverTrackId,
+            track_ids: var_trackIds,
+        };
+    }
+}
+
+impl SseDecode for crate::api::simple::UiArtist {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <String>::sse_decode(deserializer);
+        let mut var_name = <String>::sse_decode(deserializer);
+        let mut var_trackCount = <u32>::sse_decode(deserializer);
+        let mut var_coverTrackId = <String>::sse_decode(deserializer);
+        return crate::api::simple::UiArtist {
+            id: var_id,
+            name: var_name,
+            track_count: var_trackCount,
+            cover_track_id: var_coverTrackId,
+        };
+    }
+}
+
+impl SseDecode for crate::api::simple::UiLibrary {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_tracks = <Vec<crate::api::simple::UiTrack>>::sse_decode(deserializer);
+        let mut var_albums = <Vec<crate::api::simple::UiAlbum>>::sse_decode(deserializer);
+        let mut var_artists = <Vec<crate::api::simple::UiArtist>>::sse_decode(deserializer);
+        return crate::api::simple::UiLibrary {
+            tracks: var_tracks,
+            albums: var_albums,
+            artists: var_artists,
+        };
     }
 }
 
@@ -206,15 +323,35 @@ impl SseDecode for crate::api::simple::UiTrack {
         let mut var_title = <String>::sse_decode(deserializer);
         let mut var_artist = <String>::sse_decode(deserializer);
         let mut var_album = <String>::sse_decode(deserializer);
+        let mut var_albumArtist = <String>::sse_decode(deserializer);
+        let mut var_albumId = <String>::sse_decode(deserializer);
+        let mut var_artistId = <String>::sse_decode(deserializer);
+        let mut var_trackNumber = <Option<u32>>::sse_decode(deserializer);
+        let mut var_discNumber = <Option<u32>>::sse_decode(deserializer);
+        let mut var_year = <Option<u32>>::sse_decode(deserializer);
+        let mut var_genre = <Option<String>>::sse_decode(deserializer);
         let mut var_duration = <String>::sse_decode(deserializer);
         let mut var_path = <String>::sse_decode(deserializer);
+        let mut var_bitrate = <Option<u32>>::sse_decode(deserializer);
+        let mut var_sampleRate = <Option<u32>>::sse_decode(deserializer);
+        let mut var_channels = <Option<u8>>::sse_decode(deserializer);
         return crate::api::simple::UiTrack {
             id: var_id,
             title: var_title,
             artist: var_artist,
             album: var_album,
+            album_artist: var_albumArtist,
+            album_id: var_albumId,
+            artist_id: var_artistId,
+            track_number: var_trackNumber,
+            disc_number: var_discNumber,
+            year: var_year,
+            genre: var_genre,
             duration: var_duration,
             path: var_path,
+            bitrate: var_bitrate,
+            sample_rate: var_sampleRate,
+            channels: var_channels,
         };
     }
 }
@@ -274,6 +411,68 @@ fn pde_ffi_dispatcher_sync_impl(
 // Section: rust2dart
 
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::simple::UiAlbum {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.id.into_into_dart().into_dart(),
+            self.title.into_into_dart().into_dart(),
+            self.artist.into_into_dart().into_dart(),
+            self.year.into_into_dart().into_dart(),
+            self.track_count.into_into_dart().into_dart(),
+            self.cover_track_id.into_into_dart().into_dart(),
+            self.track_ids.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::simple::UiAlbum {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::simple::UiAlbum>
+    for crate::api::simple::UiAlbum
+{
+    fn into_into_dart(self) -> crate::api::simple::UiAlbum {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::simple::UiArtist {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.id.into_into_dart().into_dart(),
+            self.name.into_into_dart().into_dart(),
+            self.track_count.into_into_dart().into_dart(),
+            self.cover_track_id.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::simple::UiArtist {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::simple::UiArtist>
+    for crate::api::simple::UiArtist
+{
+    fn into_into_dart(self) -> crate::api::simple::UiArtist {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::simple::UiLibrary {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.tracks.into_into_dart().into_dart(),
+            self.albums.into_into_dart().into_dart(),
+            self.artists.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::simple::UiLibrary {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::simple::UiLibrary>
+    for crate::api::simple::UiLibrary
+{
+    fn into_into_dart(self) -> crate::api::simple::UiLibrary {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::simple::UiTrack {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -281,8 +480,18 @@ impl flutter_rust_bridge::IntoDart for crate::api::simple::UiTrack {
             self.title.into_into_dart().into_dart(),
             self.artist.into_into_dart().into_dart(),
             self.album.into_into_dart().into_dart(),
+            self.album_artist.into_into_dart().into_dart(),
+            self.album_id.into_into_dart().into_dart(),
+            self.artist_id.into_into_dart().into_dart(),
+            self.track_number.into_into_dart().into_dart(),
+            self.disc_number.into_into_dart().into_dart(),
+            self.year.into_into_dart().into_dart(),
+            self.genre.into_into_dart().into_dart(),
             self.duration.into_into_dart().into_dart(),
             self.path.into_into_dart().into_dart(),
+            self.bitrate.into_into_dart().into_dart(),
+            self.sample_rate.into_into_dart().into_dart(),
+            self.channels.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -303,12 +512,42 @@ impl SseEncode for String {
     }
 }
 
+impl SseEncode for Vec<String> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <String>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Vec<u8> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
             <u8>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::api::simple::UiAlbum> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::simple::UiAlbum>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::api::simple::UiArtist> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::simple::UiArtist>::sse_encode(item, serializer);
         }
     }
 }
@@ -333,10 +572,69 @@ impl SseEncode for Option<String> {
     }
 }
 
+impl SseEncode for Option<u32> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <u32>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<u8> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <u8>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for u32 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer.cursor.write_u32::<NativeEndian>(self).unwrap();
+    }
+}
+
 impl SseEncode for u8 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         serializer.cursor.write_u8(self).unwrap();
+    }
+}
+
+impl SseEncode for crate::api::simple::UiAlbum {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.id, serializer);
+        <String>::sse_encode(self.title, serializer);
+        <String>::sse_encode(self.artist, serializer);
+        <Option<u32>>::sse_encode(self.year, serializer);
+        <u32>::sse_encode(self.track_count, serializer);
+        <String>::sse_encode(self.cover_track_id, serializer);
+        <Vec<String>>::sse_encode(self.track_ids, serializer);
+    }
+}
+
+impl SseEncode for crate::api::simple::UiArtist {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.id, serializer);
+        <String>::sse_encode(self.name, serializer);
+        <u32>::sse_encode(self.track_count, serializer);
+        <String>::sse_encode(self.cover_track_id, serializer);
+    }
+}
+
+impl SseEncode for crate::api::simple::UiLibrary {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <Vec<crate::api::simple::UiTrack>>::sse_encode(self.tracks, serializer);
+        <Vec<crate::api::simple::UiAlbum>>::sse_encode(self.albums, serializer);
+        <Vec<crate::api::simple::UiArtist>>::sse_encode(self.artists, serializer);
     }
 }
 
@@ -347,8 +645,18 @@ impl SseEncode for crate::api::simple::UiTrack {
         <String>::sse_encode(self.title, serializer);
         <String>::sse_encode(self.artist, serializer);
         <String>::sse_encode(self.album, serializer);
+        <String>::sse_encode(self.album_artist, serializer);
+        <String>::sse_encode(self.album_id, serializer);
+        <String>::sse_encode(self.artist_id, serializer);
+        <Option<u32>>::sse_encode(self.track_number, serializer);
+        <Option<u32>>::sse_encode(self.disc_number, serializer);
+        <Option<u32>>::sse_encode(self.year, serializer);
+        <Option<String>>::sse_encode(self.genre, serializer);
         <String>::sse_encode(self.duration, serializer);
         <String>::sse_encode(self.path, serializer);
+        <Option<u32>>::sse_encode(self.bitrate, serializer);
+        <Option<u32>>::sse_encode(self.sample_rate, serializer);
+        <Option<u8>>::sse_encode(self.channels, serializer);
     }
 }
 

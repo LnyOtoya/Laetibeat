@@ -49,6 +49,11 @@ class PlayerState {
 
   rust.UiTrack? get current => queue.isEmpty ? null : queue[currentIndex];
 
+  /// copyWith 的"未传参"哨兵:用于区分"没传这个参数"与"显式传入 null"。
+  /// audioDevice / audioParams / audioBitrate 允许为 null,引擎清空时
+  /// 必须能把旧值清掉,否则会继续显示上一首的码率/参数。
+  static const Object _unset = Object();
+
   PlayerState copyWith({
     List<rust.UiTrack>? queue,
     int? currentIndex,
@@ -56,10 +61,10 @@ class PlayerState {
     Duration? position,
     Duration? duration,
     String? source,
-    AudioDeviceInfo? audioDevice,
+    Object? audioDevice = _unset,
     List<AudioDeviceInfo>? audioDevices,
-    AudioParamsInfo? audioParams,
-    double? audioBitrate,
+    Object? audioParams = _unset,
+    Object? audioBitrate = _unset,
     bool? shuffle,
     PlaybackRepeatMode? repeatMode,
   }) {
@@ -70,10 +75,16 @@ class PlayerState {
       position: position ?? this.position,
       duration: duration ?? this.duration,
       source: source ?? this.source,
-      audioDevice: audioDevice ?? this.audioDevice,
+      audioDevice: identical(audioDevice, _unset)
+          ? this.audioDevice
+          : audioDevice as AudioDeviceInfo?,
       audioDevices: audioDevices ?? this.audioDevices,
-      audioParams: audioParams ?? this.audioParams,
-      audioBitrate: audioBitrate ?? this.audioBitrate,
+      audioParams: identical(audioParams, _unset)
+          ? this.audioParams
+          : audioParams as AudioParamsInfo?,
+      audioBitrate: identical(audioBitrate, _unset)
+          ? this.audioBitrate
+          : audioBitrate as double?,
       shuffle: shuffle ?? this.shuffle,
       repeatMode: repeatMode ?? this.repeatMode,
     );
@@ -99,20 +110,30 @@ class PlayerNotifier extends Notifier<PlayerState> {
     _subs.add(_backend.positionStream.listen(_onPosition));
     _subs.add(_backend.durationStream.listen(_onDuration));
     _subs.add(_backend.playingStream.listen(_onPlaying));
-    _subs.add(_backend.completedStream.listen((_) => next())); //播完自动切下一首
+    // 播完按重复模式处理:单曲循环重播当前曲,列表循环回到开头,
+    // 顺序播放到最后一首则停在末尾,不再无条件 next(否则永远停不下来)。
+    _subs.add(_backend.completedStream.listen((_) => _onCompleted()));
     // 设备/输出:当前渲染器、可用设备、声道参数
-    _subs.add(_backend.audioDeviceStream.listen((d) {
-      state = state.copyWith(audioDevice: d);
-    }));
-    _subs.add(_backend.audioDevicesStream.listen((l) {
-      state = state.copyWith(audioDevices: l);
-    }));
-    _subs.add(_backend.audioParamsStream.listen((p) {
-      state = state.copyWith(audioParams: p);
-    }));
-    _subs.add(_backend.audioBitrateStream.listen((b) {
-      state = state.copyWith(audioBitrate: b);
-    }));
+    _subs.add(
+      _backend.audioDeviceStream.listen((d) {
+        state = state.copyWith(audioDevice: d);
+      }),
+    );
+    _subs.add(
+      _backend.audioDevicesStream.listen((l) {
+        state = state.copyWith(audioDevices: l);
+      }),
+    );
+    _subs.add(
+      _backend.audioParamsStream.listen((p) {
+        state = state.copyWith(audioParams: p);
+      }),
+    );
+    _subs.add(
+      _backend.audioBitrateStream.listen((b) {
+        state = state.copyWith(audioBitrate: b);
+      }),
+    );
 
     ref.onDispose(() {
       for (final s in _subs) {
@@ -145,9 +166,13 @@ class PlayerNotifier extends Notifier<PlayerState> {
     if (state.queue.isEmpty) return;
     if (state.isPlaying) {
       await _backend.pause();
-    } else {
-      await _backend.play();
+      return;
     }
+    // 顺序播完停在末尾后再次点播放:从头开始,而不是原地停在 EOF
+    if (state.duration > Duration.zero && state.position >= state.duration) {
+      await _backend.seek(Duration.zero);
+    }
+    await _backend.play();
   }
 
   //供外部(如 MPRIS)强制暂停
@@ -175,8 +200,12 @@ class PlayerNotifier extends Notifier<PlayerState> {
 
   //用真实扫描到的曲目整体替换队列并从 startIndex 开始播放
   //shuffle 传 null 时保持当前随机状态,传值则同时切换随机模式
-  void load(List<rust.UiTrack> tracks, int startIndex,
-      {String? source, bool? shuffle}) {
+  void load(
+    List<rust.UiTrack> tracks,
+    int startIndex, {
+    String? source,
+    bool? shuffle,
+  }) {
     if (tracks.isEmpty) return;
     final idx = (startIndex + tracks.length) % tracks.length;
     state = state.copyWith(
@@ -187,6 +216,10 @@ class PlayerNotifier extends Notifier<PlayerState> {
       duration: _durationOf(tracks[idx]),
       source: source ?? state.source,
       shuffle: shuffle,
+      // 换曲先清空上一首的音频参数/码率,等新曲的引擎数据到达再填充,
+      // 避免面板短暂显示上一首的信息。
+      audioParams: null,
+      audioBitrate: null,
     );
     _backend.open(_trackOf(tracks[idx]));
   }
@@ -200,8 +233,7 @@ class PlayerNotifier extends Notifier<PlayerState> {
   //以给定曲目为队列随机播放:随机起点,之后 next/播完都随机选曲
   void playShuffled(List<rust.UiTrack> tracks, {String? source}) {
     if (tracks.isEmpty) return;
-    load(tracks, _random.nextInt(tracks.length),
-        source: source, shuffle: true);
+    load(tracks, _random.nextInt(tracks.length), source: source, shuffle: true);
   }
 
   void _openAndPlay(int idx, String source) {
@@ -212,6 +244,9 @@ class PlayerNotifier extends Notifier<PlayerState> {
       position: Duration.zero,
       duration: _durationOf(track),
       source: source,
+      // 同上:换曲时清掉旧曲的音频参数/码率
+      audioParams: null,
+      audioBitrate: null,
     );
     _backend.open(_trackOf(track));
   }
@@ -242,26 +277,68 @@ class PlayerNotifier extends Notifier<PlayerState> {
     _backend.seek(Duration(milliseconds: ms));
   }
 
-  //下一首:随机模式下从队列随机选曲(避开当前曲),否则顺序下一首
+  //手动"下一首":随机模式下随机选曲(避开当前曲),否则顺序下一首并首尾循环。
+  //手动切歌不受 repeatMode 影响,始终有下一首。
   void next() {
     if (state.queue.isEmpty) return;
     if (state.shuffle && state.queue.length > 1) {
-      var idx = _random.nextInt(state.queue.length);
-      if (idx == state.currentIndex) {
-        idx = (idx + 1) % state.queue.length;
-      }
-      play(idx);
+      play(_randomIndexExcludingCurrent());
       return;
     }
     play(state.currentIndex + 1);
+  }
+
+  //单曲播放完成:按 repeatMode 决定重播当前曲 / 下一首 / 停在末尾
+  void _onCompleted() {
+    if (state.queue.isEmpty) return;
+
+    // 单曲循环:原位从头重播,不重新装载文件
+    if (state.repeatMode == PlaybackRepeatMode.single) {
+      _replayCurrent();
+      return;
+    }
+
+    // 随机模式:继续随机选下一首
+    if (state.shuffle && state.queue.length > 1) {
+      play(_randomIndexExcludingCurrent());
+      return;
+    }
+
+    // 顺序模式:还没到最后一首就继续往后
+    if (state.currentIndex < state.queue.length - 1) {
+      play(state.currentIndex + 1);
+      return;
+    }
+
+    // 已到最后一首:列表循环回到开头;off 则停在末尾(引擎已停止)
+    if (state.repeatMode == PlaybackRepeatMode.all) {
+      play(0);
+      return;
+    }
+    state = state.copyWith(position: state.duration);
+  }
+
+  //随机选一个不同于当前曲目的索引
+  int _randomIndexExcludingCurrent() {
+    var idx = _random.nextInt(state.queue.length);
+    if (idx == state.currentIndex) {
+      idx = (idx + 1) % state.queue.length;
+    }
+    return idx;
+  }
+
+  //单曲循环:seek 回 0 再播,避免重新 open 整个文件
+  void _replayCurrent() {
+    state = state.copyWith(position: Duration.zero, isPlaying: true);
+    _backend.seek(Duration.zero);
+    _backend.play();
   }
 
   //上一首
   void prev() => play(state.currentIndex - 1);
 
   //随机播放开关
-  void toggleShuffle() =>
-      state = state.copyWith(shuffle: !state.shuffle);
+  void toggleShuffle() => state = state.copyWith(shuffle: !state.shuffle);
 
   //重复模式轮换: 顺序 -> 单曲 -> 列表 -> 顺序
   void cycleRepeat() {

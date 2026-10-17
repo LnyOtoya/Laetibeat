@@ -82,7 +82,7 @@ abstract class RustLibApi extends BaseApi {
 
   Future<String?> crateApiSimplePickDirectory();
 
-  Future<List<UiTrack>> crateApiSimpleScanLocalMusicFolder({
+  Future<UiLibrary> crateApiSimpleScanLocalMusicFolder({
     required String dirPath,
   });
 }
@@ -150,7 +150,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "pick_directory", argNames: []);
 
   @override
-  Future<List<UiTrack>> crateApiSimpleScanLocalMusicFolder({
+  Future<UiLibrary> crateApiSimpleScanLocalMusicFolder({
     required String dirPath,
   }) {
     return handler.executeNormal(
@@ -166,7 +166,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           );
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_list_ui_track,
+          decodeSuccessData: sse_decode_ui_library,
           decodeErrorData: sse_decode_String,
         ),
         constMeta: kCrateApiSimpleScanLocalMusicFolderConstMeta,
@@ -189,9 +189,39 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  int dco_decode_box_autoadd_u_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
+  }
+
+  @protected
+  int dco_decode_box_autoadd_u_8(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
+  }
+
+  @protected
+  List<String> dco_decode_list_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_String).toList();
+  }
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as Uint8List;
+  }
+
+  @protected
+  List<UiAlbum> dco_decode_list_ui_album(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_ui_album).toList();
+  }
+
+  @protected
+  List<UiArtist> dco_decode_list_ui_artist(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_ui_artist).toList();
   }
 
   @protected
@@ -207,24 +237,96 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  int? dco_decode_opt_box_autoadd_u_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_u_32(raw);
+  }
+
+  @protected
+  int? dco_decode_opt_box_autoadd_u_8(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_u_8(raw);
+  }
+
+  @protected
+  int dco_decode_u_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
+  }
+
+  @protected
   int dco_decode_u_8(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as int;
   }
 
   @protected
+  UiAlbum dco_decode_ui_album(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 7)
+      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
+    return UiAlbum(
+      id: dco_decode_String(arr[0]),
+      title: dco_decode_String(arr[1]),
+      artist: dco_decode_String(arr[2]),
+      year: dco_decode_opt_box_autoadd_u_32(arr[3]),
+      trackCount: dco_decode_u_32(arr[4]),
+      coverTrackId: dco_decode_String(arr[5]),
+      trackIds: dco_decode_list_String(arr[6]),
+    );
+  }
+
+  @protected
+  UiArtist dco_decode_ui_artist(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return UiArtist(
+      id: dco_decode_String(arr[0]),
+      name: dco_decode_String(arr[1]),
+      trackCount: dco_decode_u_32(arr[2]),
+      coverTrackId: dco_decode_String(arr[3]),
+    );
+  }
+
+  @protected
+  UiLibrary dco_decode_ui_library(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return UiLibrary(
+      tracks: dco_decode_list_ui_track(arr[0]),
+      albums: dco_decode_list_ui_album(arr[1]),
+      artists: dco_decode_list_ui_artist(arr[2]),
+    );
+  }
+
+  @protected
   UiTrack dco_decode_ui_track(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 6)
-      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    if (arr.length != 16)
+      throw Exception('unexpected arr length: expect 16 but see ${arr.length}');
     return UiTrack(
       id: dco_decode_String(arr[0]),
       title: dco_decode_String(arr[1]),
       artist: dco_decode_String(arr[2]),
       album: dco_decode_String(arr[3]),
-      duration: dco_decode_String(arr[4]),
-      path: dco_decode_String(arr[5]),
+      albumArtist: dco_decode_String(arr[4]),
+      albumId: dco_decode_String(arr[5]),
+      artistId: dco_decode_String(arr[6]),
+      trackNumber: dco_decode_opt_box_autoadd_u_32(arr[7]),
+      discNumber: dco_decode_opt_box_autoadd_u_32(arr[8]),
+      year: dco_decode_opt_box_autoadd_u_32(arr[9]),
+      genre: dco_decode_opt_String(arr[10]),
+      duration: dco_decode_String(arr[11]),
+      path: dco_decode_String(arr[12]),
+      bitrate: dco_decode_opt_box_autoadd_u_32(arr[13]),
+      sampleRate: dco_decode_opt_box_autoadd_u_32(arr[14]),
+      channels: dco_decode_opt_box_autoadd_u_8(arr[15]),
     );
   }
 
@@ -242,10 +344,58 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  int sse_decode_box_autoadd_u_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_u_32(deserializer));
+  }
+
+  @protected
+  int sse_decode_box_autoadd_u_8(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_u_8(deserializer));
+  }
+
+  @protected
+  List<String> sse_decode_list_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <String>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_String(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
     return deserializer.buffer.getUint8List(len_);
+  }
+
+  @protected
+  List<UiAlbum> sse_decode_list_ui_album(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <UiAlbum>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_ui_album(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<UiArtist> sse_decode_list_ui_artist(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <UiArtist>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_ui_artist(deserializer));
+    }
+    return ans_;
   }
 
   @protected
@@ -272,9 +422,86 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  int? sse_decode_opt_box_autoadd_u_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_u_32(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  int? sse_decode_opt_box_autoadd_u_8(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_u_8(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  int sse_decode_u_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint32();
+  }
+
+  @protected
   int sse_decode_u_8(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getUint8();
+  }
+
+  @protected
+  UiAlbum sse_decode_ui_album(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_title = sse_decode_String(deserializer);
+    var var_artist = sse_decode_String(deserializer);
+    var var_year = sse_decode_opt_box_autoadd_u_32(deserializer);
+    var var_trackCount = sse_decode_u_32(deserializer);
+    var var_coverTrackId = sse_decode_String(deserializer);
+    var var_trackIds = sse_decode_list_String(deserializer);
+    return UiAlbum(
+      id: var_id,
+      title: var_title,
+      artist: var_artist,
+      year: var_year,
+      trackCount: var_trackCount,
+      coverTrackId: var_coverTrackId,
+      trackIds: var_trackIds,
+    );
+  }
+
+  @protected
+  UiArtist sse_decode_ui_artist(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_name = sse_decode_String(deserializer);
+    var var_trackCount = sse_decode_u_32(deserializer);
+    var var_coverTrackId = sse_decode_String(deserializer);
+    return UiArtist(
+      id: var_id,
+      name: var_name,
+      trackCount: var_trackCount,
+      coverTrackId: var_coverTrackId,
+    );
+  }
+
+  @protected
+  UiLibrary sse_decode_ui_library(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_tracks = sse_decode_list_ui_track(deserializer);
+    var var_albums = sse_decode_list_ui_album(deserializer);
+    var var_artists = sse_decode_list_ui_artist(deserializer);
+    return UiLibrary(
+      tracks: var_tracks,
+      albums: var_albums,
+      artists: var_artists,
+    );
   }
 
   @protected
@@ -284,15 +511,35 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_title = sse_decode_String(deserializer);
     var var_artist = sse_decode_String(deserializer);
     var var_album = sse_decode_String(deserializer);
+    var var_albumArtist = sse_decode_String(deserializer);
+    var var_albumId = sse_decode_String(deserializer);
+    var var_artistId = sse_decode_String(deserializer);
+    var var_trackNumber = sse_decode_opt_box_autoadd_u_32(deserializer);
+    var var_discNumber = sse_decode_opt_box_autoadd_u_32(deserializer);
+    var var_year = sse_decode_opt_box_autoadd_u_32(deserializer);
+    var var_genre = sse_decode_opt_String(deserializer);
     var var_duration = sse_decode_String(deserializer);
     var var_path = sse_decode_String(deserializer);
+    var var_bitrate = sse_decode_opt_box_autoadd_u_32(deserializer);
+    var var_sampleRate = sse_decode_opt_box_autoadd_u_32(deserializer);
+    var var_channels = sse_decode_opt_box_autoadd_u_8(deserializer);
     return UiTrack(
       id: var_id,
       title: var_title,
       artist: var_artist,
       album: var_album,
+      albumArtist: var_albumArtist,
+      albumId: var_albumId,
+      artistId: var_artistId,
+      trackNumber: var_trackNumber,
+      discNumber: var_discNumber,
+      year: var_year,
+      genre: var_genre,
       duration: var_duration,
       path: var_path,
+      bitrate: var_bitrate,
+      sampleRate: var_sampleRate,
+      channels: var_channels,
     );
   }
 
@@ -320,6 +567,27 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_32(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_u_8(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_8(self, serializer);
+  }
+
+  @protected
+  void sse_encode_list_String(List<String> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_String(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
     SseSerializer serializer,
@@ -327,6 +595,27 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     serializer.buffer.putUint8List(self);
+  }
+
+  @protected
+  void sse_encode_list_ui_album(List<UiAlbum> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_ui_album(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_ui_artist(
+    List<UiArtist> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_ui_artist(item, serializer);
+    }
   }
 
   @protected
@@ -349,9 +638,64 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_opt_box_autoadd_u_32(int? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_u_32(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_u_8(int? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_u_8(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_u_32(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putUint32(self);
+  }
+
+  @protected
   void sse_encode_u_8(int self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putUint8(self);
+  }
+
+  @protected
+  void sse_encode_ui_album(UiAlbum self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.title, serializer);
+    sse_encode_String(self.artist, serializer);
+    sse_encode_opt_box_autoadd_u_32(self.year, serializer);
+    sse_encode_u_32(self.trackCount, serializer);
+    sse_encode_String(self.coverTrackId, serializer);
+    sse_encode_list_String(self.trackIds, serializer);
+  }
+
+  @protected
+  void sse_encode_ui_artist(UiArtist self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.name, serializer);
+    sse_encode_u_32(self.trackCount, serializer);
+    sse_encode_String(self.coverTrackId, serializer);
+  }
+
+  @protected
+  void sse_encode_ui_library(UiLibrary self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_ui_track(self.tracks, serializer);
+    sse_encode_list_ui_album(self.albums, serializer);
+    sse_encode_list_ui_artist(self.artists, serializer);
   }
 
   @protected
@@ -361,8 +705,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.title, serializer);
     sse_encode_String(self.artist, serializer);
     sse_encode_String(self.album, serializer);
+    sse_encode_String(self.albumArtist, serializer);
+    sse_encode_String(self.albumId, serializer);
+    sse_encode_String(self.artistId, serializer);
+    sse_encode_opt_box_autoadd_u_32(self.trackNumber, serializer);
+    sse_encode_opt_box_autoadd_u_32(self.discNumber, serializer);
+    sse_encode_opt_box_autoadd_u_32(self.year, serializer);
+    sse_encode_opt_String(self.genre, serializer);
     sse_encode_String(self.duration, serializer);
     sse_encode_String(self.path, serializer);
+    sse_encode_opt_box_autoadd_u_32(self.bitrate, serializer);
+    sse_encode_opt_box_autoadd_u_32(self.sampleRate, serializer);
+    sse_encode_opt_box_autoadd_u_8(self.channels, serializer);
   }
 
   @protected

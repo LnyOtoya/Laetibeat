@@ -1,10 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:laetibeat/src/rust/api/simple.dart' as rust;
 
-//本地音乐库状态:记录选中的目录与扫描出的单曲列表
+//本地音乐库状态:记录选中的目录与扫描出的单曲/专辑/艺术家
 class MusicLibraryState {
   final String? directory;
   final List<rust.UiTrack> tracks;
+
+  /// 专辑聚合(由 Rust 侧生成,曲目已按碟号/音轨号排序)
+  final List<rust.UiAlbum> albums;
+
+  /// 艺术家聚合(由 Rust 侧生成)
+  final List<rust.UiArtist> artists;
   final bool isLoading;
   final String? error;
   final bool hasScanned; //标记是否执行过扫描,用于控制状态项显隐
@@ -12,6 +18,8 @@ class MusicLibraryState {
   const MusicLibraryState({
     this.directory,
     this.tracks = const <rust.UiTrack>[],
+    this.albums = const <rust.UiAlbum>[],
+    this.artists = const <rust.UiArtist>[],
     this.isLoading = false,
     this.error,
     this.hasScanned = false,
@@ -20,6 +28,8 @@ class MusicLibraryState {
   MusicLibraryState copyWith({
     String? directory,
     List<rust.UiTrack>? tracks,
+    List<rust.UiAlbum>? albums,
+    List<rust.UiArtist>? artists,
     bool? isLoading,
     String? error,
     bool? hasScanned,
@@ -27,6 +37,8 @@ class MusicLibraryState {
     return MusicLibraryState(
       directory: directory ?? this.directory,
       tracks: tracks ?? this.tracks,
+      albums: albums ?? this.albums,
+      artists: artists ?? this.artists,
       isLoading: isLoading ?? this.isLoading,
       error: error ?? this.error,
       hasScanned: hasScanned ?? this.hasScanned,
@@ -63,9 +75,14 @@ class MusicLibraryNotifier extends AsyncNotifier<MusicLibraryState> {
       current!.copyWith(isLoading: true, error: null, hasScanned: true),
     );
     try {
-      final tracks = await rust.scanLocalMusicFolder(dirPath: dir);
+      final library = await rust.scanLocalMusicFolder(dirPath: dir);
       state = AsyncValue.data(
-        state.value!.copyWith(tracks: tracks, isLoading: false),
+        state.value!.copyWith(
+          tracks: library.tracks,
+          albums: library.albums,
+          artists: library.artists,
+          isLoading: false,
+        ),
       );
     } catch (e) {
       state = AsyncValue.data(

@@ -11,24 +11,157 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 Future<String?> pickDirectory() =>
     RustLib.instance.api.crateApiSimplePickDirectory();
 
-Future<List<UiTrack>> scanLocalMusicFolder({required String dirPath}) =>
+Future<UiLibrary> scanLocalMusicFolder({required String dirPath}) =>
     RustLib.instance.api.crateApiSimpleScanLocalMusicFolder(dirPath: dirPath);
+
+class UiAlbum {
+  final String id;
+  final String title;
+  final String artist;
+  final int? year;
+  final int trackCount;
+
+  /// 封面代表曲目 id
+  final String coverTrackId;
+
+  /// 专辑内曲目 id,已按碟号/音轨号排序
+  final List<String> trackIds;
+
+  const UiAlbum({
+    required this.id,
+    required this.title,
+    required this.artist,
+    this.year,
+    required this.trackCount,
+    required this.coverTrackId,
+    required this.trackIds,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      title.hashCode ^
+      artist.hashCode ^
+      year.hashCode ^
+      trackCount.hashCode ^
+      coverTrackId.hashCode ^
+      trackIds.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is UiAlbum &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          title == other.title &&
+          artist == other.artist &&
+          year == other.year &&
+          trackCount == other.trackCount &&
+          coverTrackId == other.coverTrackId &&
+          trackIds == other.trackIds;
+}
+
+class UiArtist {
+  final String id;
+  final String name;
+  final int trackCount;
+
+  /// 封面代表曲目 id
+  final String coverTrackId;
+
+  const UiArtist({
+    required this.id,
+    required this.name,
+    required this.trackCount,
+    required this.coverTrackId,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^ name.hashCode ^ trackCount.hashCode ^ coverTrackId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is UiArtist &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name &&
+          trackCount == other.trackCount &&
+          coverTrackId == other.coverTrackId;
+}
+
+class UiLibrary {
+  final List<UiTrack> tracks;
+  final List<UiAlbum> albums;
+  final List<UiArtist> artists;
+
+  const UiLibrary({
+    required this.tracks,
+    required this.albums,
+    required this.artists,
+  });
+
+  @override
+  int get hashCode => tracks.hashCode ^ albums.hashCode ^ artists.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is UiLibrary &&
+          runtimeType == other.runtimeType &&
+          tracks == other.tracks &&
+          albums == other.albums &&
+          artists == other.artists;
+}
 
 class UiTrack {
   final String id;
   final String title;
   final String artist;
   final String album;
+
+  /// 专辑艺术家;缺失时为曲目艺术家
+  final String albumArtist;
+
+  /// 专辑聚合 id
+  final String albumId;
+
+  /// 艺术家聚合 id
+  final String artistId;
+  final int? trackNumber;
+  final int? discNumber;
+  final int? year;
+  final String? genre;
   final String duration;
   final String path;
+
+  /// 音频码率(kbps)
+  final int? bitrate;
+
+  /// 采样率(Hz)
+  final int? sampleRate;
+
+  /// 声道数
+  final int? channels;
 
   const UiTrack({
     required this.id,
     required this.title,
     required this.artist,
     required this.album,
+    required this.albumArtist,
+    required this.albumId,
+    required this.artistId,
+    this.trackNumber,
+    this.discNumber,
+    this.year,
+    this.genre,
     required this.duration,
     required this.path,
+    this.bitrate,
+    this.sampleRate,
+    this.channels,
   });
 
   @override
@@ -37,8 +170,18 @@ class UiTrack {
       title.hashCode ^
       artist.hashCode ^
       album.hashCode ^
+      albumArtist.hashCode ^
+      albumId.hashCode ^
+      artistId.hashCode ^
+      trackNumber.hashCode ^
+      discNumber.hashCode ^
+      year.hashCode ^
+      genre.hashCode ^
       duration.hashCode ^
-      path.hashCode;
+      path.hashCode ^
+      bitrate.hashCode ^
+      sampleRate.hashCode ^
+      channels.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -49,6 +192,16 @@ class UiTrack {
           title == other.title &&
           artist == other.artist &&
           album == other.album &&
+          albumArtist == other.albumArtist &&
+          albumId == other.albumId &&
+          artistId == other.artistId &&
+          trackNumber == other.trackNumber &&
+          discNumber == other.discNumber &&
+          year == other.year &&
+          genre == other.genre &&
           duration == other.duration &&
-          path == other.path;
+          path == other.path &&
+          bitrate == other.bitrate &&
+          sampleRate == other.sampleRate &&
+          channels == other.channels;
 }

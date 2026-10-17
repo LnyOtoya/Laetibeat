@@ -28,7 +28,7 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
   LibraryFilter _filter = LibraryFilter.track;
 
   /// 当前在左侧面板内打开的专辑;非 null 时专辑视图显示详情而非网格
-  _LibRow? _openedAlbum;
+  rust.UiAlbum? _openedAlbum;
 
   //控制列表选中高亮(长按/点leading切换);曲目与艺术家/专辑共用,切换筛选时清空
   final M3ESelectionController _selectionController = M3ESelectionController();
@@ -132,11 +132,13 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
     }
 
     //三种视图:曲目/艺术家为列表,专辑为封面卡片网格(点卡片在面板内进详情)
+    //专辑/艺术家聚合与排序均由 Rust 侧完成
     return switch (_filter) {
       LibraryFilter.track => _buildCardList(theme, scheme, _trackRows(st.tracks)),
-      LibraryFilter.artist => _buildCardList(theme, scheme, _artistRows(st.tracks)),
+      LibraryFilter.artist =>
+        _buildCardList(theme, scheme, _artistRows(st.artists, st.tracks)),
       LibraryFilter.album => _openedAlbum == null
-          ? _buildAlbumGrid(theme, scheme, _albumRows(st.tracks))
+          ? _buildAlbumGrid(theme, scheme, st.albums, st.tracks)
           : _buildAlbumDetail(theme, scheme, st.tracks, _openedAlbum!),
     };
   }
@@ -147,14 +149,18 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
     M3EThemeData theme,
     M3EColorScheme scheme,
     List<rust.UiTrack> allTracks,
-    _LibRow album,
+    rust.UiAlbum album,
   ) {
+    // 曲目顺序直接采用 Rust 聚合时排好的 track_ids(碟号/音轨号)
+    final byId = {for (final t in allTracks) t.id: t};
     final tracks = [
-      for (final t in allTracks)
-        if (_albumNameOf(t) == album.headline &&
-            _artistNameOf(t) == album.supporting)
-          t,
+      for (final id in album.trackIds)
+        if (byId[id] != null) byId[id]!,
     ];
+    final coverTrack = byId[album.coverTrackId];
+    final albumSubtitle = album.year == null
+        ? album.artist
+        : '${album.artist} · ${album.year}';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -182,7 +188,7 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
               child: SizedBox(
                 width: 132,
                 height: 132,
-                child: album.track == null
+                child: coverTrack == null
                     ? ColoredBox(
                         color: scheme.secondaryContainer,
                         child: Icon(
@@ -191,7 +197,7 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
                           color: scheme.onSecondaryContainer,
                         ),
                       )
-                    : _AlbumCover(track: album.track!),
+                    : _AlbumCover(track: coverTrack),
               ),
             ),
             SizedBox(width: theme.spacing.lg),
@@ -201,14 +207,14 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    album.headline,
+                    album.title,
                     style: theme.typeScale.headlineSmall,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   SizedBox(height: theme.spacing.xs),
                   Text(
-                    album.supporting,
+                    albumSubtitle,
                     style: theme.typeScale.bodyLarge.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),
@@ -217,7 +223,7 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
                   ),
                   SizedBox(height: theme.spacing.sm),
                   Text(
-                    '${tracks.length} 首曲目',
+                    '${album.trackCount} 首曲目',
                     style: theme.typeScale.labelMedium.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),
@@ -237,7 +243,7 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
                             ? null
                             : () => _playAlbumSequential(
                                   tracks,
-                                  album.headline,
+                                  album.title,
                                 ),
                       ),
                       M3EButton(
@@ -249,7 +255,7 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
                             ? null
                             : () => _playAlbumShuffled(
                                   tracks,
-                                  album.headline,
+                                  album.title,
                                 ),
                       ),
                       M3EButton(
@@ -282,7 +288,7 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
               ? _hint(theme, scheme, '暂无曲目', null)
               : M3EList.scrollable(
                   itemCount: tracks.length,
-                  onTap: (i) => _playAlbum(tracks, i, album.headline),
+                  onTap: (i) => _playAlbum(tracks, i, album.title),
                   itemBuilder: (context, i) => M3EListItem(
                     // 左侧:序号 + 歌名 + 歌手名
                     leading: SizedBox(
@@ -296,7 +302,7 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
                       ),
                     ),
                     headline: tracks[i].title,
-                    supportingText: _artistNameOf(tracks[i]),
+                    supportingText: tracks[i].artist,
                     // 右侧:时长 + 三点菜单
                     trailingText: tracks[i].duration,
                     trailing: _moreMenu(),
@@ -327,19 +333,15 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
         .playShuffled(tracks, source: albumName);
   }
 
-  static String _albumNameOf(rust.UiTrack t) =>
-      t.album.trim().isEmpty ? '未知专辑' : t.album;
-
-  static String _artistNameOf(rust.UiTrack t) =>
-      t.artist.trim().isEmpty ? '未知艺术家' : t.artist;
-
   //专辑视图:封面卡片网格。列数随可用宽度自适应,卡片高度=正方形封面+文字区,
-  //保证封面始终显示为完整正方形。
+  //保证封面始终显示为完整正方形。专辑列表与排序均来自 Rust 聚合。
   Widget _buildAlbumGrid(
     M3EThemeData theme,
     M3EColorScheme scheme,
-    List<_LibRow> albums,
+    List<rust.UiAlbum> albums,
+    List<rust.UiTrack> tracks,
   ) {
+    final byId = {for (final t in tracks) t.id: t};
     final spacing = theme.spacing.md;
     final titleStyle = theme.typeScale.titleMedium;
     final subStyle = theme.typeScale.bodyMedium;
@@ -372,8 +374,15 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
               mainAxisExtent: itemWidth + textBlock,
             ),
             itemCount: albums.length,
-            itemBuilder: (context, i) =>
-                _albumCard(theme, scheme, albums[i]),
+            itemBuilder: (context, i) {
+              final album = albums[i];
+              return _albumCard(
+                theme,
+                scheme,
+                album,
+                byId[album.coverTrackId],
+              );
+            },
           ),
         );
       },
@@ -384,20 +393,21 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
   Widget _albumCard(
     M3EThemeData theme,
     M3EColorScheme scheme,
-    _LibRow album,
+    rust.UiAlbum album,
+    rust.UiTrack? coverTrack,
   ) {
     final titleStyle = theme.typeScale.titleMedium;
     final subStyle = theme.typeScale.bodyMedium;
 
     return M3ECard(
-      key: ValueKey('${album.headline}|${album.supporting}'),
+      key: ValueKey(album.id),
       variant: M3ECardVariant.filled,
       color: scheme.surfaceContainer,
       borderRadius: M3EDimensions.borderRadiusMedium,
       padding: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       expanded: true,
-      semanticLabel: '${album.headline}, ${album.supporting}',
+      semanticLabel: '${album.title}, ${album.artist}',
       // 专辑不再打开右侧详情,改为在左侧面板内切换到专辑详情
       onPressed: () => setState(() => _openedAlbum = album),
       child: Column(
@@ -406,7 +416,7 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
           //完整正方形封面:宽度铺满卡片,高度同比
           AspectRatio(
             aspectRatio: 1,
-            child: album.track == null
+            child: coverTrack == null
                 ? ColoredBox(
                     color: scheme.secondaryContainer,
                     child: Icon(
@@ -415,7 +425,7 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
                       color: scheme.onSecondaryContainer,
                     ),
                   )
-                : _AlbumCover(track: album.track!),
+                : _AlbumCover(track: coverTrack),
           ),
           Padding(
             padding: EdgeInsets.all(theme.spacing.sm),
@@ -424,7 +434,7 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  album.headline,
+                  album.title,
                   maxLines: 1,
                   softWrap: false,
                   overflow: TextOverflow.ellipsis,
@@ -432,7 +442,7 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
                 ),
                 SizedBox(height: theme.spacing.xs),
                 Text(
-                  album.supporting,
+                  album.artist,
                   maxLines: 1,
                   softWrap: false,
                   overflow: TextOverflow.ellipsis,
@@ -512,43 +522,21 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
           ),
       ];
 
-  //艺术家视图:按艺术家去重一行,副文本为曲目数,取每个艺术家的一首代表曲目取封面
-  List<_LibRow> _artistRows(List<rust.UiTrack> tracks) {
-    final counts = <String, int>{};
-    final first = <String, rust.UiTrack>{};
-    for (final t in tracks) {
-      counts[t.artist] = (counts[t.artist] ?? 0) + 1;
-      first.putIfAbsent(t.artist, () => t);
-    }
-    final rows = [
-      for (final e in counts.entries)
+  //艺术家视图:直接使用 Rust 聚合结果,取代表曲目显示封面
+  List<_LibRow> _artistRows(
+    List<rust.UiArtist> artists,
+    List<rust.UiTrack> tracks,
+  ) {
+    final byId = {for (final t in tracks) t.id: t};
+    return [
+      for (final a in artists)
         _LibRow(
-          e.key,
-          '${e.value} 首曲目',
+          a.name,
+          '${a.trackCount} 首曲目',
           M3EIcons.music_note,
-          track: first[e.key],
+          track: byId[a.coverTrackId],
         ),
-    ]..sort((a, b) => a.headline.compareTo(b.headline));
-    return rows;
-  }
-
-  //专辑视图:按「专辑名 + 艺术家」去重(同名不同艺术家的专辑不合并),
-  //取每张专辑的一首代表曲目取封面
-  List<_LibRow> _albumRows(List<rust.UiTrack> tracks) {
-    final byAlbum = <(String, String), rust.UiTrack>{};
-    for (final t in tracks) {
-      byAlbum.putIfAbsent((_albumNameOf(t), _artistNameOf(t)), () => t);
-    }
-    final rows = [
-      for (final e in byAlbum.entries)
-        _LibRow(
-          e.key.$1,
-          e.key.$2,
-          M3EIcons.music_note,
-          track: e.value,
-        ),
-    ]..sort((a, b) => a.headline.compareTo(b.headline));
-    return rows;
+    ];
   }
 
   //竖向三点菜单(由M3EMenu管理overlay,不依赖MaterialLocalizations)
