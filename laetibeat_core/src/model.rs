@@ -107,6 +107,8 @@ impl MusicLibrary {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Track {
     pub id: String,
+    /// 相对于音乐库根目录的路径;用于跨目录移动后仍保持稳定身份
+    pub relative_path: Option<String>,
     pub title: String,
     pub artist: String,
     pub album: String,

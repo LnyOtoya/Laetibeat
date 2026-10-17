@@ -65,6 +65,7 @@ Future<void> _deleteAtomically(File file) async {
 /// 曲目 JSON。音乐库快照与播放队列快照共用同一套字段。
 Map<String, Object?> uiTrackToJson(rust.UiTrack t) => <String, Object?>{
       'id': t.id,
+      'relativePath': t.relativePath,
       'title': t.title,
       'artist': t.artist,
       'album': t.album,
@@ -87,6 +88,7 @@ Map<String, Object?> uiTrackToJson(rust.UiTrack t) => <String, Object?>{
 
 rust.UiTrack uiTrackFromJson(Map<String, dynamic> m) => rust.UiTrack(
       id: m['id'] as String,
+      relativePath: m['relativePath'] as String?,
       title: m['title'] as String,
       artist: m['artist'] as String,
       album: m['album'] as String,

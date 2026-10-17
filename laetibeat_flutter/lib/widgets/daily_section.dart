@@ -1,34 +1,45 @@
 import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
+import 'package:laetibeat/src/rust/api/simple.dart' as rust;
+
 import '../animations.dart';
 import 'album_card.dart';
+import 'player/cover_provider.dart';
+import 'player/player_provider.dart';
+import 'recommendation_provider.dart';
+import 'settings/music_library_provider.dart';
 
-//每日推荐区块
-class DailySection extends StatefulWidget {
+//为你推荐区块:基于本地播放统计做专辑级推荐
+class DailySection extends ConsumerStatefulWidget {
   const DailySection({super.key});
 
   @override
-  State<DailySection> createState() => _DailySectionState();
+  ConsumerState<DailySection> createState() => _DailySectionState();
 }
 
-class _DailySectionState extends State<DailySection> {
+class _DailySectionState extends ConsumerState<DailySection> {
   //当前选中的筛选标签
   int _selectedIndex = 0;
 
   //筛选选项
-  static const List<String> _filters = <String>['未曾听过', '很久没听', '常听歌曲'];
+  static const List<String> _filters = <String>['未曾听过', '很久没听', '常听专辑'];
 
-  //假数据,之后填充
-  static const List<_MockAlbum> _albums = <_MockAlbum>[
-    _MockAlbum('Paradise Found', 'The Starlings'),
-    _MockAlbum('City Lights', 'Neon Reverie'),
-    _MockAlbum('Wandering', 'Paper Cranes'),
-    _MockAlbum('Sunbeam', 'Mellow Fields'),
-  ];
+  RecommendMode get _mode => switch (_selectedIndex) {
+        0 => RecommendMode.neverPlayed,
+        1 => RecommendMode.longTimeNoSee,
+        _ => RecommendMode.mostPlayed,
+      };
 
   @override
   Widget build(BuildContext context) {
     final theme = M3ETheme.of(context);
+    final recommendations = ref.watch(albumRecommendationsProvider(_mode));
+    final library = ref.watch(musicLibraryProvider).value;
+    final byId = {
+      for (final track in library?.tracks ?? const <rust.UiTrack>[])
+        track.id: track,
+    };
 
     return AnimatedContainer(
       duration: kSectionAnimDuration,
@@ -65,32 +76,92 @@ class _DailySectionState extends State<DailySection> {
             ],
           ),
           SizedBox(height: theme.spacing.lg),
-          //下部分:横向四个卡片
-          Row(
-            children: [
-              //四个等宽专辑卡片,间距用spacing.md分隔
-              for (int i = 0; i < _albums.length; i++) ...[
-                if (i > 0) SizedBox(width: theme.spacing.md),
-                Expanded(
-                  flex: 1,
-                  child: AlbumCard(
-                    title: _albums[i].name,
-                    subtitle: _albums[i].artist,
+          if (recommendations.isEmpty)
+            _emptyHint(theme)
+          else
+            Row(
+              children: [
+                for (int i = 0; i < recommendations.length; i++) ...[
+                  if (i > 0) SizedBox(width: theme.spacing.md),
+                  Expanded(
+                    flex: 1,
+                    child: AlbumCard(
+                      title: recommendations[i].title,
+                      subtitle: recommendations[i].artist,
+                      cover: _RecommendationCover(
+                        track: byId[recommendations[i].coverTrackId],
+                      ),
+                      onTap: () => _playAlbum(recommendations[i], byId),
+                    ),
                   ),
-                ),
+                ],
               ],
-            ],
-          ),
+            ),
         ],
+      ),
+    );
+  }
+
+  void _playAlbum(rust.UiAlbum album, Map<String, rust.UiTrack> byId) {
+    final tracks = <rust.UiTrack>[
+      for (final id in album.trackIds)
+        if (byId[id] != null) byId[id]!,
+    ];
+    if (tracks.isEmpty) return;
+    ref.read(playerProvider.notifier).load(
+          tracks,
+          0,
+          source: album.title,
+        );
+  }
+
+  Widget _emptyHint(M3EThemeData theme) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: theme.spacing.md),
+      child: Text(
+        '播放一些歌曲后，这里会根据收听记录生成推荐',
+        style: theme.typeScale.bodyMedium.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
       ),
     );
   }
 }
 
-//专辑假数据
-class _MockAlbum {
-  final String name;
-  final String artist;
+//推荐卡片封面:有内嵌封面显示真实封面,否则渐变占位
+class _RecommendationCover extends ConsumerWidget {
+  const _RecommendationCover({required this.track});
 
-  const _MockAlbum(this.name, this.artist);
+  final rust.UiTrack? track;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = M3ETheme.of(context);
+    final scheme = theme.colorScheme;
+    final current = track;
+    final bytes =
+        current == null ? null : ref.watch(trackCoverProvider(current)).value;
+    final hasArt = bytes != null && bytes.isNotEmpty;
+
+    if (hasArt) {
+      return Image.memory(
+        bytes,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        gaplessPlayback: true,
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      color: scheme.surfaceContainerHigh,
+      alignment: Alignment.center,
+      child: Icon(
+        M3EIcons.music_note,
+        size: theme.spacing.xxl,
+        color: scheme.onSurfaceVariant,
+      ),
+    );
+  }
 }

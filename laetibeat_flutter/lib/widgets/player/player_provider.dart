@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:laetibeat/src/rust/api/simple.dart' as rust;
 import '../settings/persistence.dart';
 import 'playback_backend.dart';
+import 'playback_session_tracker.dart';
+import 'playback_stats.dart';
 
 //播放状态:当前曲目/播放中/进度/来源/队列
 //三页右侧播放面板 + 全屏页都读同一份,保证"相互联系"
@@ -98,6 +101,9 @@ enum PlaybackRepeatMode { off, single, all }
 class PlayerNotifier extends Notifier<PlayerState> {
   //真实播放后端(Linux 首发为 media_kit)。只通过这一层拼口驱动,不直接碰引擎。
   late final PlaybackBackend _backend;
+
+  /// 播放会话统计
+  late final PlaybackSessionTracker _sessionTracker;
   final List<StreamSubscription> _subs = [];
 
   /// 随机播放选曲用
@@ -127,6 +133,14 @@ class PlayerNotifier extends Notifier<PlayerState> {
   @override
   PlayerState build() {
     _backend = createPlaybackBackend();
+    _sessionTracker = PlaybackSessionTracker(
+      // 直接从持久化设置读取当前音乐库目录,启动恢复时也不会拿到空 sourceId
+      sourceId: () =>
+          ref.read(sharedPreferencesProvider).getString(kMusicDirectoryKey) ??
+          '',
+      queueSource: () => state.source,
+      onEvent: _recordPlayEvent,
+    );
 
     // 订阅真实引擎的状态/进度流,彻底取代之前每秒跳一次的假 Timer
     _subs.add(_backend.positionStream.listen(_onPosition));
@@ -194,6 +208,7 @@ class PlayerNotifier extends Notifier<PlayerState> {
     final total = state.duration;
     final clamped = (total > Duration.zero && p > total) ? total : p;
     state = state.copyWith(position: clamped);
+    _sessionTracker.onPosition(clamped);
 
     // 播放中节流落盘进度,避免 position 每次 tick 都写文件
     if (state.isPlaying) {
@@ -207,6 +222,19 @@ class PlayerNotifier extends Notifier<PlayerState> {
 
   void _onPlaying(bool on) {
     state = state.copyWith(isPlaying: on);
+    _sessionTracker.onPlaying(on);
+  }
+
+  /// 播放会话达到阈值后写入 Rust 统计库
+  void _recordPlayEvent(PlaySessionEvent event) {
+    unawaited(() async {
+      try {
+        await ref.read(playbackStatsServiceProvider).record(event);
+        ref.read(statsRevisionProvider.notifier).bump();
+      } catch (e) {
+        debugPrint('记录播放事件失败: $e');
+      }
+    }());
   }
 
   //播放/暂停切换:由真实引擎的实际状态决定,不再本地假翻
@@ -281,6 +309,9 @@ class PlayerNotifier extends Notifier<PlayerState> {
             ? state.duration
             : _durationOf(track),
       );
+      // 真正开始播放时才开启统计会话(懒加载恢复不算播放)
+      _sessionTracker.onTrackChanged(track);
+      _sessionTracker.onSeek(resumeAt);
       await _backend.play();
       _pendingPosition = Duration.zero;
       unawaited(_saveState());
@@ -322,6 +353,7 @@ class PlayerNotifier extends Notifier<PlayerState> {
     );
     _mediaLoaded = true;
     _pendingPosition = Duration.zero;
+    _sessionTracker.onTrackChanged(tracks[idx]);
     _backend.open(_trackOf(tracks[idx]));
     // 队列内容变化才写队列文件;状态文件另写
     unawaited(_saveQueue());
@@ -354,6 +386,7 @@ class PlayerNotifier extends Notifier<PlayerState> {
     );
     _mediaLoaded = true;
     _pendingPosition = Duration.zero;
+    _sessionTracker.onTrackChanged(track);
     _backend.open(_trackOf(track));
     unawaited(_saveState());
   }
@@ -382,6 +415,7 @@ class PlayerNotifier extends Notifier<PlayerState> {
     final ms = position.inMilliseconds.clamp(0, total > 0 ? total : 0);
     final target = Duration(milliseconds: ms);
     state = state.copyWith(position: target);
+    _sessionTracker.onSeek(target);
 
     if (!_mediaLoaded) {
       // 引擎尚未装载:只记录待恢复进度,首次播放时再 seek
@@ -408,6 +442,8 @@ class PlayerNotifier extends Notifier<PlayerState> {
   //单曲播放完成:按 repeatMode 决定重播当前曲 / 下一首 / 停在末尾
   void _onCompleted() {
     if (state.queue.isEmpty) return;
+    // 先结算本次播放(完成态),后面若继续切歌会重新开会话
+    _sessionTracker.onCompleted();
 
     // 单曲循环:原位从头重播,不重新装载文件
     if (state.repeatMode == PlaybackRepeatMode.single) {
@@ -447,6 +483,7 @@ class PlayerNotifier extends Notifier<PlayerState> {
 
   //单曲循环:seek 回 0 再播,避免重新 open 整个文件
   void _replayCurrent() {
+    _sessionTracker.onTrackChanged(state.current);
     state = state.copyWith(position: Duration.zero, isPlaying: true);
     _backend.seek(Duration.zero);
     _backend.play();

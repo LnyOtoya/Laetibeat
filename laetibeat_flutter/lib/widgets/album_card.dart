@@ -8,12 +8,20 @@ class AlbumCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     this.imageUrl,
+    this.cover,
+    this.onTap,
   });
 
   final String title;
   final String subtitle;
   // 封面图地址,为空时显示占位封面
   final String? imageUrl;
+
+  // 自定义封面(如本地内嵌封面);优先于 imageUrl
+  final Widget? cover;
+
+  // 点击整张卡片
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +32,7 @@ class AlbumCard extends StatelessWidget {
       padding: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       borderRadius: M3EDimensions.borderRadiusLarge,
-      onPressed: () {},
+      onPressed: onTap,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -32,7 +40,7 @@ class AlbumCard extends StatelessWidget {
           // 上方封面图区域
           AspectRatio(
             aspectRatio: 1,
-            child: _buildCover(theme),
+            child: cover ?? _buildCover(theme),
           ),
           // 下方文本区域
           Padding(

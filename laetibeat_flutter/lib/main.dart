@@ -2,7 +2,9 @@ import 'package:flutter/widgets.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:laetibeat/src/rust/api/stats.dart' as rust_stats;
 import 'package:laetibeat/src/rust/frb_generated.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'nav_shell.dart';
 import 'widgets/integration/media_integration_host.dart';
@@ -26,6 +28,17 @@ Future<void> main() async {
     await windowManager.focus();
   });
   await RustLib.init();
+  // 初始化播放统计库(失败不阻塞应用启动)
+  try {
+    final supportDir = await getApplicationSupportDirectory();
+    await supportDir.create(recursive: true);
+    await rust_stats.initStatsDb(
+      path: '${supportDir.path}/laetibeat_stats.db',
+    );
+  } catch (e) {
+    debugPrint('初始化播放统计库失败: $e');
+  }
+
   // 预加载本地设置与播放快照,供 Riverpod provider 构建时同步恢复
   final prefs = await SharedPreferences.getInstance();
   final playbackStore = PlaybackSnapshotStore();

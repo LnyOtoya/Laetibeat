@@ -13,6 +13,8 @@ pub fn pick_directory() -> Option<String> {
 #[frb(non_opaque)]
 pub struct  UiTrack {
     pub id: String,
+    /// 相对于音乐库根目录的路径,用作播放统计中的稳定 track_id
+    pub relative_path: Option<String>,
     pub title: String,
     pub artist: String,
     pub album: String,
@@ -101,6 +103,7 @@ fn ui_track_to_track(track: UiTrack) -> Option<Track> {
     let path = PathBuf::from(&track.path);
     Some(Track {
         id: track.id,
+        relative_path: track.relative_path,
         title: track.title,
         artist: track.artist,
         album: track.album,
@@ -145,6 +148,7 @@ pub fn scan_local_music_folder(
         };
         UiTrack {
             id: track.id,
+            relative_path: track.relative_path,
             title: track.title,
             artist: track.artist,
             album: track.album,

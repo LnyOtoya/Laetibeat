@@ -5,6 +5,7 @@
 
 import 'api/metadata.dart';
 import 'api/simple.dart';
+import 'api/stats.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi' as ffi;
@@ -23,6 +24,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String dco_decode_String(dynamic raw);
 
   @protected
+  bool dco_decode_bool(dynamic raw);
+
+  @protected
+  PlatformInt64 dco_decode_box_autoadd_i_64(dynamic raw);
+
+  @protected
   int dco_decode_box_autoadd_u_32(dynamic raw);
 
   @protected
@@ -30,6 +37,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   int dco_decode_box_autoadd_u_8(dynamic raw);
+
+  @protected
+  UiPlayEvent dco_decode_box_autoadd_ui_play_event(dynamic raw);
+
+  @protected
+  double dco_decode_f_64(dynamic raw);
+
+  @protected
+  PlatformInt64 dco_decode_i_64(dynamic raw);
 
   @protected
   List<String> dco_decode_list_String(dynamic raw);
@@ -44,10 +60,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<UiArtist> dco_decode_list_ui_artist(dynamic raw);
 
   @protected
+  List<UiPlayEvent> dco_decode_list_ui_play_event(dynamic raw);
+
+  @protected
   List<UiTrack> dco_decode_list_ui_track(dynamic raw);
 
   @protected
+  List<UiTrackStat> dco_decode_list_ui_track_stat(dynamic raw);
+
+  @protected
   String? dco_decode_opt_String(dynamic raw);
+
+  @protected
+  PlatformInt64? dco_decode_opt_box_autoadd_i_64(dynamic raw);
 
   @protected
   int? dco_decode_opt_box_autoadd_u_32(dynamic raw);
@@ -80,6 +105,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   UiLibrary dco_decode_ui_library(dynamic raw);
 
   @protected
+  UiPlayEvent dco_decode_ui_play_event(dynamic raw);
+
+  @protected
   UiScanResult dco_decode_ui_scan_result(dynamic raw);
 
   @protected
@@ -89,10 +117,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   UiTrack dco_decode_ui_track(dynamic raw);
 
   @protected
+  UiTrackStat dco_decode_ui_track_stat(dynamic raw);
+
+  @protected
   void dco_decode_unit(dynamic raw);
 
   @protected
   String sse_decode_String(SseDeserializer deserializer);
+
+  @protected
+  bool sse_decode_bool(SseDeserializer deserializer);
+
+  @protected
+  PlatformInt64 sse_decode_box_autoadd_i_64(SseDeserializer deserializer);
 
   @protected
   int sse_decode_box_autoadd_u_32(SseDeserializer deserializer);
@@ -102,6 +139,17 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   int sse_decode_box_autoadd_u_8(SseDeserializer deserializer);
+
+  @protected
+  UiPlayEvent sse_decode_box_autoadd_ui_play_event(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  double sse_decode_f_64(SseDeserializer deserializer);
+
+  @protected
+  PlatformInt64 sse_decode_i_64(SseDeserializer deserializer);
 
   @protected
   List<String> sse_decode_list_String(SseDeserializer deserializer);
@@ -116,10 +164,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<UiArtist> sse_decode_list_ui_artist(SseDeserializer deserializer);
 
   @protected
+  List<UiPlayEvent> sse_decode_list_ui_play_event(SseDeserializer deserializer);
+
+  @protected
   List<UiTrack> sse_decode_list_ui_track(SseDeserializer deserializer);
 
   @protected
+  List<UiTrackStat> sse_decode_list_ui_track_stat(SseDeserializer deserializer);
+
+  @protected
   String? sse_decode_opt_String(SseDeserializer deserializer);
+
+  @protected
+  PlatformInt64? sse_decode_opt_box_autoadd_i_64(SseDeserializer deserializer);
 
   @protected
   int? sse_decode_opt_box_autoadd_u_32(SseDeserializer deserializer);
@@ -152,6 +209,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   UiLibrary sse_decode_ui_library(SseDeserializer deserializer);
 
   @protected
+  UiPlayEvent sse_decode_ui_play_event(SseDeserializer deserializer);
+
+  @protected
   UiScanResult sse_decode_ui_scan_result(SseDeserializer deserializer);
 
   @protected
@@ -161,16 +221,25 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   UiTrack sse_decode_ui_track(SseDeserializer deserializer);
 
   @protected
+  UiTrackStat sse_decode_ui_track_stat(SseDeserializer deserializer);
+
+  @protected
   void sse_decode_unit(SseDeserializer deserializer);
 
   @protected
   int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
-  bool sse_decode_bool(SseDeserializer deserializer);
+  void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
-  void sse_encode_String(String self, SseSerializer serializer);
+  void sse_encode_bool(bool self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_i_64(
+    PlatformInt64 self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer);
@@ -180,6 +249,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_box_autoadd_u_8(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_ui_play_event(
+    UiPlayEvent self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_f_64(double self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_String(List<String> self, SseSerializer serializer);
@@ -197,10 +278,28 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_list_ui_artist(List<UiArtist> self, SseSerializer serializer);
 
   @protected
+  void sse_encode_list_ui_play_event(
+    List<UiPlayEvent> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_ui_track(List<UiTrack> self, SseSerializer serializer);
 
   @protected
+  void sse_encode_list_ui_track_stat(
+    List<UiTrackStat> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_i_64(
+    PlatformInt64? self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_opt_box_autoadd_u_32(int? self, SseSerializer serializer);
@@ -236,6 +335,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_ui_library(UiLibrary self, SseSerializer serializer);
 
   @protected
+  void sse_encode_ui_play_event(UiPlayEvent self, SseSerializer serializer);
+
+  @protected
   void sse_encode_ui_scan_result(UiScanResult self, SseSerializer serializer);
 
   @protected
@@ -245,13 +347,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_ui_track(UiTrack self, SseSerializer serializer);
 
   @protected
+  void sse_encode_ui_track_stat(UiTrackStat self, SseSerializer serializer);
+
+  @protected
   void sse_encode_unit(void self, SseSerializer serializer);
 
   @protected
   void sse_encode_i_32(int self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_bool(bool self, SseSerializer serializer);
 }
 
 // Section: wire_class

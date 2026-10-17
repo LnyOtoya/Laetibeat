@@ -175,6 +175,9 @@ class UiScanStats {
 
 class UiTrack {
   final String id;
+
+  /// 相对于音乐库根目录的路径,用作播放统计中的稳定 track_id
+  final String? relativePath;
   final String title;
   final String artist;
   final String album;
@@ -214,6 +217,7 @@ class UiTrack {
 
   const UiTrack({
     required this.id,
+    this.relativePath,
     required this.title,
     required this.artist,
     required this.album,
@@ -237,6 +241,7 @@ class UiTrack {
   @override
   int get hashCode =>
       id.hashCode ^
+      relativePath.hashCode ^
       title.hashCode ^
       artist.hashCode ^
       album.hashCode ^
@@ -262,6 +267,7 @@ class UiTrack {
       other is UiTrack &&
           runtimeType == other.runtimeType &&
           id == other.id &&
+          relativePath == other.relativePath &&
           title == other.title &&
           artist == other.artist &&
           album == other.album &&

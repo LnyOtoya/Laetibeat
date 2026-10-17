@@ -149,10 +149,16 @@ pub fn scan_directory_incremental<P: AsRef<Path>>(
         // 聚合 id 需在字段移动前算好
         let album_id = make_album_id(&album_artist, &album);
         let artist_id = make_artist_id(&artist);
+        // 相对音乐库根目录的路径,作为跨音源/跨目录的稳定 track_id
+        let relative_path = file_path
+            .strip_prefix(path)
+            .ok()
+            .map(|p| p.to_string_lossy().to_string());
 
         let track = Track {
             // 直接把路径转换强行为标准的文本字符串
             id: path_str,
+            relative_path,
             //把刚才存入的title作为单曲的title
             title,
             artist,
