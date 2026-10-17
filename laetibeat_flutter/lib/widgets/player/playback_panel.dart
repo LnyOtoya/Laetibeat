@@ -87,26 +87,14 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
                     children: [
                       _sourceRegion(theme, scheme, player),
                       SizedBox(height: theme.spacing.lg),
-                      // 封面/歌词区:默认封面,按歌词按钮切换为歌词
-                      if (_showLyrics)
-                        ConstrainedBox(
-                          constraints:
-                              BoxConstraints(maxHeight: c.maxHeight * 0.45),
-                          child: const LyricsView(),
-                        )
-                      else
-                        Center(
-                          child: ConstrainedBox(
-                            constraints:
-                                BoxConstraints(maxHeight: c.maxHeight * 0.45),
-                            child: AspectRatio(
-                              aspectRatio: 1,
-                              child: _cover(theme, bytes: bytes),
-                            ),
-                          ),
-                        ),
+                      // 封面/歌词区:封面向上滑出淡出,歌词平滑进入(反向亦然)
+                      ConstrainedBox(
+                        constraints:
+                            BoxConstraints(maxHeight: c.maxHeight * 0.45),
+                        child: _mainArea(theme, bytes),
+                      ),
                       SizedBox(height: theme.spacing.xxl),
-                      _infoRow(context, theme, track),
+                      _infoRow(context, theme, track, bytes),
                       SizedBox(height: theme.spacing.xxl),
                       _controlRegion(context, theme, scheme, player, ref,
                           compact: compact),
@@ -127,19 +115,10 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
                     _sourceRegion(theme, scheme, player),
                     // 来源距离封面: 间距稍小
                     SizedBox(height: theme.spacing.lg),
-                    Expanded(
-                      child: _showLyrics
-                          ? const LyricsView()
-                          : Center(
-                              child: AspectRatio(
-                                aspectRatio: 1,
-                                child: _cover(theme, bytes: bytes),
-                              ),
-                            ),
-                    ),
+                    Expanded(child: _mainArea(theme, bytes)),
                     // 信息行距离控制区: 间距稍大
                     SizedBox(height: theme.spacing.xxl),
-                    _infoRow(context, theme, track),
+                    _infoRow(context, theme, track, bytes),
                     SizedBox(height: theme.spacing.xxl),
                     _controlRegion(context, theme, scheme, player, ref,
                         compact: compact),
@@ -213,32 +192,115 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
     );
   }
 
+  // 主内容区:大封面与歌词共用同一块区域,切换时封面向上滑出淡出、
+  // 歌词淡入;反向切换时动画自动倒放。两者用同一时长/曲线保持节奏一致。
+  Widget _mainArea(M3EThemeData theme, Uint8List? bytes) {
+    final duration = kSectionAnimDuration;
+    final curve = kSectionAnimCurve;
+    return AnimatedSwitcher(
+      duration: duration,
+      switchInCurve: curve,
+      switchOutCurve: curve,
+      transitionBuilder: (child, animation) {
+        final isLyrics = child.key == const ValueKey('lyrics');
+        // 歌词:从下方轻微上移并淡入;封面:上滑并淡出。
+        // AnimatedSwitcher 对退出方使用倒放动画,所以封面 tween 写成
+        // begin=上移、end=原位,退出时正好从原位滑向上方。
+        final begin = isLyrics ? const Offset(0, 0.05) : const Offset(0, -0.18);
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: Tween<Offset>(begin: begin, end: Offset.zero)
+                .animate(animation),
+            child: child,
+          ),
+        );
+      },
+      child: _showLyrics
+          ? const LyricsView(key: ValueKey('lyrics'))
+          : Center(
+              key: const ValueKey('cover'),
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: _cover(theme, bytes: bytes),
+              ),
+            ),
+    );
+  }
+
   //区域2:信息行 - 左(歌名/歌手)右(全屏/歌词),排在封面下方
   Widget _infoRow(
     BuildContext context,
     M3EThemeData theme,
     rust.UiTrack? track,
+    Uint8List? bytes,
   ) {
+    final showCover = _showLyrics;
+    const double coverSize = 44;
     return Row(
       children: [
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              Text(
-                track?.title ?? '未在播放',
-                style: theme.typeScale.headlineSmall,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              // 歌词态小封面:宽度从 0 平滑展开,图片随后淡入并轻微放大。
+              // 用 ClipRect 揭示固定尺寸的图片,避免宽度动画把封面横向压扁。
+              TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: 0, end: showCover ? 1 : 0),
+                duration: kSectionAnimDuration,
+                curve: kSectionAnimCurve,
+                builder: (context, t, _) {
+                  if (t == 0) return const SizedBox.shrink();
+                  return ClipRect(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      widthFactor: t,
+                      child: SizedBox(
+                        width: coverSize + theme.spacing.md,
+                        height: coverSize,
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Opacity(
+                            opacity: t,
+                            child: Transform.scale(
+                              scale: 0.88 + 0.12 * t,
+                              child: SizedBox(
+                                width: coverSize,
+                                height: coverSize,
+                                child: _cover(
+                                  theme,
+                                  bytes: bytes,
+                                  radius: theme.spacing.sm,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
-              SizedBox(height: theme.spacing.xs),
-              Text(
-                track == null ? '' : '${track.artist} · ${track.album}',
-                style: theme.typeScale.bodyLarge.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      track?.title ?? '未在播放',
+                      style: theme.typeScale.headlineSmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    SizedBox(height: theme.spacing.xs),
+                    Text(
+                      track == null ? '' : '${track.artist} · ${track.album}',
+                      style: theme.typeScale.bodyLarge.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -281,11 +343,11 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
 
   //封面:自控圆角(比M3EShapeContainer.square默认radius更小)。
   //有封面字节则铺满显示 Image.memory,无封面回退占位音符图标(按边长比例)
-  Widget _cover(M3EThemeData theme, {Uint8List? bytes}) {
+  Widget _cover(M3EThemeData theme, {Uint8List? bytes, double? radius}) {
     final scheme = theme.colorScheme;
     final hasArt = bytes != null && bytes.isNotEmpty;
     return ClipRRect(
-      borderRadius: BorderRadius.circular(theme.spacing.md),
+      borderRadius: BorderRadius.circular(radius ?? theme.spacing.md),
       child: ColoredBox(
         color: scheme.secondaryContainer,
         child: hasArt
