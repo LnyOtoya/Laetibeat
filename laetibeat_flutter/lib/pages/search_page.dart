@@ -1,13 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:laetibeat/src/rust/api/simple.dart' as rust;
+import 'package:laetibeat/src/rust/api/subsonic.dart' as rust_subsonic;
 
 import '../animations.dart';
 import '../widgets/player/cover_provider.dart';
 import '../widgets/player/player_provider.dart';
 import '../widgets/player/player_right_pane.dart';
+import '../widgets/remote_browser_provider.dart';
 import '../widgets/settings/music_library_provider.dart';
+import '../widgets/settings/subsonic_provider.dart';
 import '../widgets/two_pane_layout.dart';
 
 /// 搜索结果类型
@@ -21,6 +26,9 @@ class SearchPage extends ConsumerStatefulWidget {
 }
 
 class _SearchPageState extends ConsumerState<SearchPage> {
+  /// 音源切换里的"本地音乐"哨兵值
+  static const String _localSource = '__local__';
+
   final TextEditingController _controller = TextEditingController();
 
   //右区播放面板,点击搜索结果后仍复用同一播放器
@@ -30,17 +38,59 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   _SearchFilter _filter = _SearchFilter.track;
   String _query = '';
 
+  //远端:输入防抖后的查询词与当前音源
+  String _sourceId = _localSource;
+  String _debouncedQuery = '';
+  Timer? _debounce;
+
+  //远端艺术家结果的专辑下钻状态
+  rust_subsonic.UiRemoteArtist? _remoteArtist;
+
   @override
   void dispose() {
+    _debounce?.cancel();
     _controller.dispose();
     super.dispose();
   }
 
   String get _filterLabel => switch (_filter) {
-        _SearchFilter.track => '曲目',
-        _SearchFilter.artist => '艺术家',
-        _SearchFilter.album => '专辑',
-      };
+    _SearchFilter.track => '曲目',
+    _SearchFilter.artist => '艺术家',
+    _SearchFilter.album => '专辑',
+  };
+
+  bool get _isLocal => _sourceId == _localSource;
+
+  String _sourceName(List<SubsonicServerConfig> servers) {
+    if (_isLocal) return '本地音乐';
+    for (final server in servers) {
+      if (server.id == _sourceId) return server.name;
+    }
+    return '远端音乐';
+  }
+
+  void _onQueryChanged(String value) {
+    setState(() {
+      _query = value;
+      _remoteArtist = null;
+    });
+    _debounce?.cancel();
+    if (_isLocal) return;
+    _debounce = Timer(const Duration(milliseconds: 350), () {
+      if (!mounted) return;
+      setState(() => _debouncedQuery = value.trim());
+    });
+  }
+
+  void _selectSource(String sourceId) {
+    if (sourceId == _sourceId) return;
+    _debounce?.cancel();
+    setState(() {
+      _sourceId = sourceId;
+      _remoteArtist = null;
+      _debouncedQuery = _query.trim();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +107,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     final theme = M3ETheme.of(context);
     final scheme = theme.colorScheme;
     final music = ref.watch(musicLibraryProvider);
+    final servers =
+        ref.watch(subsonicServersProvider).value ??
+        const <SubsonicServerConfig>[];
 
     return AnimatedContainer(
       duration: kSectionAnimDuration,
@@ -79,38 +132,64 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             showClearButton: true,
             margin: 0,
             focusedMargin: 0,
-            onChanged: (value) => setState(() => _query = value),
+            onChanged: _onQueryChanged,
           ),
           SizedBox(height: theme.spacing.lg),
-          //结果类型切换(保持内容自适应宽度,与音乐库页一致)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: M3ESplitButton<_SearchFilter>(
-              items: const [
-                M3ESplitButtonItem(
-                  value: _SearchFilter.track,
-                  child: Text('曲目'),
+          //结果类型 + 音源切换(内容自适应宽度,与音乐库页一致)
+          Wrap(
+            spacing: theme.spacing.md,
+            runSpacing: theme.spacing.sm,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              M3ESplitButton<_SearchFilter>(
+                items: const [
+                  M3ESplitButtonItem(
+                    value: _SearchFilter.track,
+                    child: Text('曲目'),
+                  ),
+                  M3ESplitButtonItem(
+                    value: _SearchFilter.artist,
+                    child: Text('艺术家'),
+                  ),
+                  M3ESplitButtonItem(
+                    value: _SearchFilter.album,
+                    child: Text('专辑'),
+                  ),
+                ],
+                selectedValue: _filter,
+                label: _filterLabel,
+                style: M3EButtonStyle.filled,
+                size: M3EButtonSize.md,
+                shape: M3EButtonShape.round,
+                onSelected: (value) => setState(() => _filter = value),
+              ),
+              if (servers.isNotEmpty)
+                M3ESplitButton<String>(
+                  items: [
+                    const M3ESplitButtonItem(
+                      value: _localSource,
+                      child: Text('本地音乐'),
+                    ),
+                    for (final server in servers)
+                      M3ESplitButtonItem(
+                        value: server.id,
+                        child: Text(server.name),
+                      ),
+                  ],
+                  selectedValue: _sourceId,
+                  label: _sourceName(servers),
+                  style: M3EButtonStyle.tonal,
+                  size: M3EButtonSize.md,
+                  shape: M3EButtonShape.round,
+                  onSelected: _selectSource,
                 ),
-                M3ESplitButtonItem(
-                  value: _SearchFilter.artist,
-                  child: Text('艺术家'),
-                ),
-                M3ESplitButtonItem(
-                  value: _SearchFilter.album,
-                  child: Text('专辑'),
-                ),
-              ],
-              selectedValue: _filter,
-              label: _filterLabel,
-              style: M3EButtonStyle.filled,
-              size: M3EButtonSize.md,
-              shape: M3EButtonShape.round,
-              onSelected: (value) => setState(() => _filter = value),
-            ),
+            ],
           ),
           SizedBox(height: theme.spacing.lg),
           Expanded(
-            child: _buildResults(theme, scheme, music.value),
+            child: _isLocal
+                ? _buildResults(theme, scheme, music.value)
+                : _buildRemoteResults(theme, scheme, servers),
           ),
         ],
       ),
@@ -167,11 +246,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
     return M3EList.scrollable(
       itemCount: results.length,
-      onTap: (i) => ref.read(playerProvider.notifier).load(
-            results,
-            i,
-            source: '搜索',
-          ),
+      onTap: (i) =>
+          ref.read(playerProvider.notifier).load(results, i, source: '搜索'),
       itemBuilder: (context, i) {
         final track = results[i];
         return M3EListItem(
@@ -209,11 +285,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             if (t.artistId == artist.id) t,
         ];
         if (tracks.isNotEmpty) {
-          ref.read(playerProvider.notifier).load(
-                tracks,
-                0,
-                source: artist.name,
-              );
+          ref
+              .read(playerProvider.notifier)
+              .load(tracks, 0, source: artist.name);
         }
       },
       itemBuilder: (context, i) {
@@ -256,11 +330,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             if (byId[id] != null) byId[id]!,
         ];
         if (tracks.isNotEmpty) {
-          ref.read(playerProvider.notifier).load(
-                tracks,
-                0,
-                source: album.title,
-              );
+          ref
+              .read(playerProvider.notifier)
+              .load(tracks, 0, source: album.title);
         }
       },
       itemBuilder: (context, i) {
@@ -272,11 +344,248 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               ? _IconThumb(theme: theme, scheme: scheme, icon: M3EIcons.album)
               : _CoverThumb(track: cover),
           headline: album.title,
-          supportingText:
-              '${album.artist}$year · ${album.trackCount} 首曲目',
+          supportingText: '${album.artist}$year · ${album.trackCount} 首曲目',
         );
       },
     );
+  }
+
+  //远端结果:艺术家可下钻到专辑列表,专辑/曲目点击即播放
+  Widget _buildRemoteResults(
+    M3EThemeData theme,
+    M3EColorScheme scheme,
+    List<SubsonicServerConfig> servers,
+  ) {
+    final artist = _remoteArtist;
+    if (artist != null) {
+      return _buildRemoteArtistAlbums(theme, scheme, artist);
+    }
+
+    if (_query.trim().isEmpty) {
+      return _hint(
+        theme,
+        scheme,
+        '搜索 ${_sourceName(servers)}',
+        '输入歌名、艺术家或专辑关键词',
+      );
+    }
+    //防抖窗口内还没发出请求
+    if (_debouncedQuery.isEmpty) {
+      return _hint(theme, scheme, '搜索 ${_sourceName(servers)}', '输入关键词后自动搜索');
+    }
+
+    final result = ref.watch(
+      remoteSearchProvider((sourceId: _sourceId, query: _debouncedQuery)),
+    );
+    return result.when(
+      loading: () => Center(
+        child: M3ELoadingIndicator(
+          color: scheme.primary,
+          containerColor: scheme.surfaceContainerHighest,
+        ),
+      ),
+      error: (error, _) => _hint(theme, scheme, '远端搜索失败', '$error'),
+      data: (data) => switch (_filter) {
+        _SearchFilter.track => _buildRemoteTrackResults(theme, scheme, data),
+        _SearchFilter.artist => _buildRemoteArtistResults(theme, scheme, data),
+        _SearchFilter.album => _buildRemoteAlbumResults(theme, scheme, data),
+      },
+    );
+  }
+
+  Widget _buildRemoteTrackResults(
+    M3EThemeData theme,
+    M3EColorScheme scheme,
+    rust_subsonic.UiRemoteSearchResult data,
+  ) {
+    if (data.tracks.isEmpty) {
+      return _hint(theme, scheme, '未找到匹配曲目', null);
+    }
+    return M3EList.scrollable(
+      itemCount: data.tracks.length,
+      onTap: (i) => _playRemoteTracks(data.tracks, i),
+      itemBuilder: (context, i) {
+        final track = data.tracks[i];
+        return M3EListItem(
+          leading: _RemoteThumb(
+            sourceId: _sourceId,
+            coverId: track.coverId,
+            fallbackIcon: M3EIcons.music_note,
+          ),
+          headline: track.title,
+          supportingText: '${track.artist} · ${track.album}',
+          trailingText: formatTrackDuration(track.durationSeconds.toInt()),
+        );
+      },
+    );
+  }
+
+  Widget _buildRemoteArtistResults(
+    M3EThemeData theme,
+    M3EColorScheme scheme,
+    rust_subsonic.UiRemoteSearchResult data,
+  ) {
+    if (data.artists.isEmpty) {
+      return _hint(theme, scheme, '未找到匹配艺术家', null);
+    }
+    return M3EList.scrollable(
+      itemCount: data.artists.length,
+      onTap: (i) => setState(() => _remoteArtist = data.artists[i]),
+      itemBuilder: (context, i) {
+        final artist = data.artists[i];
+        return M3EListItem(
+          leading: _RemoteThumb(
+            sourceId: _sourceId,
+            coverId: artist.coverId,
+            fallbackIcon: M3EIcons.person,
+          ),
+          headline: artist.name,
+          supportingText: artist.albumCount == null
+              ? null
+              : '${artist.albumCount!.toInt()} 张专辑',
+          trailing: const Icon(Icons.chevron_right),
+        );
+      },
+    );
+  }
+
+  Widget _buildRemoteAlbumResults(
+    M3EThemeData theme,
+    M3EColorScheme scheme,
+    rust_subsonic.UiRemoteSearchResult data,
+  ) {
+    if (data.albums.isEmpty) {
+      return _hint(theme, scheme, '未找到匹配专辑', null);
+    }
+    return M3EList.scrollable(
+      itemCount: data.albums.length,
+      onTap: (i) => _playRemoteAlbum(data.albums[i]),
+      itemBuilder: (context, i) => _remoteAlbumRow(theme, data.albums[i]),
+    );
+  }
+
+  //艺术家下钻:展示该艺术家的专辑,点击专辑播放整张
+  Widget _buildRemoteArtistAlbums(
+    M3EThemeData theme,
+    M3EColorScheme scheme,
+    rust_subsonic.UiRemoteArtist artist,
+  ) {
+    final albums = ref.watch(
+      remoteAlbumsProvider((sourceId: _sourceId, artistId: artist.id)),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            M3EIconButton(
+              size: M3EIconButtonSize.xs,
+              icon: const Icon(Icons.arrow_back),
+              tooltip: '返回搜索结果',
+              onPressed: () => setState(() => _remoteArtist = null),
+            ),
+            SizedBox(width: theme.spacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    artist.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.typeScale.titleMedium,
+                  ),
+                  Text(
+                    '专辑',
+                    style: theme.typeScale.bodySmall.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: theme.spacing.md),
+        Expanded(
+          child: albums.when(
+            loading: () => Center(
+              child: M3ELoadingIndicator(
+                color: scheme.primary,
+                containerColor: scheme.surfaceContainerHighest,
+              ),
+            ),
+            error: (error, _) => _hint(theme, scheme, '无法加载专辑', '$error'),
+            data: (list) => list.isEmpty
+                ? _hint(theme, scheme, '这位艺术家还没有专辑', null)
+                : M3EList.scrollable(
+                    itemCount: list.length,
+                    onTap: (i) => _playRemoteAlbum(list[i]),
+                    itemBuilder: (context, i) =>
+                        _remoteAlbumRow(theme, list[i]),
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _remoteAlbumRow(
+    M3EThemeData theme,
+    rust_subsonic.UiRemoteAlbum album,
+  ) {
+    final year = album.year == null ? '' : ' · ${album.year}';
+    return M3EListItem(
+      leading: _RemoteThumb(
+        sourceId: _sourceId,
+        coverId: album.coverId,
+        fallbackIcon: M3EIcons.album,
+      ),
+      headline: album.title,
+      supportingText: '${album.artist}$year',
+      trailing: album.songCount == null
+          ? null
+          : Text(
+              '${album.songCount!.toInt()} 首',
+              style: theme.typeScale.bodySmall.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+    );
+  }
+
+  void _playRemoteTracks(
+    List<rust_subsonic.UiRemoteTrack> tracks,
+    int index, {
+    String? sourceLabel,
+  }) {
+    final queue = <rust.UiTrack>[
+      for (final track in tracks) remoteTrackToUiTrack(track, _sourceId),
+    ];
+    ref
+        .read(playerProvider.notifier)
+        .load(
+          queue,
+          index,
+          source:
+              sourceLabel ??
+              _sourceName(
+                ref.read(subsonicServersProvider).value ??
+                    const <SubsonicServerConfig>[],
+              ),
+        );
+  }
+
+  Future<void> _playRemoteAlbum(rust_subsonic.UiRemoteAlbum album) async {
+    try {
+      final tracks = await ref.read(
+        remoteTracksProvider((sourceId: _sourceId, albumId: album.id)).future,
+      );
+      if (!mounted || tracks.isEmpty) return;
+      _playRemoteTracks(tracks, 0, sourceLabel: album.title);
+    } catch (e) {
+      debugPrint('播放远端专辑失败: $e');
+    }
   }
 
   static bool _matches(String value, String query) =>
@@ -345,6 +654,51 @@ class _CoverThumb extends ConsumerWidget {
                   color: scheme.onSecondaryContainer,
                 ),
               ),
+      ),
+    );
+  }
+}
+
+//远端结果行首封面:按 (sourceId, coverId) 懒加载,无封面回退占位图标
+class _RemoteThumb extends ConsumerWidget {
+  const _RemoteThumb({
+    required this.sourceId,
+    required this.coverId,
+    required this.fallbackIcon,
+  });
+
+  final String sourceId;
+  final String? coverId;
+  final IconData fallbackIcon;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = M3ETheme.of(context);
+    final scheme = theme.colorScheme;
+    final size = theme.spacing.xxl * 1.5;
+    final id = coverId;
+
+    Widget fallback() => ColoredBox(
+      color: scheme.secondaryContainer,
+      child: Icon(fallbackIcon, size: 24, color: scheme.onSecondaryContainer),
+    );
+
+    return ClipRRect(
+      borderRadius: M3EDimensions.borderRadiusSmall,
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: id == null || id.isEmpty
+            ? fallback()
+            : ref
+                  .watch(remoteCoverProvider((sourceId: sourceId, coverId: id)))
+                  .when(
+                    loading: fallback,
+                    error: (_, _) => fallback(),
+                    data: (bytes) => bytes == null || bytes.isEmpty
+                        ? fallback()
+                        : Image.memory(bytes, fit: BoxFit.cover),
+                  ),
       ),
     );
   }

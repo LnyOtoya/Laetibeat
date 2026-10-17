@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:laetibeat/src/rust/api/metadata.dart' as rust_meta;
 import 'package:laetibeat/src/rust/api/simple.dart' as rust;
+import 'package:laetibeat/src/rust/api/subsonic.dart' as rust_subsonic;
 
 import 'player_provider.dart';
 
@@ -78,6 +79,40 @@ class FileCoverProvider implements CoverProvider {
 Future<Uint8List?> _readEmbeddedArt(String path) =>
     rust_meta.readCover(path: path);
 
+/// 远端封面来源:按 (sourceId, coverId) 做 LRU 缓存。
+class RemoteCoverProvider {
+  RemoteCoverProvider();
+
+  static const int _maxCacheBytes = 64 * 1024 * 1024;
+  final Map<String, Uint8List> _cache = <String, Uint8List>{};
+  int _cachedBytes = 0;
+
+  Future<Uint8List?> cover(String sourceId, String coverId) async {
+    final key = '$sourceId:$coverId';
+    final cached = _cache.remove(key);
+    if (cached != null) {
+      _cache[key] = cached;
+      return cached;
+    }
+
+    final bytes = await rust_subsonic.subsonicGetCoverArt(
+      sourceId: sourceId,
+      coverId: coverId,
+      size: 600,
+    );
+    if (bytes.isEmpty) return null;
+
+    _cache[key] = bytes;
+    _cachedBytes += bytes.length;
+    while (_cachedBytes > _maxCacheBytes && _cache.isNotEmpty) {
+      final oldestKey = _cache.keys.first;
+      final removed = _cache.remove(oldestKey);
+      _cachedBytes -= removed?.length ?? 0;
+    }
+    return bytes;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Riverpod 接线
 // ---------------------------------------------------------------------------
@@ -87,6 +122,10 @@ final coverProvider = Provider<CoverProvider>((ref) {
   return FileCoverProvider();
 });
 
+final remoteCoverSourceProvider = Provider<RemoteCoverProvider>((ref) {
+  return RemoteCoverProvider();
+});
+
 /// 当前播放曲目的封面信息(字节 + 主色)。随当前曲目切换而刷新。
 /// 只订阅 current,避免 position 每 tick 更新 state 时反复重跑。
 /// 无封面 / 取色失败时返回 null,UI 回退占位图标并保留应用默认配色。
@@ -94,19 +133,44 @@ final playbackCoverProvider = FutureProvider<PlaybackCover?>((ref) async {
   final track = ref.watch(playerProvider.select((s) => s.current));
   if (track == null) return null;
 
-  final cover = ref.read(coverProvider);
-  final bytes = await cover.cover(track);
+  final Uint8List? bytes;
+  final coverId = track.coverId;
+  if (track.source == 'opensubsonic' &&
+      coverId != null &&
+      coverId.isNotEmpty) {
+    bytes = await ref
+        .read(remoteCoverSourceProvider)
+        .cover(track.sourceId, coverId);
+  } else {
+    bytes = await ref.read(coverProvider).cover(track);
+  }
   if (bytes == null || bytes.isEmpty) return null;
 
   return PlaybackCover(bytes, await _dominantColor(bytes));
 });
 
 /// 按曲目取封面字节(供音乐库列表等并行展示)。以 track 对象作 family key,
-/// 缓存按 UiTrack 值相等(id/path 等)命中;FileCoverProvider 内部再按 id 缓存。
+/// 缓存按 UiTrack 值相等(id/path 等)命中;Provider 内部再按 id 缓存。
 final trackCoverProvider =
     FutureProvider.family<Uint8List?, rust.UiTrack>((ref, track) async {
+  final coverId = track.coverId;
+  if (track.source == 'opensubsonic' &&
+      coverId != null &&
+      coverId.isNotEmpty) {
+    return ref
+        .read(remoteCoverSourceProvider)
+        .cover(track.sourceId, coverId);
+  }
   if (track.path.isEmpty) return null;
   return ref.read(coverProvider).cover(track);
+});
+
+/// 按远端封面 id 取封面(艺术家/专辑/曲目列表用)
+final remoteCoverProvider = FutureProvider.family<Uint8List?,
+    ({String sourceId, String? coverId})>((ref, key) async {
+  final coverId = key.coverId;
+  if (coverId == null || coverId.isEmpty) return null;
+  return ref.read(remoteCoverSourceProvider).cover(key.sourceId, coverId);
 });
 
 // ---------------------------------------------------------------------------

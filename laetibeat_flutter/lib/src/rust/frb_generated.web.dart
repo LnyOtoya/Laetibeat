@@ -144,6 +144,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   UiRemoteArtistDetail dco_decode_ui_remote_artist_detail(dynamic raw);
 
   @protected
+  UiRemoteSearchResult dco_decode_ui_remote_search_result(dynamic raw);
+
+  @protected
   UiRemoteTrack dco_decode_ui_remote_track(dynamic raw);
 
   @protected
@@ -293,6 +296,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   UiRemoteArtistDetail sse_decode_ui_remote_artist_detail(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  UiRemoteSearchResult sse_decode_ui_remote_search_result(
     SseDeserializer deserializer,
   );
 
@@ -478,6 +486,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_ui_remote_artist_detail(
     UiRemoteArtistDetail self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ui_remote_search_result(
+    UiRemoteSearchResult self,
     SseSerializer serializer,
   );
 

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:laetibeat/src/rust/api/metadata.dart' as rust_meta;
 import 'package:laetibeat/src/rust/api/simple.dart' as rust;
+import 'package:laetibeat/src/rust/api/subsonic.dart' as rust_subsonic;
 
 import 'player_provider.dart';
 
@@ -60,6 +61,35 @@ Future<Lyrics?> _readLyrics(String audioPath) async {
   return trimmed.isEmpty ? null : Lyrics(trimmed);
 }
 
+/// 远端歌词来源:按 (sourceId, trackId) 缓存。
+/// OpenSubsonic 结构化歌词会转成 LRC;旧版 getLyrics 返回纯文本。
+class RemoteLyricProvider implements LyricProvider {
+  RemoteLyricProvider();
+
+  final Map<String, Lyrics> _cache = {};
+
+  @override
+  Future<Lyrics?> lyrics(rust.UiTrack track) async {
+    final key = '${track.sourceId}:${track.id}';
+    final cached = _cache[key];
+    if (cached != null) return cached;
+
+    final text = await rust_subsonic.subsonicGetLyrics(
+      sourceId: track.sourceId,
+      trackId: track.id,
+      artist: track.artist,
+      title: track.title,
+    );
+    if (text == null) return null;
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return null;
+
+    final lyrics = Lyrics(trimmed);
+    _cache[key] = lyrics;
+    return lyrics;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Riverpod 接线
 // ---------------------------------------------------------------------------
@@ -69,12 +99,19 @@ final lyricProvider = Provider<LyricProvider>((ref) {
   return FileLyricProvider();
 });
 
+final remoteLyricProvider = Provider<RemoteLyricProvider>((ref) {
+  return RemoteLyricProvider();
+});
+
 /// 当前播放曲目的歌词。随当前曲目切换而刷新;无歌词返回 null。
 /// 只订阅 current(而非整个 state),避免播放进度 position 每 tick 更新
 /// state 时触发本 FutureProvider 反复重跑而闪 loading。
 final lyricsProvider = FutureProvider<Lyrics?>((ref) async {
   final track = ref.watch(playerProvider.select((s) => s.current));
   if (track == null) return null;
+  if (track.source == 'opensubsonic' && track.sourceId.isNotEmpty) {
+    return ref.read(remoteLyricProvider).lyrics(track);
+  }
   return ref.read(lyricProvider).lyrics(track);
 });
 
@@ -82,6 +119,9 @@ final lyricsProvider = FutureProvider<Lyrics?>((ref) async {
 /// FileLyricProvider 内部再按 id 缓存。
 final trackLyricsProvider =
     FutureProvider.family<Lyrics?, rust.UiTrack>((ref, track) async {
+  if (track.source == 'opensubsonic' && track.sourceId.isNotEmpty) {
+    return ref.read(remoteLyricProvider).lyrics(track);
+  }
   if (track.path.isEmpty) return null;
   return ref.read(lyricProvider).lyrics(track);
 });

@@ -43,6 +43,30 @@ Future<String> subsonicStreamUrl({
   trackId: trackId,
 );
 
+/// 拉取远端封面字节
+Future<Uint8List> subsonicGetCoverArt({
+  required String sourceId,
+  required String coverId,
+  int? size,
+}) => RustLib.instance.api.crateApiSubsonicSubsonicGetCoverArt(
+  sourceId: sourceId,
+  coverId: coverId,
+  size: size,
+);
+
+/// 拉取远端歌词文本;优先结构化歌词,回退旧版 getLyrics
+Future<String?> subsonicGetLyrics({
+  required String sourceId,
+  required String trackId,
+  required String artist,
+  required String title,
+}) => RustLib.instance.api.crateApiSubsonicSubsonicGetLyrics(
+  sourceId: sourceId,
+  trackId: trackId,
+  artist: artist,
+  title: title,
+);
+
 /// 获取艺术家列表
 Future<List<UiRemoteArtist>> subsonicGetArtists({required String sourceId}) =>
     RustLib.instance.api.crateApiSubsonicSubsonicGetArtists(sourceId: sourceId);
@@ -63,6 +87,21 @@ Future<UiRemoteAlbumDetail> subsonicGetAlbum({
 }) => RustLib.instance.api.crateApiSubsonicSubsonicGetAlbum(
   sourceId: sourceId,
   albumId: albumId,
+);
+
+/// ID3 搜索(search3)
+Future<UiRemoteSearchResult> subsonicSearch3({
+  required String sourceId,
+  required String query,
+  required int artistCount,
+  required int albumCount,
+  required int songCount,
+}) => RustLib.instance.api.crateApiSubsonicSubsonicSearch3(
+  sourceId: sourceId,
+  query: query,
+  artistCount: artistCount,
+  albumCount: albumCount,
+  songCount: songCount,
 );
 
 /// 远端专辑
@@ -176,6 +215,31 @@ class UiRemoteArtistDetail {
           runtimeType == other.runtimeType &&
           artist == other.artist &&
           albums == other.albums;
+}
+
+/// 远端搜索结果(艺术家/专辑/曲目三类)
+class UiRemoteSearchResult {
+  final List<UiRemoteArtist> artists;
+  final List<UiRemoteAlbum> albums;
+  final List<UiRemoteTrack> tracks;
+
+  const UiRemoteSearchResult({
+    required this.artists,
+    required this.albums,
+    required this.tracks,
+  });
+
+  @override
+  int get hashCode => artists.hashCode ^ albums.hashCode ^ tracks.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is UiRemoteSearchResult &&
+          runtimeType == other.runtimeType &&
+          artists == other.artists &&
+          albums == other.albums &&
+          tracks == other.tracks;
 }
 
 /// 远端曲目

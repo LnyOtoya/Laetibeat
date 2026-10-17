@@ -69,7 +69,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => -1186313833;
+  int get rustContentHash => -1259320522;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -141,6 +141,27 @@ abstract class RustLibApi extends BaseApi {
 
   Future<List<UiRemoteArtist>> crateApiSubsonicSubsonicGetArtists({
     required String sourceId,
+  });
+
+  Future<Uint8List> crateApiSubsonicSubsonicGetCoverArt({
+    required String sourceId,
+    required String coverId,
+    int? size,
+  });
+
+  Future<String?> crateApiSubsonicSubsonicGetLyrics({
+    required String sourceId,
+    required String trackId,
+    required String artist,
+    required String title,
+  });
+
+  Future<UiRemoteSearchResult> crateApiSubsonicSubsonicSearch3({
+    required String sourceId,
+    required String query,
+    required int artistCount,
+    required int albumCount,
+    required int songCount,
   });
 
   Future<String> crateApiSubsonicSubsonicStreamUrl({
@@ -677,6 +698,129 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<Uint8List> crateApiSubsonicSubsonicGetCoverArt({
+    required String sourceId,
+    required String coverId,
+    int? size,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(sourceId, serializer);
+          sse_encode_String(coverId, serializer);
+          sse_encode_opt_box_autoadd_i_32(size, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 17,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_prim_u_8_strict,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiSubsonicSubsonicGetCoverArtConstMeta,
+        argValues: [sourceId, coverId, size],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSubsonicSubsonicGetCoverArtConstMeta =>
+      const TaskConstMeta(
+        debugName: "subsonic_get_cover_art",
+        argNames: ["sourceId", "coverId", "size"],
+      );
+
+  @override
+  Future<String?> crateApiSubsonicSubsonicGetLyrics({
+    required String sourceId,
+    required String trackId,
+    required String artist,
+    required String title,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(sourceId, serializer);
+          sse_encode_String(trackId, serializer);
+          sse_encode_String(artist, serializer);
+          sse_encode_String(title, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 18,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_String,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiSubsonicSubsonicGetLyricsConstMeta,
+        argValues: [sourceId, trackId, artist, title],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSubsonicSubsonicGetLyricsConstMeta =>
+      const TaskConstMeta(
+        debugName: "subsonic_get_lyrics",
+        argNames: ["sourceId", "trackId", "artist", "title"],
+      );
+
+  @override
+  Future<UiRemoteSearchResult> crateApiSubsonicSubsonicSearch3({
+    required String sourceId,
+    required String query,
+    required int artistCount,
+    required int albumCount,
+    required int songCount,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(sourceId, serializer);
+          sse_encode_String(query, serializer);
+          sse_encode_i_32(artistCount, serializer);
+          sse_encode_i_32(albumCount, serializer);
+          sse_encode_i_32(songCount, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 19,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_ui_remote_search_result,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiSubsonicSubsonicSearch3ConstMeta,
+        argValues: [sourceId, query, artistCount, albumCount, songCount],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSubsonicSubsonicSearch3ConstMeta =>
+      const TaskConstMeta(
+        debugName: "subsonic_search3",
+        argNames: [
+          "sourceId",
+          "query",
+          "artistCount",
+          "albumCount",
+          "songCount",
+        ],
+      );
+
+  @override
   Future<String> crateApiSubsonicSubsonicStreamUrl({
     required String sourceId,
     required String trackId,
@@ -690,7 +834,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 20,
             port: port_,
           );
         },
@@ -1032,6 +1176,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return UiRemoteArtistDetail(
       artist: dco_decode_ui_remote_artist(arr[0]),
       albums: dco_decode_list_ui_remote_album(arr[1]),
+    );
+  }
+
+  @protected
+  UiRemoteSearchResult dco_decode_ui_remote_search_result(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return UiRemoteSearchResult(
+      artists: dco_decode_list_ui_remote_artist(arr[0]),
+      albums: dco_decode_list_ui_remote_album(arr[1]),
+      tracks: dco_decode_list_ui_remote_track(arr[2]),
     );
   }
 
@@ -1606,6 +1763,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  UiRemoteSearchResult sse_decode_ui_remote_search_result(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_artists = sse_decode_list_ui_remote_artist(deserializer);
+    var var_albums = sse_decode_list_ui_remote_album(deserializer);
+    var var_tracks = sse_decode_list_ui_remote_track(deserializer);
+    return UiRemoteSearchResult(
+      artists: var_artists,
+      albums: var_albums,
+      tracks: var_tracks,
+    );
+  }
+
+  @protected
   UiRemoteTrack sse_decode_ui_remote_track(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_id = sse_decode_String(deserializer);
@@ -2148,6 +2320,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_ui_remote_artist(self.artist, serializer);
     sse_encode_list_ui_remote_album(self.albums, serializer);
+  }
+
+  @protected
+  void sse_encode_ui_remote_search_result(
+    UiRemoteSearchResult self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_ui_remote_artist(self.artists, serializer);
+    sse_encode_list_ui_remote_album(self.albums, serializer);
+    sse_encode_list_ui_remote_track(self.tracks, serializer);
   }
 
   @protected

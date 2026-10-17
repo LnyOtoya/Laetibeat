@@ -1,9 +1,10 @@
 //! OpenSubsonic / Subsonic 远端音源封装。
 
 use opensubsonic::data::{
-    AlbumId3, AlbumWithSongsId3, ArtistId3, ArtistWithAlbumsId3, Child, ServerInfo as OsServerInfo,
+    AlbumId3, AlbumWithSongsId3, ArtistId3, ArtistWithAlbumsId3, Child, LyricsList,
+    ServerInfo as OsServerInfo, StructuredLyrics,
 };
-use opensubsonic::{Auth, Client, StreamOptions};
+use opensubsonic::{Auth, Client, Search3Options, StreamOptions};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 use tokio::runtime::{Builder, Runtime};
@@ -87,6 +88,13 @@ pub struct RemoteArtistDetail {
 #[derive(Debug, Clone)]
 pub struct RemoteAlbumDetail {
     pub album: RemoteAlbum,
+    pub tracks: Vec<RemoteTrack>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct RemoteSearchResult {
+    pub artists: Vec<RemoteArtist>,
+    pub albums: Vec<RemoteAlbum>,
     pub tracks: Vec<RemoteTrack>,
 }
 
@@ -176,6 +184,108 @@ pub fn stream_url(source_id: &str, track_id: &str) -> Result<String, String> {
     Ok(url.to_string())
 }
 
+/// 拉取封面字节。size 为服务端建议的最大边长。
+pub fn get_cover_art(
+    source_id: &str,
+    cover_id: &str,
+    size: Option<i32>,
+) -> Result<Vec<u8>, String> {
+    let client = client(source_id)?;
+    let bytes = runtime()?
+        .block_on(client.get_cover_art(cover_id, size))
+        .map_err(map_err)?;
+    Ok(bytes.to_vec())
+}
+
+/// 获取歌词:优先 OpenSubsonic 结构化歌词,失败/为空时回退旧版 getLyrics。
+pub fn get_lyrics(
+    source_id: &str,
+    track_id: &str,
+    artist: &str,
+    title: &str,
+) -> Result<Option<String>, String> {
+    let client = client(source_id)?;
+    let runtime = runtime()?;
+
+    if let Ok(list) = runtime.block_on(client.get_lyrics_by_song_id(track_id, None)) {
+        if let Some(text) = structured_lyrics_to_text(&list) {
+            return Ok(Some(text));
+        }
+    }
+
+    let legacy = runtime
+        .block_on(client.get_lyrics(Some(artist), Some(title)))
+        .map_err(map_err)?;
+    let text = legacy.value.unwrap_or_default().trim().to_string();
+    if text.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(text))
+    }
+}
+
+/// 把结构化歌词转成 flutter_lyric 能解析的文本:
+/// 有时间轴时输出 LRC,否则输出纯文本。
+fn structured_lyrics_to_text(list: &LyricsList) -> Option<String> {
+    let mut best: Option<&StructuredLyrics> = None;
+    for entry in &list.structured_lyrics {
+        if entry.line.is_empty() {
+            continue;
+        }
+        // 只取主歌词;没有 kind 的旧服务端也视为主歌词
+        let is_main = entry.kind.as_deref().map(|kind| kind == "main").unwrap_or(true);
+        if !is_main {
+            continue;
+        }
+        match best {
+            None => best = Some(entry),
+            Some(current) if entry.synced && !current.synced => best = Some(entry),
+            _ => {}
+        }
+    }
+
+    let entry = best?;
+    if entry.synced {
+        let offset = entry.offset.unwrap_or(0.0);
+        let mut out = String::new();
+        for line in &entry.line {
+            match line.start {
+                Some(start) => {
+                    let ms = (start + offset).max(0.0).round() as i64;
+                    let minutes = ms / 60_000;
+                    let seconds = (ms % 60_000) as f64 / 1000.0;
+                    out.push_str(&format!(
+                        "[{:02}:{:05.2}]{}\n",
+                        minutes, seconds, line.value
+                    ));
+                }
+                None => {
+                    out.push_str(&line.value);
+                    out.push('\n');
+                }
+            }
+        }
+        let text = out.trim_end().to_string();
+        if text.is_empty() {
+            None
+        } else {
+            Some(text)
+        }
+    } else {
+        let text = entry
+            .line
+            .iter()
+            .map(|line| line.value.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        if text.trim().is_empty() {
+            None
+        } else {
+            Some(text)
+        }
+    }
+}
+
 /// 获取艺术家列表(懒加载浏览的入口)
 pub fn get_artists(source_id: &str) -> Result<Vec<RemoteArtist>, String> {
     let client = client(source_id)?;
@@ -209,6 +319,36 @@ pub fn get_album(source_id: &str, album_id: &str) -> Result<RemoteAlbumDetail, S
         .block_on(client.get_album(album_id))
         .map_err(map_err)?;
     Ok(map_album_detail(album))
+}
+
+/// ID3 搜索(search3):一次返回艺术家/专辑/曲目三类结果。
+/// 空查询直接返回空结果,不发请求。
+pub fn search3(
+    source_id: &str,
+    query: &str,
+    artist_count: i32,
+    album_count: i32,
+    song_count: i32,
+) -> Result<RemoteSearchResult, String> {
+    let query = query.trim();
+    if query.is_empty() {
+        return Ok(RemoteSearchResult::default());
+    }
+
+    let client = client(source_id)?;
+    let options = Search3Options::new()
+        .artist_count(artist_count)
+        .album_count(album_count)
+        .song_count(song_count);
+    let result = runtime()?
+        .block_on(client.search3(query, &options))
+        .map_err(map_err)?;
+
+    Ok(RemoteSearchResult {
+        artists: result.artist.into_iter().map(map_artist).collect(),
+        albums: result.album.into_iter().map(map_album).collect(),
+        tracks: result.song.into_iter().map(map_track).collect(),
+    })
 }
 
 fn map_server_info(info: OsServerInfo) -> RemoteServerInfo {
@@ -320,5 +460,13 @@ mod tests {
     #[test]
     fn removing_unknown_source_is_ok() {
         remove("missing-source").unwrap();
+    }
+
+    #[test]
+    fn empty_search_does_not_require_client() {
+        let result = search3("missing-source", "   ", 10, 10, 10).unwrap();
+        assert!(result.artists.is_empty());
+        assert!(result.albums.is_empty());
+        assert!(result.tracks.is_empty());
     }
 }

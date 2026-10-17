@@ -64,6 +64,14 @@ pub struct UiRemoteAlbumDetail {
     pub tracks: Vec<UiRemoteTrack>,
 }
 
+/// 远端搜索结果(艺术家/专辑/曲目三类)
+#[frb(non_opaque)]
+pub struct UiRemoteSearchResult {
+    pub artists: Vec<UiRemoteArtist>,
+    pub albums: Vec<UiRemoteAlbum>,
+    pub tracks: Vec<UiRemoteTrack>,
+}
+
 /// 配置并测试 OpenSubsonic 服务器,成功后注册客户端。
 /// auth_mode: "apiKey" 或 "token"。
 pub fn configure_subsonic(
@@ -106,6 +114,25 @@ pub fn subsonic_stream_url(source_id: String, track_id: String) -> Result<String
     remote::stream_url(&source_id, &track_id)
 }
 
+/// 拉取远端封面字节
+pub fn subsonic_get_cover_art(
+    source_id: String,
+    cover_id: String,
+    size: Option<i32>,
+) -> Result<Vec<u8>, String> {
+    remote::get_cover_art(&source_id, &cover_id, size)
+}
+
+/// 拉取远端歌词文本;优先结构化歌词,回退旧版 getLyrics
+pub fn subsonic_get_lyrics(
+    source_id: String,
+    track_id: String,
+    artist: String,
+    title: String,
+) -> Result<Option<String>, String> {
+    remote::get_lyrics(&source_id, &track_id, &artist, &title)
+}
+
 /// 获取艺术家列表
 pub fn subsonic_get_artists(source_id: String) -> Result<Vec<UiRemoteArtist>, String> {
     let artists = remote::get_artists(&source_id)?;
@@ -133,6 +160,28 @@ pub fn subsonic_get_album(
     Ok(UiRemoteAlbumDetail {
         album: map_album(detail.album),
         tracks: detail.tracks.into_iter().map(map_track).collect(),
+    })
+}
+
+/// ID3 搜索(search3)
+pub fn subsonic_search3(
+    source_id: String,
+    query: String,
+    artist_count: i32,
+    album_count: i32,
+    song_count: i32,
+) -> Result<UiRemoteSearchResult, String> {
+    let result = remote::search3(
+        &source_id,
+        &query,
+        artist_count,
+        album_count,
+        song_count,
+    )?;
+    Ok(UiRemoteSearchResult {
+        artists: result.artists.into_iter().map(map_artist).collect(),
+        albums: result.albums.into_iter().map(map_album).collect(),
+        tracks: result.tracks.into_iter().map(map_track).collect(),
     })
 }
 

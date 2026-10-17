@@ -4,6 +4,7 @@ import 'package:laetibeat/src/rust/api/simple.dart' as rust;
 import 'package:laetibeat/src/rust/api/subsonic.dart' as rust_subsonic;
 import 'package:material_3_expressive/material_3_expressive.dart';
 
+import 'player/cover_provider.dart';
 import 'player/player_provider.dart';
 import 'remote_browser_provider.dart';
 
@@ -39,11 +40,7 @@ class _RemoteLibraryViewState extends ConsumerState<RemoteLibraryView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _header(
-          theme: theme,
-          title: widget.serverName,
-          subtitle: '远端艺术家',
-        ),
+        _header(theme: theme, title: widget.serverName, subtitle: '远端艺术家'),
         SizedBox(height: theme.spacing.md),
         Expanded(
           child: artists.when(
@@ -53,12 +50,15 @@ class _RemoteLibraryViewState extends ConsumerState<RemoteLibraryView> {
                 ? _empty(theme, '服务器上还没有艺术家')
                 : M3EList.scrollable(
                     itemCount: list.length,
-                    onTap: (index) =>
-                        setState(() => _artist = list[index]),
+                    onTap: (index) => setState(() => _artist = list[index]),
                     itemBuilder: (context, index) {
                       final artist = list[index];
                       return M3EListItem(
-                        leading: _leadingIcon(theme, Icons.person),
+                        leading: _RemoteCover(
+                          sourceId: widget.sourceId,
+                          coverId: artist.coverId,
+                          fallbackIcon: Icons.person,
+                        ),
                         headline: artist.name,
                         supportingText: artist.albumCount == null
                             ? null
@@ -76,9 +76,7 @@ class _RemoteLibraryViewState extends ConsumerState<RemoteLibraryView> {
   Widget _buildAlbums(M3EThemeData theme) {
     final artist = _artist!;
     final albums = ref.watch(
-      remoteAlbumsProvider(
-        (sourceId: widget.sourceId, artistId: artist.id),
-      ),
+      remoteAlbumsProvider((sourceId: widget.sourceId, artistId: artist.id)),
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -98,12 +96,15 @@ class _RemoteLibraryViewState extends ConsumerState<RemoteLibraryView> {
                 ? _empty(theme, '这位艺术家还没有专辑')
                 : M3EList.scrollable(
                     itemCount: list.length,
-                    onTap: (index) =>
-                        setState(() => _album = list[index]),
+                    onTap: (index) => setState(() => _album = list[index]),
                     itemBuilder: (context, index) {
                       final album = list[index];
                       return M3EListItem(
-                        leading: _leadingIcon(theme, Icons.album),
+                        leading: _RemoteCover(
+                          sourceId: widget.sourceId,
+                          coverId: album.coverId,
+                          fallbackIcon: Icons.album,
+                        ),
                         headline: album.title,
                         supportingText: [
                           album.artist,
@@ -129,9 +130,7 @@ class _RemoteLibraryViewState extends ConsumerState<RemoteLibraryView> {
   Widget _buildTracks(M3EThemeData theme) {
     final album = _album!;
     final tracks = ref.watch(
-      remoteTracksProvider(
-        (sourceId: widget.sourceId, albumId: album.id),
-      ),
+      remoteTracksProvider((sourceId: widget.sourceId, albumId: album.id)),
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -155,11 +154,15 @@ class _RemoteLibraryViewState extends ConsumerState<RemoteLibraryView> {
                     itemBuilder: (context, index) {
                       final track = list[index];
                       return M3EListItem(
-                        leading: _leadingIcon(theme, Icons.music_note),
+                        leading: _RemoteCover(
+                          sourceId: widget.sourceId,
+                          coverId: track.coverId,
+                          fallbackIcon: Icons.music_note,
+                        ),
                         headline: track.title,
                         supportingText: track.artist,
                         trailing: Text(
-                          _formatDuration(track.durationSeconds.toInt()),
+                          formatTrackDuration(track.durationSeconds.toInt()),
                           style: theme.typeScale.bodySmall.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
@@ -175,42 +178,11 @@ class _RemoteLibraryViewState extends ConsumerState<RemoteLibraryView> {
 
   void _play(List<rust_subsonic.UiRemoteTrack> tracks, int index) {
     final queue = <rust.UiTrack>[
-      for (final track in tracks) _toUiTrack(track),
+      for (final track in tracks) remoteTrackToUiTrack(track, widget.sourceId),
     ];
-    ref.read(playerProvider.notifier).load(
-          queue,
-          index,
-          source: widget.serverName,
-        );
-  }
-
-  rust.UiTrack _toUiTrack(rust_subsonic.UiRemoteTrack track) {
-    final seconds = track.durationSeconds.toInt();
-    return rust.UiTrack(
-      id: track.id,
-      relativePath: null,
-      title: track.title,
-      artist: track.artist,
-      album: track.album,
-      albumArtist: track.artist,
-      albumId: track.albumId ?? '',
-      artistId: track.artistId ?? '',
-      trackNumber: track.trackNumber,
-      discNumber: track.discNumber,
-      year: track.year,
-      genre: track.genre,
-      duration: _formatDuration(seconds),
-      durationSeconds: BigInt.from(seconds),
-      path: '',
-      source: 'opensubsonic',
-      sourceId: widget.sourceId,
-      coverId: track.coverId,
-      bitrate: track.bitRate,
-      sampleRate: null,
-      channels: null,
-      modifiedMs: null,
-      fileSize: track.size == null ? null : BigInt.from(track.size!.toInt()),
-    );
+    ref
+        .read(playerProvider.notifier)
+        .load(queue, index, source: widget.serverName);
   }
 
   Widget _header({
@@ -255,15 +227,6 @@ class _RemoteLibraryViewState extends ConsumerState<RemoteLibraryView> {
     );
   }
 
-  Widget _leadingIcon(M3EThemeData theme, IconData icon) {
-    return M3EShapeContainer.square(
-      width: theme.spacing.xxl * 1.5,
-      height: theme.spacing.xxl * 1.5,
-      color: theme.colorScheme.secondaryContainer,
-      child: Icon(icon, size: 20),
-    );
-  }
-
   Widget _loading(M3EThemeData theme) {
     return Center(
       child: M3ELoadingIndicator(
@@ -280,11 +243,7 @@ class _RemoteLibraryViewState extends ConsumerState<RemoteLibraryView> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.cloud_off,
-              size: 40,
-              color: theme.colorScheme.error,
-            ),
+            Icon(Icons.cloud_off, size: 40, color: theme.colorScheme.error),
             SizedBox(height: theme.spacing.md),
             Text('无法加载远端音乐', style: theme.typeScale.titleMedium),
             SizedBox(height: theme.spacing.xs),
@@ -311,10 +270,54 @@ class _RemoteLibraryViewState extends ConsumerState<RemoteLibraryView> {
       ),
     );
   }
+}
 
-  static String _formatDuration(int seconds) {
-    final minutes = seconds ~/ 60;
-    final rest = (seconds % 60).toString().padLeft(2, '0');
-    return '$minutes:$rest';
+/// 远端封面缩略图;无封面时回退图标。
+class _RemoteCover extends ConsumerWidget {
+  const _RemoteCover({
+    required this.sourceId,
+    required this.coverId,
+    required this.fallbackIcon,
+  });
+
+  final String sourceId;
+  final String? coverId;
+  final IconData fallbackIcon;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = M3ETheme.of(context);
+    final size = theme.spacing.xxl * 1.5;
+    final id = coverId;
+
+    if (id == null || id.isEmpty) {
+      return _fallback(theme, size);
+    }
+
+    return ClipRRect(
+      borderRadius: M3EDimensions.borderRadiusSmall,
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: ref
+            .watch(remoteCoverProvider((sourceId: sourceId, coverId: id)))
+            .when(
+              loading: () => _fallback(theme, size),
+              error: (_, _) => _fallback(theme, size),
+              data: (bytes) => bytes == null || bytes.isEmpty
+                  ? _fallback(theme, size)
+                  : Image.memory(bytes, fit: BoxFit.cover),
+            ),
+      ),
+    );
+  }
+
+  Widget _fallback(M3EThemeData theme, double size) {
+    return M3EShapeContainer.square(
+      width: size,
+      height: size,
+      color: theme.colorScheme.secondaryContainer,
+      child: Icon(fallbackIcon, size: 20),
+    );
   }
 }
