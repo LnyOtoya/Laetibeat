@@ -2,221 +2,51 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 
-import 'settings_pane.dart';
-import 'settings_provider.dart';
 import 'subsonic_provider.dart';
 
-/// OpenSubsonic / Navidrome 服务器设置
-class SubsonicSettings extends ConsumerWidget {
-  const SubsonicSettings({super.key});
+/// 打开 Navidrome 连接配置弹层。
+/// 单服务器模式:已有配置时直接编辑唯一配置,不进入独立页面。
+Future<void> showSubsonicConnectionSheet(
+  BuildContext context,
+  WidgetRef ref,
+) async {
+  final servers = await _loadServers(ref);
+  if (!context.mounted) return;
+  final existing = servers.isEmpty ? null : servers.first;
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = M3ETheme.of(context);
-    final scheme = theme.colorScheme;
-    final servers = ref.watch(subsonicServersProvider);
-
-    return SettingsPane(
-      title: '服务器',
-      children: [
-        // 服务器页是从"内容 → navidrome音乐库 → 连接配置"进入的,
-        // 不占用左侧设置分类,这里提供返回入口。
-        Align(
-          alignment: Alignment.centerLeft,
-          child: M3EButton.text(
-            size: M3EButtonSize.sm,
-            onPressed: () => ref
-                .read(settingsCategoryProvider.notifier)
-                .select(SettingsCategory.content),
-            child: const Text('← 返回内容'),
-          ),
-        ),
-        SizedBox(height: theme.spacing.sm),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'OpenSubsonic / Navidrome',
-                style: theme.typeScale.titleMedium,
-              ),
-            ),
-            M3EButton(
-              size: M3EButtonSize.sm,
-              icon: const Icon(Icons.add),
-              label: const Text('添加服务器'),
-              style: M3EButtonStyle.filled,
-              onPressed: () => _openEditor(context, ref),
-            ),
-          ],
-        ),
-        SizedBox(height: theme.spacing.md),
-        servers.when(
-          loading: () => Padding(
-            padding: EdgeInsets.symmetric(vertical: theme.spacing.xl),
-            child: Center(
-              child: M3ELoadingIndicator(
-                color: scheme.primary,
-                containerColor: scheme.surfaceContainerHighest,
-              ),
-            ),
-          ),
-          error: (error, _) => Text(
-            '读取服务器配置失败: $error',
-            style: theme.typeScale.bodyMedium.copyWith(color: scheme.error),
-          ),
-          data: (list) => list.isEmpty
-              ? _empty(theme, scheme)
-              : M3EList(
-                  itemCount: list.length,
-                  itemBuilder: (context, index) {
-                    final server = list[index];
-                    return M3EListItem(
-                      leading: M3EShapeContainer.square(
-                        width: theme.spacing.xxl * 1.5,
-                        height: theme.spacing.xxl * 1.5,
-                        color: scheme.secondaryContainer,
-                        child: const Icon(Icons.dns),
-                      ),
-                      headline: server.name,
-                      supportingText:
-                          '${server.baseUrl} · ${server.authMode.label}',
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          M3EIconButton(
-                            size: M3EIconButtonSize.xs,
-                            icon: const Icon(Icons.edit),
-                            tooltip: '编辑',
-                            onPressed: () => _openEditor(
-                              context,
-                              ref,
-                              existing: server,
-                            ),
-                          ),
-                          M3EIconButton(
-                            size: M3EIconButtonSize.xs,
-                            icon: const Icon(Icons.delete_outline),
-                            tooltip: '删除',
-                            onPressed: () =>
-                                _confirmDelete(context, ref, server),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-        ),
-      ],
-    );
-  }
-
-  Widget _empty(M3EThemeData theme, M3EColorScheme scheme) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: theme.spacing.xl),
-      child: Column(
-        children: [
-          Icon(
-            Icons.cloud_off,
-            size: 48,
-            color: scheme.onSurfaceVariant.withValues(alpha: 0.4),
-          ),
-          SizedBox(height: theme.spacing.md),
-          Text('还没有配置服务器', style: theme.typeScale.titleMedium),
-          SizedBox(height: theme.spacing.xs),
-          Text(
-            '添加 OpenSubsonic / Navidrome 服务器后即可浏览远端音乐。',
-            textAlign: TextAlign.center,
-            style: theme.typeScale.bodyMedium.copyWith(
-              color: scheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _openEditor(
-    BuildContext context,
-    WidgetRef ref, {
-    SubsonicServerConfig? existing,
-  }) async {
-    String? secret;
-    if (existing != null) {
-      try {
-        secret = await ref
-            .read(subsonicServersProvider.notifier)
-            .readSecret(existing.id);
-      } catch (e) {
-        debugPrint('读取服务器密钥失败: $e');
-      }
+  String? secret;
+  if (existing != null) {
+    try {
+      secret = await ref
+          .read(subsonicServersProvider.notifier)
+          .readSecret(existing.id);
+    } catch (e) {
+      debugPrint('读取服务器密钥失败: $e');
     }
-    if (!context.mounted) return;
-
-    await M3EBottomSheet.show<void>(
-      context,
-      builder: (sheetContext) => _ServerEditorSheet(
-        existing: existing,
-        initialSecret: secret,
-      ),
-    );
   }
+  if (!context.mounted) return;
 
-  Future<void> _confirmDelete(
-    BuildContext context,
-    WidgetRef ref,
-    SubsonicServerConfig server,
-  ) async {
-    final theme = M3ETheme.of(context);
-    await M3EBottomSheet.show<void>(
-      context,
-      builder: (sheetContext) {
-        return Padding(
-          padding: EdgeInsets.all(theme.spacing.lg),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('删除服务器', style: theme.typeScale.titleLarge),
-              SizedBox(height: theme.spacing.sm),
-              Text(
-                '确定删除“${server.name}”？本机保存的密钥也会一起移除。',
-                style: theme.typeScale.bodyMedium.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              SizedBox(height: theme.spacing.lg),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  M3EButton.text(
-                    size: M3EButtonSize.sm,
-                    onPressed: () => Navigator.of(sheetContext).pop(),
-                    child: const Text('取消'),
-                  ),
-                  SizedBox(width: theme.spacing.sm),
-                  M3EButton(
-                    size: M3EButtonSize.sm,
-                    style: M3EButtonStyle.filled,
-                    label: const Text('删除'),
-                    onPressed: () {
-                      Navigator.of(sheetContext).pop();
-                      ref
-                          .read(subsonicServersProvider.notifier)
-                          .delete(server.id);
-                    },
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
+  await M3EBottomSheet.show<void>(
+    context,
+    builder: (sheetContext) => SubsonicConnectionSheet(
+      existing: existing,
+      initialSecret: secret,
+    ),
+  );
+}
+
+Future<List<SubsonicServerConfig>> _loadServers(WidgetRef ref) async {
+  try {
+    return await ref.read(subsonicServersProvider.future);
+  } catch (e) {
+    debugPrint('读取服务器配置失败: $e');
+    return const <SubsonicServerConfig>[];
   }
 }
 
-class _ServerEditorSheet extends ConsumerStatefulWidget {
-  const _ServerEditorSheet({
+class SubsonicConnectionSheet extends ConsumerStatefulWidget {
+  const SubsonicConnectionSheet({
+    super.key,
     this.existing,
     this.initialSecret,
   });
@@ -225,10 +55,12 @@ class _ServerEditorSheet extends ConsumerStatefulWidget {
   final String? initialSecret;
 
   @override
-  ConsumerState<_ServerEditorSheet> createState() => _ServerEditorSheetState();
+  ConsumerState<SubsonicConnectionSheet> createState() =>
+      _SubsonicConnectionSheetState();
 }
 
-class _ServerEditorSheetState extends ConsumerState<_ServerEditorSheet> {
+class _SubsonicConnectionSheetState
+    extends ConsumerState<SubsonicConnectionSheet> {
   late final String _id;
   late final TextEditingController _name;
   late final TextEditingController _url;
@@ -239,6 +71,13 @@ class _ServerEditorSheetState extends ConsumerState<_ServerEditorSheet> {
 
   bool _testing = false;
   bool _saving = false;
+
+  /// 测试成功标记。字段一旦变化就清空,保存随之禁用。
+  bool _testPassed = false;
+
+  /// 测试成功时的字段指纹,用于确保保存的是刚测试过的那套配置。
+  String? _testedFingerprint;
+
   String? _error;
   String? _info;
 
@@ -275,6 +114,35 @@ class _ServerEditorSheetState extends ConsumerState<_ServerEditorSheet> {
   String get _secretText =>
       _authMode == SubsonicAuthMode.apiKey ? _apiKey.text : _password.text;
 
+  String get _normalizedUrl {
+    final rawUrl = _url.text.trim();
+    return rawUrl.contains('://') ? rawUrl : 'https://$rawUrl';
+  }
+
+  /// 当前输入内容的指纹。名称也纳入其中,任何字段变化都需要重新测试。
+  String _fingerprint() => [
+    _name.text.trim(),
+    _normalizedUrl,
+    _authMode.name,
+    _authMode == SubsonicAuthMode.token ? _username.text.trim() : '',
+    _secretText,
+  ].join('\u0000');
+
+  /// 测试结果是否仍对应当前输入
+  bool get _testMatchesInput =>
+      _testPassed && _testedFingerprint == _fingerprint();
+
+  bool get _canSave => !_testing && !_saving && _testMatchesInput;
+
+  void _onFieldChanged() {
+    setState(() {
+      _testPassed = false;
+      _testedFingerprint = null;
+      _error = null;
+      _info = null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = M3ETheme.of(context);
@@ -296,7 +164,7 @@ class _ServerEditorSheetState extends ConsumerState<_ServerEditorSheet> {
               children: [
                 Expanded(
                   child: Text(
-                    widget.existing == null ? '添加服务器' : '编辑服务器',
+                    widget.existing == null ? '连接 Navidrome' : '编辑连接',
                     style: theme.typeScale.titleLarge,
                   ),
                 ),
@@ -308,12 +176,20 @@ class _ServerEditorSheetState extends ConsumerState<_ServerEditorSheet> {
                 ),
               ],
             ),
+            SizedBox(height: theme.spacing.xs),
+            Text(
+              '连接成功后不会自动同步音乐，请在“内容”页点击“同步音乐”。',
+              style: theme.typeScale.bodySmall.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
             SizedBox(height: theme.spacing.md),
             M3ETextField(
               key: const ValueKey('subsonic-name'),
               controller: _name,
               label: '名称',
               placeholder: '例如：家里的 Navidrome',
+              onChanged: (_) => _onFieldChanged(),
             ),
             SizedBox(height: theme.spacing.md),
             M3ETextField(
@@ -322,6 +198,7 @@ class _ServerEditorSheetState extends ConsumerState<_ServerEditorSheet> {
               label: '服务器地址',
               placeholder: 'https://music.example.com',
               keyboardType: TextInputType.url,
+              onChanged: (_) => _onFieldChanged(),
             ),
             SizedBox(height: theme.spacing.md),
             M3ESegmentedButton<SubsonicAuthMode>(
@@ -339,6 +216,8 @@ class _ServerEditorSheetState extends ConsumerState<_ServerEditorSheet> {
               onSelectionChanged: (value) {
                 setState(() {
                   _authMode = value.first;
+                  _testPassed = false;
+                  _testedFingerprint = null;
                   _error = null;
                   _info = null;
                 });
@@ -353,6 +232,7 @@ class _ServerEditorSheetState extends ConsumerState<_ServerEditorSheet> {
                 placeholder: '在服务器中生成的 API Key',
                 obscureText: true,
                 showPasswordToggle: true,
+                onChanged: (_) => _onFieldChanged(),
               )
             else ...[
               M3ETextField(
@@ -360,6 +240,7 @@ class _ServerEditorSheetState extends ConsumerState<_ServerEditorSheet> {
                 controller: _username,
                 label: '用户名',
                 placeholder: 'Subsonic 用户名',
+                onChanged: (_) => _onFieldChanged(),
               ),
               SizedBox(height: theme.spacing.md),
               M3ETextField(
@@ -369,6 +250,7 @@ class _ServerEditorSheetState extends ConsumerState<_ServerEditorSheet> {
                 placeholder: 'Subsonic 密码',
                 obscureText: true,
                 showPasswordToggle: true,
+                onChanged: (_) => _onFieldChanged(),
               ),
             ],
             if (_error != null) ...[
@@ -391,12 +273,22 @@ class _ServerEditorSheetState extends ConsumerState<_ServerEditorSheet> {
             ],
             SizedBox(height: theme.spacing.lg),
             Row(
-              mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                Expanded(
+                  child: Text(
+                    _testMatchesInput ? '测试通过，可以保存' : '请先测试连接，测试成功后才能保存',
+                    style: theme.typeScale.bodySmall.copyWith(
+                      color: _testMatchesInput
+                          ? scheme.primary
+                          : scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                SizedBox(width: theme.spacing.sm),
                 M3EButton(
                   size: M3EButtonSize.sm,
                   style: M3EButtonStyle.tonal,
-                  label: Text(_testing ? '测试中…' : '测试连接'),
+                  label: Text(_testing ? '测试中…' : '测试'),
                   onPressed: _testing || _saving ? null : _test,
                 ),
                 SizedBox(width: theme.spacing.sm),
@@ -404,7 +296,7 @@ class _ServerEditorSheetState extends ConsumerState<_ServerEditorSheet> {
                   size: M3EButtonSize.sm,
                   style: M3EButtonStyle.filled,
                   label: Text(_saving ? '保存中…' : '保存'),
-                  onPressed: _testing || _saving ? null : _save,
+                  onPressed: _canSave ? _save : null,
                 ),
               ],
             ),
@@ -415,10 +307,9 @@ class _ServerEditorSheetState extends ConsumerState<_ServerEditorSheet> {
   }
 
   SubsonicServerConfig? _buildConfig() {
-    final rawUrl = _url.text.trim();
-    final url = rawUrl.contains('://') ? rawUrl : 'https://$rawUrl';
-    final uri = Uri.tryParse(url);
-    if (uri == null || uri.host.isEmpty ||
+    final uri = Uri.tryParse(_normalizedUrl);
+    if (uri == null ||
+        uri.host.isEmpty ||
         (uri.scheme != 'http' && uri.scheme != 'https')) {
       _error = '请输入有效的服务器地址（http/https）';
       return null;
@@ -436,13 +327,13 @@ class _ServerEditorSheetState extends ConsumerState<_ServerEditorSheet> {
     }
 
     final name = _name.text.trim().isEmpty
-        ? (uri.host.isEmpty ? '服务器' : uri.host)
+        ? (uri.host.isEmpty ? 'Navidrome' : uri.host)
         : _name.text.trim();
 
     return SubsonicServerConfig(
       id: _id,
       name: name,
-      baseUrl: url,
+      baseUrl: _normalizedUrl,
       authMode: _authMode,
       username: _authMode == SubsonicAuthMode.token ? username : null,
     );
@@ -455,18 +346,22 @@ class _ServerEditorSheetState extends ConsumerState<_ServerEditorSheet> {
       return;
     }
 
+    final fingerprint = _fingerprint();
     setState(() {
       _testing = true;
+      _testPassed = false;
+      _testedFingerprint = null;
       _error = null;
       _info = null;
     });
     try {
-      final info = await ref.read(subsonicServersProvider.notifier).test(
-            config: config,
-            secret: _secretText,
-          );
+      final info = await ref
+          .read(subsonicServersProvider.notifier)
+          .test(config: config, secret: _secretText);
       if (!mounted) return;
       setState(() {
+        _testPassed = true;
+        _testedFingerprint = fingerprint;
         _info = '连接成功：${info.serverType ?? 'Subsonic'} '
             '${info.serverVersion ?? ''}'
             '${info.openSubsonic ? ' · OpenSubsonic' : ''}';
@@ -485,6 +380,7 @@ class _ServerEditorSheetState extends ConsumerState<_ServerEditorSheet> {
       setState(() {});
       return;
     }
+    if (!_canSave) return;
 
     setState(() {
       _saving = true;
@@ -493,9 +389,9 @@ class _ServerEditorSheetState extends ConsumerState<_ServerEditorSheet> {
     });
     try {
       await ref.read(subsonicServersProvider.notifier).save(
-            config: config,
-            secret: _secretText,
-          );
+        config: config,
+        secret: _secretText,
+      );
       if (!mounted) return;
       Navigator.of(context).pop();
     } catch (e) {

@@ -6,7 +6,39 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `map_album`, `map_artist`, `map_server_info`, `map_track`
+// These functions are ignored because they are not marked as `pub`: `map_album`, `map_artist`, `map_server_info`, `map_track`, `parse_auth_mode`
+
+/// 测试连接,只返回服务器信息,不注册客户端。
+Future<UiSubsonicServerInfo> testSubsonicConnection({
+  required String baseUrl,
+  required String authMode,
+  String? username,
+  required String secret,
+  String? clientName,
+}) => RustLib.instance.api.crateApiSubsonicTestSubsonicConnection(
+  baseUrl: baseUrl,
+  authMode: authMode,
+  username: username,
+  secret: secret,
+  clientName: clientName,
+);
+
+/// 注册一个已测试通过的客户端,不发起网络请求。
+Future<void> registerSubsonic({
+  required String sourceId,
+  required String baseUrl,
+  required String authMode,
+  String? username,
+  required String secret,
+  String? clientName,
+}) => RustLib.instance.api.crateApiSubsonicRegisterSubsonic(
+  sourceId: sourceId,
+  baseUrl: baseUrl,
+  authMode: authMode,
+  username: username,
+  secret: secret,
+  clientName: clientName,
+);
 
 /// 配置并测试 OpenSubsonic 服务器,成功后注册客户端。
 /// auth_mode: "apiKey" 或 "token"。

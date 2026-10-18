@@ -4,7 +4,9 @@ use opensubsonic::data::{
     AlbumId3, AlbumWithSongsId3, ArtistId3, ArtistWithAlbumsId3, Child, LyricsList,
     ServerInfo as OsServerInfo, StructuredLyrics,
 };
-use opensubsonic::{Auth, Client, Search3Options, StreamOptions};
+use opensubsonic::{
+    AlbumListOptions, AlbumListType, Auth, Client, Search3Options, StreamOptions,
+};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 use tokio::runtime::{Builder, Runtime};
@@ -129,15 +131,15 @@ fn client(source_id: &str) -> Result<Arc<Client>, String> {
         .ok_or_else(|| format!("服务器未配置或已删除: {source_id}"))
 }
 
-/// 配置并测试服务器;成功后把客户端放入注册表。
-pub fn configure(config: SubsonicConfig) -> Result<RemoteServerInfo, String> {
+fn build_client(config: &SubsonicConfig) -> Result<Client, String> {
     let auth = match config.auth_mode {
-        SubsonicAuthMode::ApiKey => Auth::api_key(config.secret),
+        SubsonicAuthMode::ApiKey => Auth::api_key(config.secret.clone()),
         SubsonicAuthMode::Token => {
             let username = config
                 .username
+                .clone()
                 .ok_or_else(|| "token 鉴权需要用户名".to_string())?;
-            Auth::token(username, config.secret)
+            Auth::token(username, config.secret.clone())
         }
     };
 
@@ -146,17 +148,34 @@ pub fn configure(config: SubsonicConfig) -> Result<RemoteServerInfo, String> {
     if let Some(name) = config.client_name.as_deref() {
         client = client.with_client_name(name);
     }
+    Ok(client)
+}
 
+/// 测试连接,但不注册客户端。
+/// 用于设置页的"测试"按钮,避免测试成功后关闭弹层却留下未保存的客户端。
+pub fn test(config: &SubsonicConfig) -> Result<RemoteServerInfo, String> {
+    let client = build_client(config)?;
     let info = runtime()?
         .block_on(client.server_info())
         .map_err(map_err)?;
+    Ok(map_server_info(info))
+}
 
+/// 注册一个已经测试通过的客户端,不发起网络请求。
+pub fn register(config: &SubsonicConfig) -> Result<(), String> {
+    let client = build_client(config)?;
     clients()
         .lock()
         .map_err(map_err)?
-        .insert(config.source_id, Arc::new(client));
+        .insert(config.source_id.clone(), Arc::new(client));
+    Ok(())
+}
 
-    Ok(map_server_info(info))
+/// 配置并测试服务器;成功后把客户端放入注册表。
+pub fn configure(config: SubsonicConfig) -> Result<RemoteServerInfo, String> {
+    let info = test(&config)?;
+    register(&config)?;
+    Ok(info)
 }
 
 /// 删除服务器配置
@@ -301,6 +320,23 @@ pub fn get_artists(source_id: &str) -> Result<Vec<RemoteArtist>, String> {
         .collect();
     result.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
     Ok(result)
+}
+
+/// 分页获取专辑列表(ID3)。offset 从 0 开始,limit 为每页数量。
+pub fn get_album_list2(
+    source_id: &str,
+    offset: i32,
+    limit: i32,
+) -> Result<Vec<RemoteAlbum>, String> {
+    let client = client(source_id)?;
+    let mut options = AlbumListOptions::new();
+    options.size = Some(limit);
+    options.offset = Some(offset);
+
+    let albums = runtime()?
+        .block_on(client.get_album_list2(AlbumListType::AlphabeticalByName, &options))
+        .map_err(map_err)?;
+    Ok(albums.into_iter().map(map_album).collect())
 }
 
 /// 获取艺术家详情与专辑列表

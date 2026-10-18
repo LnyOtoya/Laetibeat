@@ -12,7 +12,7 @@ import '../widgets/player/player_provider.dart';
 import '../widgets/player/player_right_pane.dart';
 import '../widgets/remote_browser_provider.dart';
 import '../widgets/settings/music_library_provider.dart';
-import '../widgets/settings/persistence.dart';
+import '../widgets/settings/remote_sync_provider.dart';
 import '../widgets/settings/subsonic_provider.dart';
 import '../widgets/two_pane_layout.dart';
 
@@ -362,6 +362,19 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       return _buildRemoteArtistAlbums(theme, scheme, artist);
     }
 
+    // 远端搜索现在读本地同步库;尚未同步时直接引导去同步
+    final syncState = ref.watch(remoteSyncProvider).value;
+    if (syncState != null &&
+        syncState.meta == null &&
+        !syncState.isSyncing) {
+      return _hint(
+        theme,
+        scheme,
+        '远端音乐尚未同步',
+        '请先在 设置 → 内容 → 同步音乐 中同步',
+      );
+    }
+
     if (_query.trim().isEmpty) {
       return _hint(
         theme,
@@ -390,12 +403,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         scheme,
         '远端搜索失败',
         '$error',
-        onRetry: () => _retryRemote(
-          _sourceId,
-          () => ref.invalidate(
-            remoteSearchProvider(
-              (sourceId: _sourceId, query: _debouncedQuery),
-            ),
+        onRetry: () => ref.invalidate(
+          remoteSearchProvider(
+            (sourceId: _sourceId, query: _debouncedQuery),
           ),
         ),
       ),
@@ -604,19 +614,6 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
   static bool _matches(String value, String query) =>
       value.toLowerCase().contains(query);
-
-  /// 远端请求失败后的重试:先按需补配置,再让 provider 重新请求。
-  Future<void> _retryRemote(String sourceId, VoidCallback invalidate) async {
-    try {
-      await ensureSubsonicConfiguredWithPrefs(
-        ref.read(sharedPreferencesProvider),
-        sourceId,
-      );
-    } catch (e) {
-      debugPrint('重连远端服务器失败: $e');
-    }
-    if (mounted) invalidate();
-  }
 
   //空态/无结果提示
   Widget _hint(

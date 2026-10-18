@@ -11,6 +11,7 @@ import 'api/metadata.dart';
 import 'api/simple.dart';
 import 'api/stats.dart';
 import 'api/subsonic.dart';
+import 'api/sync.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
@@ -23,6 +24,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     required super.generalizedFrbRustBinding,
     required super.portManager,
   });
+
+  @protected
+  AnyhowException dco_decode_AnyhowException(dynamic raw);
+
+  @protected
+  RustStreamSink<UiRemoteSyncProgress>
+  dco_decode_StreamSink_ui_remote_sync_progress_Sse(dynamic raw);
 
   @protected
   String dco_decode_String(dynamic raw);
@@ -157,6 +165,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   UiRemoteSyncMeta dco_decode_ui_remote_sync_meta(dynamic raw);
 
   @protected
+  UiRemoteSyncProgress dco_decode_ui_remote_sync_progress(dynamic raw);
+
+  @protected
   UiRemoteTrack dco_decode_ui_remote_track(dynamic raw);
 
   @protected
@@ -176,6 +187,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void dco_decode_unit(dynamic raw);
+
+  @protected
+  AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer);
+
+  @protected
+  RustStreamSink<UiRemoteSyncProgress>
+  sse_decode_StreamSink_ui_remote_sync_progress_Sse(
+    SseDeserializer deserializer,
+  );
 
   @protected
   String sse_decode_String(SseDeserializer deserializer);
@@ -328,6 +348,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   UiRemoteSyncMeta sse_decode_ui_remote_sync_meta(SseDeserializer deserializer);
 
   @protected
+  UiRemoteSyncProgress sse_decode_ui_remote_sync_progress(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   UiRemoteTrack sse_decode_ui_remote_track(SseDeserializer deserializer);
 
   @protected
@@ -349,6 +374,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_decode_unit(SseDeserializer deserializer);
+
+  @protected
+  void sse_encode_AnyhowException(
+    AnyhowException self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_StreamSink_ui_remote_sync_progress_Sse(
+    RustStreamSink<UiRemoteSyncProgress> self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_String(String self, SseSerializer serializer);
@@ -533,6 +570,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_ui_remote_sync_meta(
     UiRemoteSyncMeta self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ui_remote_sync_progress(
+    UiRemoteSyncProgress self,
     SseSerializer serializer,
   );
 

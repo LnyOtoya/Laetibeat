@@ -8,6 +8,7 @@ import 'api/metadata.dart';
 import 'api/simple.dart';
 import 'api/stats.dart';
 import 'api/subsonic.dart';
+import 'api/sync.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
@@ -70,7 +71,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => 1037418381;
+  int get rustContentHash => -948636621;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -145,6 +146,15 @@ abstract class RustLibApi extends BaseApi {
 
   Future<void> crateApiStatsRecordPlayEvent({required UiPlayEvent event});
 
+  Future<void> crateApiSubsonicRegisterSubsonic({
+    required String sourceId,
+    required String baseUrl,
+    required String authMode,
+    String? username,
+    required String secret,
+    String? clientName,
+  });
+
   Future<void> crateApiSubsonicRemoveSubsonic({required String sourceId});
 
   Future<UiScanResult> crateApiSimpleScanLocalMusicFolder({
@@ -199,6 +209,21 @@ abstract class RustLibApi extends BaseApi {
     required String sourceId,
     required String trackId,
   });
+
+  Stream<UiRemoteSyncProgress> crateApiSyncSyncSubsonicLibrary({
+    required String sourceId,
+    required String baseUrl,
+  });
+
+  Future<UiSubsonicServerInfo> crateApiSubsonicTestSubsonicConnection({
+    required String baseUrl,
+    required String authMode,
+    String? username,
+    required String secret,
+    String? clientName,
+  });
+
+  Future<UiRemoteSyncProgress> crateApiSyncUiRemoteSyncProgressDefault();
 }
 
 class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
@@ -758,6 +783,56 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "record_play_event", argNames: ["event"]);
 
   @override
+  Future<void> crateApiSubsonicRegisterSubsonic({
+    required String sourceId,
+    required String baseUrl,
+    required String authMode,
+    String? username,
+    required String secret,
+    String? clientName,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(sourceId, serializer);
+          sse_encode_String(baseUrl, serializer);
+          sse_encode_String(authMode, serializer);
+          sse_encode_opt_String(username, serializer);
+          sse_encode_String(secret, serializer);
+          sse_encode_opt_String(clientName, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 18,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiSubsonicRegisterSubsonicConstMeta,
+        argValues: [sourceId, baseUrl, authMode, username, secret, clientName],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSubsonicRegisterSubsonicConstMeta =>
+      const TaskConstMeta(
+        debugName: "register_subsonic",
+        argNames: [
+          "sourceId",
+          "baseUrl",
+          "authMode",
+          "username",
+          "secret",
+          "clientName",
+        ],
+      );
+
+  @override
   Future<void> crateApiSubsonicRemoveSubsonic({required String sourceId}) {
     return handler.executeNormal(
       NormalTask(
@@ -767,7 +842,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 18,
+            funcId: 19,
             port: port_,
           );
         },
@@ -799,7 +874,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 19,
+            funcId: 20,
             port: port_,
           );
         },
@@ -840,7 +915,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 20,
+            funcId: 21,
             port: port_,
           );
         },
@@ -881,7 +956,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 21,
+            funcId: 22,
             port: port_,
           );
         },
@@ -916,7 +991,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 22,
+            funcId: 23,
             port: port_,
           );
         },
@@ -949,7 +1024,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 23,
+            funcId: 24,
             port: port_,
           );
         },
@@ -986,7 +1061,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 24,
+            funcId: 25,
             port: port_,
           );
         },
@@ -1025,7 +1100,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 25,
+            funcId: 26,
             port: port_,
           );
         },
@@ -1066,7 +1141,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 26,
+            funcId: 27,
             port: port_,
           );
         },
@@ -1107,7 +1182,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 27,
+            funcId: 28,
             port: port_,
           );
         },
@@ -1127,6 +1202,130 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         debugName: "subsonic_stream_url",
         argNames: ["sourceId", "trackId"],
       );
+
+  @override
+  Stream<UiRemoteSyncProgress> crateApiSyncSyncSubsonicLibrary({
+    required String sourceId,
+    required String baseUrl,
+  }) {
+    final sink = RustStreamSink<UiRemoteSyncProgress>();
+    unawaited(
+      handler.executeNormal(
+        NormalTask(
+          callFfi: (port_) {
+            final serializer = SseSerializer(generalizedFrbRustBinding);
+            sse_encode_String(sourceId, serializer);
+            sse_encode_String(baseUrl, serializer);
+            sse_encode_StreamSink_ui_remote_sync_progress_Sse(sink, serializer);
+            pdeCallFfi(
+              generalizedFrbRustBinding,
+              serializer,
+              funcId: 29,
+              port: port_,
+            );
+          },
+          codec: SseCodec(
+            decodeSuccessData: sse_decode_unit,
+            decodeErrorData: null,
+          ),
+          constMeta: kCrateApiSyncSyncSubsonicLibraryConstMeta,
+          argValues: [sourceId, baseUrl, sink],
+          apiImpl: this,
+        ),
+      ),
+    );
+    return sink.stream;
+  }
+
+  TaskConstMeta get kCrateApiSyncSyncSubsonicLibraryConstMeta =>
+      const TaskConstMeta(
+        debugName: "sync_subsonic_library",
+        argNames: ["sourceId", "baseUrl", "sink"],
+      );
+
+  @override
+  Future<UiSubsonicServerInfo> crateApiSubsonicTestSubsonicConnection({
+    required String baseUrl,
+    required String authMode,
+    String? username,
+    required String secret,
+    String? clientName,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(baseUrl, serializer);
+          sse_encode_String(authMode, serializer);
+          sse_encode_opt_String(username, serializer);
+          sse_encode_String(secret, serializer);
+          sse_encode_opt_String(clientName, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 30,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_ui_subsonic_server_info,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiSubsonicTestSubsonicConnectionConstMeta,
+        argValues: [baseUrl, authMode, username, secret, clientName],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSubsonicTestSubsonicConnectionConstMeta =>
+      const TaskConstMeta(
+        debugName: "test_subsonic_connection",
+        argNames: ["baseUrl", "authMode", "username", "secret", "clientName"],
+      );
+
+  @override
+  Future<UiRemoteSyncProgress> crateApiSyncUiRemoteSyncProgressDefault() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 31,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_ui_remote_sync_progress,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiSyncUiRemoteSyncProgressDefaultConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSyncUiRemoteSyncProgressDefaultConstMeta =>
+      const TaskConstMeta(
+        debugName: "ui_remote_sync_progress_default",
+        argNames: [],
+      );
+
+  @protected
+  AnyhowException dco_decode_AnyhowException(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return AnyhowException(raw as String);
+  }
+
+  @protected
+  RustStreamSink<UiRemoteSyncProgress>
+  dco_decode_StreamSink_ui_remote_sync_progress_Sse(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    throw UnimplementedError();
+  }
 
   @protected
   String dco_decode_String(dynamic raw) {
@@ -1498,6 +1697,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  UiRemoteSyncProgress dco_decode_ui_remote_sync_progress(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 8)
+      throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
+    return UiRemoteSyncProgress(
+      phase: dco_decode_String(arr[0]),
+      completed: dco_decode_i_64(arr[1]),
+      total: dco_decode_i_64(arr[2]),
+      artistCount: dco_decode_i_64(arr[3]),
+      albumCount: dco_decode_i_64(arr[4]),
+      trackCount: dco_decode_i_64(arr[5]),
+      elapsedMs: dco_decode_i_64(arr[6]),
+      message: dco_decode_opt_String(arr[7]),
+    );
+  }
+
+  @protected
   UiRemoteTrack dco_decode_ui_remote_track(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -1619,6 +1836,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void dco_decode_unit(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return;
+  }
+
+  @protected
+  AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_String(deserializer);
+    return AnyhowException(inner);
+  }
+
+  @protected
+  RustStreamSink<UiRemoteSyncProgress>
+  sse_decode_StreamSink_ui_remote_sync_progress_Sse(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    throw UnimplementedError('Unreachable ()');
   }
 
   @protected
@@ -2129,6 +2362,31 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  UiRemoteSyncProgress sse_decode_ui_remote_sync_progress(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_phase = sse_decode_String(deserializer);
+    var var_completed = sse_decode_i_64(deserializer);
+    var var_total = sse_decode_i_64(deserializer);
+    var var_artistCount = sse_decode_i_64(deserializer);
+    var var_albumCount = sse_decode_i_64(deserializer);
+    var var_trackCount = sse_decode_i_64(deserializer);
+    var var_elapsedMs = sse_decode_i_64(deserializer);
+    var var_message = sse_decode_opt_String(deserializer);
+    return UiRemoteSyncProgress(
+      phase: var_phase,
+      completed: var_completed,
+      total: var_total,
+      artistCount: var_artistCount,
+      albumCount: var_albumCount,
+      trackCount: var_trackCount,
+      elapsedMs: var_elapsedMs,
+      message: var_message,
+    );
+  }
+
+  @protected
   UiRemoteTrack sse_decode_ui_remote_track(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_id = sse_decode_String(deserializer);
@@ -2288,6 +2546,32 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   void sse_decode_unit(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
+  }
+
+  @protected
+  void sse_encode_AnyhowException(
+    AnyhowException self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.message, serializer);
+  }
+
+  @protected
+  void sse_encode_StreamSink_ui_remote_sync_progress_Sse(
+    RustStreamSink<UiRemoteSyncProgress> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(
+      self.setupAndSerialize(
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_ui_remote_sync_progress,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+      ),
+      serializer,
+    );
   }
 
   @protected
@@ -2720,6 +3004,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_64(self.albumCount, serializer);
     sse_encode_i_64(self.trackCount, serializer);
     sse_encode_i_64(self.elapsedMs, serializer);
+  }
+
+  @protected
+  void sse_encode_ui_remote_sync_progress(
+    UiRemoteSyncProgress self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.phase, serializer);
+    sse_encode_i_64(self.completed, serializer);
+    sse_encode_i_64(self.total, serializer);
+    sse_encode_i_64(self.artistCount, serializer);
+    sse_encode_i_64(self.albumCount, serializer);
+    sse_encode_i_64(self.trackCount, serializer);
+    sse_encode_i_64(self.elapsedMs, serializer);
+    sse_encode_opt_String(self.message, serializer);
   }
 
   @protected

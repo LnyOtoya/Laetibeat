@@ -1,53 +1,52 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:laetibeat/src/rust/api/library.dart' as rust_library;
 import 'package:laetibeat/src/rust/api/simple.dart' as rust;
 import 'package:laetibeat/src/rust/api/subsonic.dart' as rust_subsonic;
 
-/// 远端艺术家列表
+/// 远端艺术家列表(读取已同步的本地 SQLite 快照)
 final remoteArtistsProvider =
     FutureProvider.family<List<rust_subsonic.UiRemoteArtist>, String>((
       ref,
       sourceId,
     ) {
-      return rust_subsonic.subsonicGetArtists(sourceId: sourceId);
+      return rust_library.queryRemoteArtists(sourceId: sourceId);
     });
 
 typedef RemoteAlbumsKey = ({String sourceId, String artistId});
 
-/// 某艺术家的专辑列表
+/// 某艺术家的专辑列表(读取本地 SQLite 快照)
 final remoteAlbumsProvider =
     FutureProvider.family<List<rust_subsonic.UiRemoteAlbum>, RemoteAlbumsKey>((
       ref,
       key,
-    ) async {
-      final detail = await rust_subsonic.subsonicGetArtist(
+    ) {
+      return rust_library.queryRemoteAlbums(
         sourceId: key.sourceId,
         artistId: key.artistId,
       );
-      return detail.albums;
     });
 
 typedef RemoteTracksKey = ({String sourceId, String albumId});
 
-/// 某专辑的曲目列表
+/// 某专辑的曲目列表(读取本地 SQLite 快照)
 final remoteTracksProvider =
     FutureProvider.family<List<rust_subsonic.UiRemoteTrack>, RemoteTracksKey>((
       ref,
       key,
-    ) async {
-      final detail = await rust_subsonic.subsonicGetAlbum(
+    ) {
+      return rust_library.queryRemoteTracks(
         sourceId: key.sourceId,
         albumId: key.albumId,
       );
-      return detail.tracks;
     });
 
 typedef RemoteSearchKey = ({String sourceId, String query});
 
-/// ID3 搜索(search3),一次取回艺术家/专辑/曲目三类结果。
+/// 在已同步的本地快照中搜索,不再直连服务器。
 /// 用 autoDispose 避免每次防抖后的查询都常驻缓存。
 final remoteSearchProvider = FutureProvider.autoDispose
     .family<rust_subsonic.UiRemoteSearchResult, RemoteSearchKey>((ref, key) {
-      return rust_subsonic.subsonicSearch3(
+      return rust_library.searchRemoteLibrary(
         sourceId: key.sourceId,
         query: key.query,
         artistCount: 50,

@@ -39,7 +39,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1037418381;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -948636621;
 
 // Section: executor
 
@@ -634,6 +634,51 @@ fn wire__crate__api__stats__record_play_event_impl(
         },
     )
 }
+fn wire__crate__api__subsonic__register_subsonic_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "register_subsonic",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_source_id = <String>::sse_decode(&mut deserializer);
+            let api_base_url = <String>::sse_decode(&mut deserializer);
+            let api_auth_mode = <String>::sse_decode(&mut deserializer);
+            let api_username = <Option<String>>::sse_decode(&mut deserializer);
+            let api_secret = <String>::sse_decode(&mut deserializer);
+            let api_client_name = <Option<String>>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::subsonic::register_subsonic(
+                        api_source_id,
+                        api_base_url,
+                        api_auth_mode,
+                        api_username,
+                        api_secret,
+                        api_client_name,
+                    )?;
+                    std::result::Result::Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__subsonic__remove_subsonic_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -1009,8 +1054,148 @@ fn wire__crate__api__subsonic__subsonic_stream_url_impl(
         },
     )
 }
+fn wire__crate__api__sync__sync_subsonic_library_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "sync_subsonic_library",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_source_id = <String>::sse_decode(&mut deserializer);
+            let api_base_url = <String>::sse_decode(&mut deserializer);
+            let api_sink = <StreamSink<
+                crate::api::sync::UiRemoteSyncProgress,
+                flutter_rust_bridge::for_generated::SseCodec,
+            >>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Ok::<_, ()>({
+                        crate::api::sync::sync_subsonic_library(
+                            api_source_id,
+                            api_base_url,
+                            api_sink,
+                        );
+                    })?;
+                    std::result::Result::Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__subsonic__test_subsonic_connection_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "test_subsonic_connection",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_base_url = <String>::sse_decode(&mut deserializer);
+            let api_auth_mode = <String>::sse_decode(&mut deserializer);
+            let api_username = <Option<String>>::sse_decode(&mut deserializer);
+            let api_secret = <String>::sse_decode(&mut deserializer);
+            let api_client_name = <Option<String>>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::subsonic::test_subsonic_connection(
+                        api_base_url,
+                        api_auth_mode,
+                        api_username,
+                        api_secret,
+                        api_client_name,
+                    )?;
+                    std::result::Result::Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__api__sync__ui_remote_sync_progress_default_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "ui_remote_sync_progress_default",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, ()>((move || {
+                    let output_ok = Ok::<_, ()>(crate::api::sync::UiRemoteSyncProgress::default())?;
+                    std::result::Result::Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 
 // Section: dart2rust
+
+impl SseDecode for flutter_rust_bridge::for_generated::anyhow::Error {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <String>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::anyhow::anyhow!("{}", inner);
+    }
+}
+
+impl SseDecode
+    for StreamSink<
+        crate::api::sync::UiRemoteSyncProgress,
+        flutter_rust_bridge::for_generated::SseCodec,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <String>::sse_decode(deserializer);
+        return StreamSink::deserialize(inner);
+    }
+}
 
 impl SseDecode for String {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -1491,6 +1676,30 @@ impl SseDecode for crate::api::library::UiRemoteSyncMeta {
     }
 }
 
+impl SseDecode for crate::api::sync::UiRemoteSyncProgress {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_phase = <String>::sse_decode(deserializer);
+        let mut var_completed = <i64>::sse_decode(deserializer);
+        let mut var_total = <i64>::sse_decode(deserializer);
+        let mut var_artistCount = <i64>::sse_decode(deserializer);
+        let mut var_albumCount = <i64>::sse_decode(deserializer);
+        let mut var_trackCount = <i64>::sse_decode(deserializer);
+        let mut var_elapsedMs = <i64>::sse_decode(deserializer);
+        let mut var_message = <Option<String>>::sse_decode(deserializer);
+        return crate::api::sync::UiRemoteSyncProgress {
+            phase: var_phase,
+            completed: var_completed,
+            total: var_total,
+            artist_count: var_artistCount,
+            album_count: var_albumCount,
+            track_count: var_trackCount,
+            elapsed_ms: var_elapsedMs,
+            message: var_message,
+        };
+    }
+}
+
 impl SseDecode for crate::api::subsonic::UiRemoteTrack {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1701,38 +1910,52 @@ fn pde_ffi_dispatcher_primary_impl(
         15 => wire__crate__api__metadata__read_cover_impl(port, ptr, rust_vec_len, data_len),
         16 => wire__crate__api__metadata__read_lyrics_impl(port, ptr, rust_vec_len, data_len),
         17 => wire__crate__api__stats__record_play_event_impl(port, ptr, rust_vec_len, data_len),
-        18 => wire__crate__api__subsonic__remove_subsonic_impl(port, ptr, rust_vec_len, data_len),
-        19 => wire__crate__api__simple__scan_local_music_folder_impl(
+        18 => wire__crate__api__subsonic__register_subsonic_impl(port, ptr, rust_vec_len, data_len),
+        19 => wire__crate__api__subsonic__remove_subsonic_impl(port, ptr, rust_vec_len, data_len),
+        20 => wire__crate__api__simple__scan_local_music_folder_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        20 => {
+        21 => {
             wire__crate__api__library__search_remote_library_impl(port, ptr, rust_vec_len, data_len)
         }
-        21 => {
+        22 => {
             wire__crate__api__subsonic__subsonic_get_album_impl(port, ptr, rust_vec_len, data_len)
         }
-        22 => {
+        23 => {
             wire__crate__api__subsonic__subsonic_get_artist_impl(port, ptr, rust_vec_len, data_len)
         }
-        23 => {
+        24 => {
             wire__crate__api__subsonic__subsonic_get_artists_impl(port, ptr, rust_vec_len, data_len)
         }
-        24 => wire__crate__api__subsonic__subsonic_get_cover_art_impl(
+        25 => wire__crate__api__subsonic__subsonic_get_cover_art_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        25 => {
+        26 => {
             wire__crate__api__subsonic__subsonic_get_lyrics_impl(port, ptr, rust_vec_len, data_len)
         }
-        26 => wire__crate__api__subsonic__subsonic_search3_impl(port, ptr, rust_vec_len, data_len),
-        27 => {
+        27 => wire__crate__api__subsonic__subsonic_search3_impl(port, ptr, rust_vec_len, data_len),
+        28 => {
             wire__crate__api__subsonic__subsonic_stream_url_impl(port, ptr, rust_vec_len, data_len)
         }
+        29 => wire__crate__api__sync__sync_subsonic_library_impl(port, ptr, rust_vec_len, data_len),
+        30 => wire__crate__api__subsonic__test_subsonic_connection_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        31 => wire__crate__api__sync__ui_remote_sync_progress_default_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
         _ => unreachable!(),
     }
 }
@@ -2011,6 +2234,33 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::library::UiRemoteSyncMeta>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::sync::UiRemoteSyncProgress {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.phase.into_into_dart().into_dart(),
+            self.completed.into_into_dart().into_dart(),
+            self.total.into_into_dart().into_dart(),
+            self.artist_count.into_into_dart().into_dart(),
+            self.album_count.into_into_dart().into_dart(),
+            self.track_count.into_into_dart().into_dart(),
+            self.elapsed_ms.into_into_dart().into_dart(),
+            self.message.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::sync::UiRemoteSyncProgress
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::sync::UiRemoteSyncProgress>
+    for crate::api::sync::UiRemoteSyncProgress
+{
+    fn into_into_dart(self) -> crate::api::sync::UiRemoteSyncProgress {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::subsonic::UiRemoteTrack {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -2177,6 +2427,25 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::stats::UiTrackStat>
 {
     fn into_into_dart(self) -> crate::api::stats::UiTrackStat {
         self
+    }
+}
+
+impl SseEncode for flutter_rust_bridge::for_generated::anyhow::Error {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(format!("{:?}", self), serializer);
+    }
+}
+
+impl SseEncode
+    for StreamSink<
+        crate::api::sync::UiRemoteSyncProgress,
+        flutter_rust_bridge::for_generated::SseCodec,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        unimplemented!("")
     }
 }
 
@@ -2538,6 +2807,20 @@ impl SseEncode for crate::api::library::UiRemoteSyncMeta {
         <i64>::sse_encode(self.album_count, serializer);
         <i64>::sse_encode(self.track_count, serializer);
         <i64>::sse_encode(self.elapsed_ms, serializer);
+    }
+}
+
+impl SseEncode for crate::api::sync::UiRemoteSyncProgress {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.phase, serializer);
+        <i64>::sse_encode(self.completed, serializer);
+        <i64>::sse_encode(self.total, serializer);
+        <i64>::sse_encode(self.artist_count, serializer);
+        <i64>::sse_encode(self.album_count, serializer);
+        <i64>::sse_encode(self.track_count, serializer);
+        <i64>::sse_encode(self.elapsed_ms, serializer);
+        <Option<String>>::sse_encode(self.message, serializer);
     }
 }
 

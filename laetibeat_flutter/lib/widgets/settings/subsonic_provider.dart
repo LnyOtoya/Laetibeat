@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:laetibeat/src/rust/api/library.dart' as rust_library;
 import 'package:laetibeat/src/rust/api/subsonic.dart' as rust_subsonic;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -183,13 +184,12 @@ class SubsonicServersNotifier
 
   static String newId() => const Uuid().v4();
 
-  /// 测试连接,同时把 Rust 客户端注册进内存
+  /// 测试连接,只返回服务器信息,不注册客户端。
   Future<rust_subsonic.UiSubsonicServerInfo> test({
     required SubsonicServerConfig config,
     required String secret,
   }) {
-    return rust_subsonic.configureSubsonic(
-      sourceId: config.id,
+    return rust_subsonic.testSubsonicConnection(
       baseUrl: config.baseUrl,
       authMode: config.authMode.wireName,
       username: config.authMode == SubsonicAuthMode.token
@@ -200,12 +200,23 @@ class SubsonicServersNotifier
     );
   }
 
-  /// 测试成功后保存配置与密钥
-  Future<rust_subsonic.UiSubsonicServerInfo> save({
+  /// 保存已测试成功的配置:注册客户端、写配置与密钥,不触发同步。
+  Future<void> save({
     required SubsonicServerConfig config,
     required String secret,
   }) async {
-    final info = await test(config: config, secret: secret);
+    final previous = state.value ?? const <SubsonicServerConfig>[];
+
+    await rust_subsonic.registerSubsonic(
+      sourceId: config.id,
+      baseUrl: config.baseUrl,
+      authMode: config.authMode.wireName,
+      username: config.authMode == SubsonicAuthMode.token
+          ? config.username
+          : null,
+      secret: secret,
+      clientName: 'laetibeat',
+    );
 
     final store = ref.read(subsonicServerStoreProvider);
     await store.writeSecret(config.id, secret);
@@ -213,8 +224,18 @@ class SubsonicServersNotifier
     // 单服务器模式:保存即替换现有配置
     final current = <SubsonicServerConfig>[config];
     await store.saveConfigs(current);
+
+    // 服务器地址或配置 id 变化时,旧远端库数据不再有效。
+    // 先清理再更新状态,避免同步状态 provider 读到待清理的旧摘要。
+    for (final old in previous) {
+      if (old.id == config.id && old.baseUrl == config.baseUrl) continue;
+      try {
+        await rust_library.clearRemoteLibrary(sourceId: old.id);
+      } catch (e) {
+        debugPrint('清理旧远端音乐库失败: $e');
+      }
+    }
     state = AsyncData(current);
-    return info;
   }
 
   /// 删除服务器及其密钥
@@ -227,6 +248,13 @@ class SubsonicServersNotifier
 
     final store = ref.read(subsonicServerStoreProvider);
     await store.deleteSecret(id);
+
+    // 删除服务器时一并清空对应远端音乐库
+    try {
+      await rust_library.clearRemoteLibrary(sourceId: id);
+    } catch (e) {
+      debugPrint('清空远端音乐库失败: $e');
+    }
 
     // 单服务器模式:删除即清空唯一配置
     const current = <SubsonicServerConfig>[];

@@ -561,19 +561,18 @@ fn query_artists_on(
     conn: &Connection,
     source_id: &str,
 ) -> Result<Vec<RemoteArtistRow>, String> {
-    let Some(generation) = current_generation_on(conn, source_id)? else {
-        return Ok(Vec::new());
-    };
     let mut stmt = conn
         .prepare(
-            "SELECT id, name, cover_id, album_count
-             FROM remote_artists
-             WHERE source_id = ?1 AND generation = ?2
-             ORDER BY name_lower",
+            "SELECT a.id, a.name, a.cover_id, a.album_count
+             FROM remote_artists a
+             JOIN remote_sync_meta m
+               ON m.source_id = a.source_id AND m.generation = a.generation
+             WHERE a.source_id = ?1
+             ORDER BY a.name_lower",
         )
         .map_err(map_err)?;
     let rows = stmt
-        .query_map(params![source_id, generation], |row| {
+        .query_map(params![source_id], |row| {
             Ok(RemoteArtistRow {
                 id: row.get(0)?,
                 name: row.get(1)?,
@@ -599,32 +598,30 @@ fn query_albums_on(
     source_id: &str,
     artist_id: Option<&str>,
 ) -> Result<Vec<RemoteAlbumRow>, String> {
-    let Some(generation) = current_generation_on(conn, source_id)? else {
-        return Ok(Vec::new());
-    };
-
-    let select = "SELECT id, title, artist, artist_id, cover_id,
-                         song_count, duration_seconds, year
-                  FROM remote_albums
-                  WHERE source_id = ?1 AND generation = ?2";
+    let select = "SELECT a.id, a.title, a.artist, a.artist_id, a.cover_id,
+                         a.song_count, a.duration_seconds, a.year
+                  FROM remote_albums a
+                  JOIN remote_sync_meta m
+                    ON m.source_id = a.source_id AND m.generation = a.generation
+                  WHERE a.source_id = ?1";
 
     if let Some(artist_id) = artist_id {
         let mut stmt = conn
             .prepare(&format!(
-                "{select} AND artist_id = ?3
-                 ORDER BY year IS NULL, year DESC, title_lower"
+                "{select} AND a.artist_id = ?2
+                 ORDER BY a.year IS NULL, a.year DESC, a.title_lower"
             ))
             .map_err(map_err)?;
         let rows = stmt
-            .query_map(params![source_id, generation, artist_id], map_album_row)
+            .query_map(params![source_id, artist_id], map_album_row)
             .map_err(map_err)?;
         collect_rows(rows)
     } else {
         let mut stmt = conn
-            .prepare(&format!("{select} ORDER BY title_lower"))
+            .prepare(&format!("{select} ORDER BY a.title_lower"))
             .map_err(map_err)?;
         let rows = stmt
-            .query_map(params![source_id, generation], map_album_row)
+            .query_map(params![source_id], map_album_row)
             .map_err(map_err)?;
         collect_rows(rows)
     }
@@ -654,22 +651,21 @@ fn query_tracks_on(
     source_id: &str,
     album_id: &str,
 ) -> Result<Vec<RemoteTrackRow>, String> {
-    let Some(generation) = current_generation_on(conn, source_id)? else {
-        return Ok(Vec::new());
-    };
     let mut stmt = conn
         .prepare(
-            "SELECT id, album_id, artist_id, title, artist, album, cover_id,
-                    duration_seconds, track_number, disc_number, year, genre,
-                    bit_rate, suffix, size
-             FROM remote_tracks
-             WHERE source_id = ?1 AND generation = ?2 AND album_id = ?3
-             ORDER BY disc_number IS NULL, disc_number,
-                      track_number IS NULL, track_number, title_lower",
+            "SELECT t.id, t.album_id, t.artist_id, t.title, t.artist, t.album,
+                    t.cover_id, t.duration_seconds, t.track_number, t.disc_number,
+                    t.year, t.genre, t.bit_rate, t.suffix, t.size
+             FROM remote_tracks t
+             JOIN remote_sync_meta m
+               ON m.source_id = t.source_id AND m.generation = t.generation
+             WHERE t.source_id = ?1 AND t.album_id = ?2
+             ORDER BY t.disc_number IS NULL, t.disc_number,
+                      t.track_number IS NULL, t.track_number, t.title_lower",
         )
         .map_err(map_err)?;
     let rows = stmt
-        .query_map(params![source_id, generation, album_id], map_track_row)
+        .query_map(params![source_id, album_id], map_track_row)
         .map_err(map_err)?;
     collect_rows(rows)
 }
@@ -725,23 +721,22 @@ fn search_on(
     if trimmed.is_empty() {
         return Ok(RemoteSearchRows::default());
     }
-    let Some(generation) = current_generation_on(conn, source_id)? else {
-        return Ok(RemoteSearchRows::default());
-    };
     let pattern = format!("%{}%", trimmed.to_lowercase());
 
     let artists = if artist_count > 0 {
         let mut stmt = conn
             .prepare(
-                "SELECT id, name, cover_id, album_count
-                 FROM remote_artists
-                 WHERE source_id = ?1 AND generation = ?2 AND name_lower LIKE ?3
-                 ORDER BY name_lower LIMIT ?4",
+                "SELECT a.id, a.name, a.cover_id, a.album_count
+                 FROM remote_artists a
+                 JOIN remote_sync_meta m
+                   ON m.source_id = a.source_id AND m.generation = a.generation
+                 WHERE a.source_id = ?1 AND a.name_lower LIKE ?2
+                 ORDER BY a.name_lower LIMIT ?3",
             )
             .map_err(map_err)?;
         let rows = stmt
             .query_map(
-                params![source_id, generation, &pattern, artist_count as i64],
+                params![source_id, &pattern, artist_count as i64],
                 |row| {
                     Ok(RemoteArtistRow {
                         id: row.get(0)?,
@@ -760,17 +755,19 @@ fn search_on(
     let albums = if album_count > 0 {
         let mut stmt = conn
             .prepare(
-                "SELECT id, title, artist, artist_id, cover_id,
-                        song_count, duration_seconds, year
-                 FROM remote_albums
-                 WHERE source_id = ?1 AND generation = ?2
-                   AND (title_lower LIKE ?3 OR artist_lower LIKE ?3)
-                 ORDER BY title_lower LIMIT ?4",
+                "SELECT a.id, a.title, a.artist, a.artist_id, a.cover_id,
+                        a.song_count, a.duration_seconds, a.year
+                 FROM remote_albums a
+                 JOIN remote_sync_meta m
+                   ON m.source_id = a.source_id AND m.generation = a.generation
+                 WHERE a.source_id = ?1
+                   AND (a.title_lower LIKE ?2 OR a.artist_lower LIKE ?2)
+                 ORDER BY a.title_lower LIMIT ?3",
             )
             .map_err(map_err)?;
         let rows = stmt
             .query_map(
-                params![source_id, generation, &pattern, album_count as i64],
+                params![source_id, &pattern, album_count as i64],
                 map_album_row,
             )
             .map_err(map_err)?;
@@ -782,20 +779,22 @@ fn search_on(
     let tracks = if song_count > 0 {
         let mut stmt = conn
             .prepare(
-                "SELECT id, album_id, artist_id, title, artist, album, cover_id,
-                        duration_seconds, track_number, disc_number, year, genre,
-                        bit_rate, suffix, size
-                 FROM remote_tracks
-                 WHERE source_id = ?1 AND generation = ?2
-                   AND (title_lower LIKE ?3
-                        OR artist_lower LIKE ?3
-                        OR album_lower LIKE ?3)
-                 ORDER BY title_lower LIMIT ?4",
+                "SELECT t.id, t.album_id, t.artist_id, t.title, t.artist, t.album,
+                        t.cover_id, t.duration_seconds, t.track_number, t.disc_number,
+                        t.year, t.genre, t.bit_rate, t.suffix, t.size
+                 FROM remote_tracks t
+                 JOIN remote_sync_meta m
+                   ON m.source_id = t.source_id AND m.generation = t.generation
+                 WHERE t.source_id = ?1
+                   AND (t.title_lower LIKE ?2
+                        OR t.artist_lower LIKE ?2
+                        OR t.album_lower LIKE ?2)
+                 ORDER BY t.title_lower LIMIT ?3",
             )
             .map_err(map_err)?;
         let rows = stmt
             .query_map(
-                params![source_id, generation, &pattern, song_count as i64],
+                params![source_id, &pattern, song_count as i64],
                 map_track_row,
             )
             .map_err(map_err)?;

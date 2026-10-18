@@ -7,8 +7,6 @@ import 'package:material_3_expressive/material_3_expressive.dart';
 import 'player/cover_provider.dart';
 import 'player/player_provider.dart';
 import 'remote_browser_provider.dart';
-import 'settings/persistence.dart';
-import 'settings/subsonic_provider.dart';
 
 /// 远端音乐库:艺术家 → 专辑 → 曲目,全部按需加载。
 class RemoteLibraryView extends ConsumerStatefulWidget {
@@ -50,13 +48,11 @@ class _RemoteLibraryViewState extends ConsumerState<RemoteLibraryView> {
             error: (error, _) => _error(
               theme,
               error,
-              onRetry: () => _retry(
-                widget.sourceId,
-                () => ref.invalidate(remoteArtistsProvider(widget.sourceId)),
-              ),
+              onRetry: () =>
+                  ref.invalidate(remoteArtistsProvider(widget.sourceId)),
             ),
             data: (list) => list.isEmpty
-                ? _empty(theme, '服务器上还没有艺术家')
+                ? _empty(theme, '还没有远端音乐，请先在设置中同步音乐')
                 : M3EList.scrollable(
                     itemCount: list.length,
                     onTap: (index) => setState(() => _artist = list[index]),
@@ -102,10 +98,7 @@ class _RemoteLibraryViewState extends ConsumerState<RemoteLibraryView> {
             error: (error, _) => _error(
               theme,
               error,
-              onRetry: () => _retry(
-                widget.sourceId,
-                () => ref.invalidate(remoteAlbumsProvider(key)),
-              ),
+              onRetry: () => ref.invalidate(remoteAlbumsProvider(key)),
             ),
             data: (list) => list.isEmpty
                 ? _empty(theme, '这位艺术家还没有专辑')
@@ -162,10 +155,7 @@ class _RemoteLibraryViewState extends ConsumerState<RemoteLibraryView> {
             error: (error, _) => _error(
               theme,
               error,
-              onRetry: () => _retry(
-                widget.sourceId,
-                () => ref.invalidate(remoteTracksProvider(key)),
-              ),
+              onRetry: () => ref.invalidate(remoteTracksProvider(key)),
             ),
             data: (list) => list.isEmpty
                 ? _empty(theme, '这张专辑还没有曲目')
@@ -255,20 +245,6 @@ class _RemoteLibraryViewState extends ConsumerState<RemoteLibraryView> {
         containerColor: theme.colorScheme.surfaceContainerHighest,
       ),
     );
-  }
-
-  /// 重试前按需补一次服务器配置(启动时的后台重连可能尚未完成)。
-  /// 无论重连成功与否都让 provider 重新请求,把真实错误暴露出来。
-  Future<void> _retry(String sourceId, VoidCallback invalidate) async {
-    try {
-      await ensureSubsonicConfiguredWithPrefs(
-        ref.read(sharedPreferencesProvider),
-        sourceId,
-      );
-    } catch (e) {
-      debugPrint('重连远端服务器失败: $e');
-    }
-    if (mounted) invalidate();
   }
 
   Widget _error(

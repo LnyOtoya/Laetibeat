@@ -72,6 +72,53 @@ pub struct UiRemoteSearchResult {
     pub tracks: Vec<UiRemoteTrack>,
 }
 
+fn parse_auth_mode(auth_mode: &str) -> Result<remote::SubsonicAuthMode, String> {
+    match auth_mode {
+        "apiKey" | "api_key" => Ok(remote::SubsonicAuthMode::ApiKey),
+        "token" => Ok(remote::SubsonicAuthMode::Token),
+        other => Err(format!("未知认证方式: {other}")),
+    }
+}
+
+/// 测试连接,只返回服务器信息,不注册客户端。
+pub fn test_subsonic_connection(
+    base_url: String,
+    auth_mode: String,
+    username: Option<String>,
+    secret: String,
+    client_name: Option<String>,
+) -> Result<UiSubsonicServerInfo, String> {
+    let info = remote::test(&remote::SubsonicConfig {
+        // 测试不需要注册,source_id 仅作占位
+        source_id: String::new(),
+        base_url,
+        auth_mode: parse_auth_mode(&auth_mode)?,
+        username,
+        secret,
+        client_name,
+    })?;
+    Ok(map_server_info(info))
+}
+
+/// 注册一个已测试通过的客户端,不发起网络请求。
+pub fn register_subsonic(
+    source_id: String,
+    base_url: String,
+    auth_mode: String,
+    username: Option<String>,
+    secret: String,
+    client_name: Option<String>,
+) -> Result<(), String> {
+    remote::register(&remote::SubsonicConfig {
+        source_id,
+        base_url,
+        auth_mode: parse_auth_mode(&auth_mode)?,
+        username,
+        secret,
+        client_name,
+    })
+}
+
 /// 配置并测试 OpenSubsonic 服务器,成功后注册客户端。
 /// auth_mode: "apiKey" 或 "token"。
 pub fn configure_subsonic(
@@ -82,16 +129,10 @@ pub fn configure_subsonic(
     secret: String,
     client_name: Option<String>,
 ) -> Result<UiSubsonicServerInfo, String> {
-    let mode = match auth_mode.as_str() {
-        "apiKey" | "api_key" => remote::SubsonicAuthMode::ApiKey,
-        "token" => remote::SubsonicAuthMode::Token,
-        other => return Err(format!("未知认证方式: {other}")),
-    };
-
     let info = remote::configure(remote::SubsonicConfig {
         source_id,
         base_url,
-        auth_mode: mode,
+        auth_mode: parse_auth_mode(&auth_mode)?,
         username,
         secret,
         client_name,

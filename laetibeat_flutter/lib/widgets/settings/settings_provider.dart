@@ -6,7 +6,6 @@ import 'persistence.dart';
 enum SettingsCategory {
   appearance, //外观
   playerAudio, //播放器与音频
-  servers, //服务器
   content, //内容
   storage, //储存
   backup, //备份与还原
