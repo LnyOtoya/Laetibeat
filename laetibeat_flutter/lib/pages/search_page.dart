@@ -12,6 +12,7 @@ import '../widgets/player/player_provider.dart';
 import '../widgets/player/player_right_pane.dart';
 import '../widgets/remote_browser_provider.dart';
 import '../widgets/settings/music_library_provider.dart';
+import '../widgets/settings/persistence.dart';
 import '../widgets/settings/subsonic_provider.dart';
 import '../widgets/two_pane_layout.dart';
 
@@ -384,7 +385,20 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           containerColor: scheme.surfaceContainerHighest,
         ),
       ),
-      error: (error, _) => _hint(theme, scheme, '远端搜索失败', '$error'),
+      error: (error, _) => _hint(
+        theme,
+        scheme,
+        '远端搜索失败',
+        '$error',
+        onRetry: () => _retryRemote(
+          _sourceId,
+          () => ref.invalidate(
+            remoteSearchProvider(
+              (sourceId: _sourceId, query: _debouncedQuery),
+            ),
+          ),
+        ),
+      ),
       data: (data) => switch (_filter) {
         _SearchFilter.track => _buildRemoteTrackResults(theme, scheme, data),
         _SearchFilter.artist => _buildRemoteArtistResults(theme, scheme, data),
@@ -591,13 +605,27 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   static bool _matches(String value, String query) =>
       value.toLowerCase().contains(query);
 
+  /// 远端请求失败后的重试:先按需补配置,再让 provider 重新请求。
+  Future<void> _retryRemote(String sourceId, VoidCallback invalidate) async {
+    try {
+      await ensureSubsonicConfiguredWithPrefs(
+        ref.read(sharedPreferencesProvider),
+        sourceId,
+      );
+    } catch (e) {
+      debugPrint('重连远端服务器失败: $e');
+    }
+    if (mounted) invalidate();
+  }
+
   //空态/无结果提示
   Widget _hint(
     M3EThemeData theme,
     M3EColorScheme scheme,
     String title,
-    String? detail,
-  ) {
+    String? detail, {
+    VoidCallback? onRetry,
+  }) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -617,6 +645,16 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               style: theme.typeScale.bodyMedium.copyWith(
                 color: scheme.onSurfaceVariant,
               ),
+            ),
+          ],
+          if (onRetry != null) ...[
+            SizedBox(height: theme.spacing.lg),
+            M3EButton(
+              size: M3EButtonSize.sm,
+              style: M3EButtonStyle.filled,
+              icon: const Icon(Icons.refresh),
+              label: const Text('重试'),
+              onPressed: onRetry,
             ),
           ],
         ],

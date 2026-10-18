@@ -111,6 +111,9 @@ class PlayerNotifier extends Notifier<PlayerState> {
   /// 随机播放选曲用
   final Random _random = Random();
 
+  /// 本轮随机播放已经过的队列索引;用于保证 off 模式每首只播一次
+  final Set<int> _shuffleVisited = <int>{};
+
   /// 引擎里是否已装载当前曲目。启动恢复时只恢复队列与进度,
   /// 首次播放/seek 时再懒加载,避免启动就占用音频设备。
   bool _mediaLoaded = false;
@@ -190,6 +193,9 @@ class PlayerNotifier extends Notifier<PlayerState> {
       _mediaLoaded = false;
       _pendingPosition = Duration.zero;
       _lastSavedQueueSignature = _queueSignature(snapshot.queue);
+      if (snapshot.shuffle) {
+        _resetShuffleHistory(idx);
+      }
       return PlayerState(
         queue: snapshot.queue,
         currentIndex: idx,
@@ -355,6 +361,12 @@ class PlayerNotifier extends Notifier<PlayerState> {
       audioParams: null,
       audioBitrate: null,
     );
+    // 队列已变化:随机轮次从当前起播曲目重新开始
+    if (state.shuffle) {
+      _resetShuffleHistory(idx);
+    } else {
+      _shuffleVisited.clear();
+    }
     _mediaLoaded = true;
     _pendingPosition = Duration.zero;
     _sessionTracker.onTrackChanged(tracks[idx]);
@@ -388,6 +400,8 @@ class PlayerNotifier extends Notifier<PlayerState> {
       audioParams: null,
       audioBitrate: null,
     );
+    // 手动选曲也计入本次随机轮次,避免自动切歌时重复选中
+    if (state.shuffle) _shuffleVisited.add(idx);
     _mediaLoaded = true;
     _pendingPosition = Duration.zero;
     _sessionTracker.onTrackChanged(track);
@@ -476,7 +490,8 @@ class PlayerNotifier extends Notifier<PlayerState> {
   void next() {
     if (state.queue.isEmpty) return;
     if (state.shuffle && state.queue.length > 1) {
-      play(_randomIndexExcludingCurrent());
+      final idx = _nextShuffleIndex(manual: true);
+      if (idx != null) play(idx);
       return;
     }
     play(state.currentIndex + 1);
@@ -494,9 +509,14 @@ class PlayerNotifier extends Notifier<PlayerState> {
       return;
     }
 
-    // 随机模式:继续随机选下一首
+    // 随机模式:优先选本轮未播放过的曲目;本轮听完且非列表循环时停在末尾
     if (state.shuffle && state.queue.length > 1) {
-      play(_randomIndexExcludingCurrent());
+      final idx = _nextShuffleIndex(manual: false);
+      if (idx != null) {
+        play(idx);
+      } else {
+        state = state.copyWith(position: state.duration);
+      }
       return;
     }
 
@@ -514,13 +534,44 @@ class PlayerNotifier extends Notifier<PlayerState> {
     state = state.copyWith(position: state.duration);
   }
 
-  //随机选一个不同于当前曲目的索引
-  int _randomIndexExcludingCurrent() {
-    var idx = _random.nextInt(state.queue.length);
-    if (idx == state.currentIndex) {
-      idx = (idx + 1) % state.queue.length;
+  /// 随机播放选曲:优先选本轮未播放过的曲目,保证 off 模式下每首只播一次。
+  /// 本轮听完后:列表循环或手动切歌会开启新一轮;顺序播完返回 null(停在末尾)。
+  int? _nextShuffleIndex({required bool manual}) {
+    final length = state.queue.length;
+    final current = state.currentIndex;
+
+    final remaining = <int>[
+      for (var i = 0; i < length; i++)
+        if (i != current && !_shuffleVisited.contains(i)) i,
+    ];
+    if (remaining.isNotEmpty) {
+      final idx = remaining[_random.nextInt(remaining.length)];
+      _shuffleVisited.add(idx);
+      return idx;
     }
-    return idx;
+
+    // 本轮已听完:列表循环或手动切歌开启新一轮
+    if (state.repeatMode == PlaybackRepeatMode.all || manual) {
+      final candidates = <int>[
+        for (var i = 0; i < length; i++)
+          if (i != current) i,
+      ];
+      if (candidates.isEmpty) return null;
+      _shuffleVisited
+        ..clear()
+        ..add(current);
+      final idx = candidates[_random.nextInt(candidates.length)];
+      _shuffleVisited.add(idx);
+      return idx;
+    }
+    return null;
+  }
+
+  /// 重置随机轮次,把当前曲目标记为已播放
+  void _resetShuffleHistory(int current) {
+    _shuffleVisited
+      ..clear()
+      ..add(current);
   }
 
   //单曲循环:seek 回 0 再播,避免重新 open 整个文件
@@ -536,7 +587,13 @@ class PlayerNotifier extends Notifier<PlayerState> {
 
   //随机播放开关
   void toggleShuffle() {
-    state = state.copyWith(shuffle: !state.shuffle);
+    final enabled = !state.shuffle;
+    state = state.copyWith(shuffle: enabled);
+    if (enabled) {
+      _resetShuffleHistory(state.currentIndex);
+    } else {
+      _shuffleVisited.clear();
+    }
     unawaited(_saveState());
   }
 

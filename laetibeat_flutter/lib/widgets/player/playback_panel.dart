@@ -42,11 +42,20 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
   /// 是否显示播放队列浮层。浮层只覆盖播放面板自身,不弹到窗口底部。
   bool _showQueue = false;
 
+  /// 拖动进度条时的临时值(0..1)。拖动期间只更新本地显示,
+  /// 松手后才向引擎 seek,避免远端流被连续 seek 打断。
+  double? _dragValue;
+
   @override
   Widget build(BuildContext context) {
     final baseTheme = M3ETheme.of(context);
     final player = ref.watch(playerProvider);
     final track = player.current;
+
+    // 切歌时丢弃尚未结束的拖动状态,避免新曲目沿用旧进度
+    ref.listen(playerProvider.select((s) => s.current?.id), (prev, next) {
+      if (prev != next) _dragValue = null;
+    });
 
     //空态:未播放任何曲目时,按音乐库是否有曲目分两种占位提示(保持全局配色)
     if (track == null) return _emptyState(ref, baseTheme, baseTheme.colorScheme);
@@ -489,6 +498,11 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
     final value = total > 0
         ? (player.position.inMilliseconds / total).clamp(0.0, 1.0)
         : 0.0;
+    // 拖动中优先展示拖动位置,松手后再回到引擎真实进度
+    final sliderValue = _dragValue ?? value;
+    final displayPosition = _dragValue == null
+        ? player.position
+        : Duration(milliseconds: (_dragValue! * total).round());
     final notifier = ref.read(playerProvider.notifier);
 
     return Column(
@@ -497,23 +511,23 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
         //拖拽进度条:播放时wavy曲线,暂停/未播放时为直线continuous
         if (player.isPlaying)
           M3ESlider.wavy(
-            value: value,
+            value: sliderValue,
             trackThickness: 12,
-            onChanged: (v) =>
-                notifier.seek(Duration(milliseconds: (v * total).round())),
+            onChanged: (v) => setState(() => _dragValue = v),
+            onChangeEnd: (v) => _commitSeek(notifier, v, total),
           )
         else
           M3ESlider(
-            value: value,
+            value: sliderValue,
             trackThickness: 12,
-            onChanged: (v) =>
-                notifier.seek(Duration(milliseconds: (v * total).round())),
+            onChanged: (v) => setState(() => _dragValue = v),
+            onChangeEnd: (v) => _commitSeek(notifier, v, total),
           ),
         //时长
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(_fmt(player.position), style: theme.typeScale.labelMedium),
+            Text(_fmt(displayPosition), style: theme.typeScale.labelMedium),
             Text(_fmt(player.duration), style: theme.typeScale.labelMedium),
           ],
         ),
@@ -849,10 +863,23 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
     );
   }
 
+  /// 松手后才真正 seek;拖动过程中只改本地显示值
+  void _commitSeek(PlayerNotifier notifier, double value, int totalMs) {
+    // 以本地拖动值为准,避免拖拽最后一帧的回调值尚未同步
+    final target = _dragValue ?? value;
+    setState(() => _dragValue = null);
+    notifier.seek(Duration(milliseconds: (target * totalMs).round()));
+  }
+
   static String _fmt(Duration d) {
-    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '$m:$s';
+    final totalMinutes = d.inMinutes;
+    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    if (totalMinutes < 60) {
+      return '${totalMinutes.toString().padLeft(2, '0')}:$seconds';
+    }
+    final hours = totalMinutes ~/ 60;
+    final minutes = (totalMinutes % 60).toString().padLeft(2, '0');
+    return '$hours:$minutes:$seconds';
   }
 }
 

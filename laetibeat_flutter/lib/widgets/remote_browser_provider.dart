@@ -43,12 +43,10 @@ final remoteTracksProvider =
 
 typedef RemoteSearchKey = ({String sourceId, String query});
 
-/// ID3 搜索(search3),一次取回艺术家/专辑/曲目三类结果
-final remoteSearchProvider =
-    FutureProvider.family<rust_subsonic.UiRemoteSearchResult, RemoteSearchKey>((
-      ref,
-      key,
-    ) {
+/// ID3 搜索(search3),一次取回艺术家/专辑/曲目三类结果。
+/// 用 autoDispose 避免每次防抖后的查询都常驻缓存。
+final remoteSearchProvider = FutureProvider.autoDispose
+    .family<rust_subsonic.UiRemoteSearchResult, RemoteSearchKey>((ref, key) {
       return rust_subsonic.subsonicSearch3(
         sourceId: key.sourceId,
         query: key.query,

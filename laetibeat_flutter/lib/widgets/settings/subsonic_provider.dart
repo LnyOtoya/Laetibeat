@@ -198,8 +198,18 @@ class SubsonicServersNotifier
 }
 
 /// 启动时后台重连可能尚未完成;播放远端曲目前按需补一次配置。
-Future<void> ensureSubsonicConfigured(Ref ref, String sourceId) async {
-  final prefs = ref.read(sharedPreferencesProvider);
+Future<void> ensureSubsonicConfigured(Ref ref, String sourceId) {
+  return ensureSubsonicConfiguredWithPrefs(
+    ref.read(sharedPreferencesProvider),
+    sourceId,
+  );
+}
+
+/// 同上,供只有 WidgetRef 的 UI 重试入口使用。
+Future<void> ensureSubsonicConfiguredWithPrefs(
+  SharedPreferences prefs,
+  String sourceId,
+) async {
   final store = SubsonicServerStore(prefs);
 
   SubsonicServerConfig? config;
