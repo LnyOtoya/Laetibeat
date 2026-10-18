@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:laetibeat/src/rust/api/library.dart' as rust_library;
 import 'package:laetibeat/src/rust/api/stats.dart' as rust_stats;
 import 'package:laetibeat/src/rust/frb_generated.dart';
 import 'package:path_provider/path_provider.dart';
@@ -40,6 +41,17 @@ Future<void> main() async {
     );
   } catch (e) {
     debugPrint('初始化播放统计库失败: $e');
+  }
+
+  // 初始化远端音乐库数据库(失败不阻塞应用启动)
+  try {
+    final supportDir = await getApplicationSupportDirectory();
+    await supportDir.create(recursive: true);
+    await rust_library.initLibraryDb(
+      path: '${supportDir.path}/laetibeat_library.db',
+    );
+  } catch (e) {
+    debugPrint('初始化远端音乐库数据库失败: $e');
   }
 
   // 预加载本地设置与播放快照,供 Riverpod provider 构建时同步恢复

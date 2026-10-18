@@ -9,8 +9,10 @@ import 'package:uuid/uuid.dart';
 
 import 'persistence.dart';
 
-const String _serversKey = 'subsonic.servers';
-const String _secretPrefix = 'subsonic.secret.';
+const String _serversKey = 'subsonic.servers'; // 旧版多服务器列表
+const String _serverKey = 'subsonic.server'; // 新版单服务器配置
+const String _secretPrefix = 'subsonic.secret.'; // 旧版按服务器 id 存密钥
+const String _secretKey = 'subsonic.secret'; // 新版单服务器密钥
 
 /// 认证方式
 enum SubsonicAuthMode {
@@ -80,6 +82,24 @@ class SubsonicServerStore {
   final FlutterSecureStorage _secure;
 
   List<SubsonicServerConfig> loadConfigs() {
+    final raw = _prefs.getString(_serverKey);
+    if (raw != null && raw.isNotEmpty) {
+      try {
+        final config = SubsonicServerConfig.fromJson(jsonDecode(raw));
+        if (config != null) return <SubsonicServerConfig>[config];
+      } catch (e) {
+        debugPrint('读取远端服务器配置失败: $e');
+      }
+    }
+
+    // 兼容旧版多服务器列表:只取第一个
+    final legacy = _loadLegacyConfigs();
+    return legacy.isEmpty
+        ? const <SubsonicServerConfig>[]
+        : <SubsonicServerConfig>[legacy.first];
+  }
+
+  List<SubsonicServerConfig> _loadLegacyConfigs() {
     final raw = _prefs.getString(_serversKey);
     if (raw == null || raw.isEmpty) return const <SubsonicServerConfig>[];
     try {
@@ -92,26 +112,53 @@ class SubsonicServerStore {
       }
       return configs;
     } catch (e) {
-      debugPrint('读取远端服务器配置失败: $e');
+      debugPrint('读取旧版远端服务器配置失败: $e');
       return const <SubsonicServerConfig>[];
     }
   }
 
   Future<void> saveConfigs(List<SubsonicServerConfig> configs) {
-    return _prefs.setString(
-      _serversKey,
-      jsonEncode([for (final config in configs) config.toJson()]),
-    );
+    if (configs.isEmpty) {
+      return _prefs.remove(_serverKey);
+    }
+    // 单服务器模式:只保留第一个配置
+    return _prefs.setString(_serverKey, jsonEncode(configs.first.toJson()));
   }
 
-  Future<String?> readSecret(String id) =>
-      _secure.read(key: '$_secretPrefix$id');
+  /// 把旧版多服务器配置迁移为单服务器配置,并迁移第一个服务器的密钥。
+  Future<void> migrateLegacyIfNeeded() async {
+    if (_prefs.containsKey(_serverKey)) return;
+    final legacy = _loadLegacyConfigs();
+    if (legacy.isEmpty) return;
+
+    final first = legacy.first;
+    await _prefs.setString(_serverKey, jsonEncode(first.toJson()));
+
+    try {
+      final secret = await _secure.read(key: '$_secretPrefix${first.id}');
+      if (secret != null && secret.isNotEmpty) {
+        await _secure.write(key: _secretKey, value: secret);
+      }
+    } catch (e) {
+      // 安全存储不可用时只记录日志,不阻塞配置读取
+      debugPrint('迁移远端服务器密钥失败: $e');
+    }
+  }
+
+  Future<String?> readSecret(String id) async {
+    final direct = await _secure.read(key: _secretKey);
+    if (direct != null && direct.isNotEmpty) return direct;
+    // 兼容旧版按服务器 id 存储的密钥
+    return _secure.read(key: '$_secretPrefix$id');
+  }
 
   Future<void> writeSecret(String id, String secret) =>
-      _secure.write(key: '$_secretPrefix$id', value: secret);
+      _secure.write(key: _secretKey, value: secret);
 
-  Future<void> deleteSecret(String id) =>
-      _secure.delete(key: '$_secretPrefix$id');
+  Future<void> deleteSecret(String id) async {
+    await _secure.delete(key: _secretKey);
+    await _secure.delete(key: '$_secretPrefix$id');
+  }
 }
 
 final subsonicServerStoreProvider = Provider<SubsonicServerStore>((ref) {
@@ -128,7 +175,10 @@ class SubsonicServersNotifier
     extends AsyncNotifier<List<SubsonicServerConfig>> {
   @override
   Future<List<SubsonicServerConfig>> build() async {
-    return ref.read(subsonicServerStoreProvider).loadConfigs();
+    final store = ref.read(subsonicServerStoreProvider);
+    // 旧版多服务器配置在首次读取时迁移为单服务器配置
+    await store.migrateLegacyIfNeeded();
+    return store.loadConfigs();
   }
 
   static String newId() => const Uuid().v4();
@@ -160,15 +210,8 @@ class SubsonicServersNotifier
     final store = ref.read(subsonicServerStoreProvider);
     await store.writeSecret(config.id, secret);
 
-    final current = <SubsonicServerConfig>[
-      ...(state.value ?? const <SubsonicServerConfig>[]),
-    ];
-    final index = current.indexWhere((item) => item.id == config.id);
-    if (index >= 0) {
-      current[index] = config;
-    } else {
-      current.add(config);
-    }
+    // 单服务器模式:保存即替换现有配置
+    final current = <SubsonicServerConfig>[config];
     await store.saveConfigs(current);
     state = AsyncData(current);
     return info;
@@ -185,12 +228,10 @@ class SubsonicServersNotifier
     final store = ref.read(subsonicServerStoreProvider);
     await store.deleteSecret(id);
 
-    final current = <SubsonicServerConfig>[
-      for (final config in state.value ?? const <SubsonicServerConfig>[])
-        if (config.id != id) config,
-    ];
+    // 单服务器模式:删除即清空唯一配置
+    const current = <SubsonicServerConfig>[];
     await store.saveConfigs(current);
-    state = AsyncData(current);
+    state = const AsyncData(current);
   }
 
   Future<String?> readSecret(String id) =>

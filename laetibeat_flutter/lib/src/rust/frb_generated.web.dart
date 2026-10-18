@@ -6,6 +6,7 @@
 // Static analysis wrongly picks the IO variant, thus ignore this
 // ignore_for_file: argument_type_not_assignable
 
+import 'api/library.dart';
 import 'api/metadata.dart';
 import 'api/simple.dart';
 import 'api/stats.dart';
@@ -46,6 +47,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   UiPlayEvent dco_decode_box_autoadd_ui_play_event(dynamic raw);
+
+  @protected
+  UiRemoteSyncMeta dco_decode_box_autoadd_ui_remote_sync_meta(dynamic raw);
 
   @protected
   double dco_decode_f_64(dynamic raw);
@@ -105,6 +109,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int? dco_decode_opt_box_autoadd_u_8(dynamic raw);
 
   @protected
+  UiRemoteSyncMeta? dco_decode_opt_box_autoadd_ui_remote_sync_meta(dynamic raw);
+
+  @protected
   Uint8List? dco_decode_opt_list_prim_u_8_strict(dynamic raw);
 
   @protected
@@ -145,6 +152,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   UiRemoteSearchResult dco_decode_ui_remote_search_result(dynamic raw);
+
+  @protected
+  UiRemoteSyncMeta dco_decode_ui_remote_sync_meta(dynamic raw);
 
   @protected
   UiRemoteTrack dco_decode_ui_remote_track(dynamic raw);
@@ -190,6 +200,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   UiPlayEvent sse_decode_box_autoadd_ui_play_event(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  UiRemoteSyncMeta sse_decode_box_autoadd_ui_remote_sync_meta(
     SseDeserializer deserializer,
   );
 
@@ -257,6 +272,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int? sse_decode_opt_box_autoadd_u_8(SseDeserializer deserializer);
 
   @protected
+  UiRemoteSyncMeta? sse_decode_opt_box_autoadd_ui_remote_sync_meta(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   Uint8List? sse_decode_opt_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
@@ -303,6 +323,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   UiRemoteSearchResult sse_decode_ui_remote_search_result(
     SseDeserializer deserializer,
   );
+
+  @protected
+  UiRemoteSyncMeta sse_decode_ui_remote_sync_meta(SseDeserializer deserializer);
 
   @protected
   UiRemoteTrack sse_decode_ui_remote_track(SseDeserializer deserializer);
@@ -354,6 +377,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_box_autoadd_ui_play_event(
     UiPlayEvent self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_ui_remote_sync_meta(
+    UiRemoteSyncMeta self,
     SseSerializer serializer,
   );
 
@@ -436,6 +465,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_opt_box_autoadd_u_8(int? self, SseSerializer serializer);
 
   @protected
+  void sse_encode_opt_box_autoadd_ui_remote_sync_meta(
+    UiRemoteSyncMeta? self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_opt_list_prim_u_8_strict(
     Uint8List? self,
     SseSerializer serializer,
@@ -492,6 +527,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_ui_remote_search_result(
     UiRemoteSearchResult self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ui_remote_sync_meta(
+    UiRemoteSyncMeta self,
     SseSerializer serializer,
   );
 

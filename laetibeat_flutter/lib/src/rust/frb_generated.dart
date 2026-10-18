@@ -3,6 +3,7 @@
 
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
+import 'api/library.dart';
 import 'api/metadata.dart';
 import 'api/simple.dart';
 import 'api/stats.dart';
@@ -69,7 +70,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => -1259320522;
+  int get rustContentHash => 1037418381;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -81,6 +82,8 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
+  Future<void> crateApiLibraryClearRemoteLibrary({required String sourceId});
+
   Future<UiSubsonicServerInfo> crateApiSubsonicConfigureSubsonic({
     required String sourceId,
     required String baseUrl,
@@ -90,7 +93,13 @@ abstract class RustLibApi extends BaseApi {
     String? clientName,
   });
 
+  Future<UiRemoteSyncMeta?> crateApiLibraryGetRemoteSyncMeta({
+    required String sourceId,
+  });
+
   Future<void> crateApiSimpleInitApp();
+
+  Future<void> crateApiLibraryInitLibraryDb({required String path});
 
   Future<void> crateApiStatsInitStatsDb({required String path});
 
@@ -111,6 +120,20 @@ abstract class RustLibApi extends BaseApi {
     required int limit,
   });
 
+  Future<List<UiRemoteAlbum>> crateApiLibraryQueryRemoteAlbums({
+    required String sourceId,
+    String? artistId,
+  });
+
+  Future<List<UiRemoteArtist>> crateApiLibraryQueryRemoteArtists({
+    required String sourceId,
+  });
+
+  Future<List<UiRemoteTrack>> crateApiLibraryQueryRemoteTracks({
+    required String sourceId,
+    required String albumId,
+  });
+
   Future<List<UiTrackStat>> crateApiStatsQueryTrackStats({
     required String source,
     required String sourceId,
@@ -127,6 +150,14 @@ abstract class RustLibApi extends BaseApi {
   Future<UiScanResult> crateApiSimpleScanLocalMusicFolder({
     required String dirPath,
     required List<UiTrack> knownTracks,
+  });
+
+  Future<UiRemoteSearchResult> crateApiLibrarySearchRemoteLibrary({
+    required String sourceId,
+    required String query,
+    required int artistCount,
+    required int albumCount,
+    required int songCount,
   });
 
   Future<UiRemoteAlbumDetail> crateApiSubsonicSubsonicGetAlbum({
@@ -179,6 +210,37 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
+  Future<void> crateApiLibraryClearRemoteLibrary({required String sourceId}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(sourceId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 1,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiLibraryClearRemoteLibraryConstMeta,
+        argValues: [sourceId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLibraryClearRemoteLibraryConstMeta =>
+      const TaskConstMeta(
+        debugName: "clear_remote_library",
+        argNames: ["sourceId"],
+      );
+
+  @override
   Future<UiSubsonicServerInfo> crateApiSubsonicConfigureSubsonic({
     required String sourceId,
     required String baseUrl,
@@ -200,7 +262,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 1,
+            funcId: 2,
             port: port_,
           );
         },
@@ -229,6 +291,39 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<UiRemoteSyncMeta?> crateApiLibraryGetRemoteSyncMeta({
+    required String sourceId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(sourceId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 3,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_box_autoadd_ui_remote_sync_meta,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiLibraryGetRemoteSyncMetaConstMeta,
+        argValues: [sourceId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLibraryGetRemoteSyncMetaConstMeta =>
+      const TaskConstMeta(
+        debugName: "get_remote_sync_meta",
+        argNames: ["sourceId"],
+      );
+
+  @override
   Future<void> crateApiSimpleInitApp() {
     return handler.executeNormal(
       NormalTask(
@@ -237,7 +332,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 2,
+            funcId: 4,
             port: port_,
           );
         },
@@ -256,6 +351,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "init_app", argNames: []);
 
   @override
+  Future<void> crateApiLibraryInitLibraryDb({required String path}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(path, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 5,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiLibraryInitLibraryDbConstMeta,
+        argValues: [path],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLibraryInitLibraryDbConstMeta =>
+      const TaskConstMeta(debugName: "init_library_db", argNames: ["path"]);
+
+  @override
   Future<void> crateApiStatsInitStatsDb({required String path}) {
     return handler.executeNormal(
       NormalTask(
@@ -265,7 +388,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 6,
             port: port_,
           );
         },
@@ -292,7 +415,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 7,
             port: port_,
           );
         },
@@ -322,7 +445,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 8,
             port: port_,
           );
         },
@@ -358,7 +481,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 9,
             port: port_,
           );
         },
@@ -391,7 +514,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 10,
             port: port_,
           );
         },
@@ -413,6 +536,109 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<List<UiRemoteAlbum>> crateApiLibraryQueryRemoteAlbums({
+    required String sourceId,
+    String? artistId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(sourceId, serializer);
+          sse_encode_opt_String(artistId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 11,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_ui_remote_album,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiLibraryQueryRemoteAlbumsConstMeta,
+        argValues: [sourceId, artistId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLibraryQueryRemoteAlbumsConstMeta =>
+      const TaskConstMeta(
+        debugName: "query_remote_albums",
+        argNames: ["sourceId", "artistId"],
+      );
+
+  @override
+  Future<List<UiRemoteArtist>> crateApiLibraryQueryRemoteArtists({
+    required String sourceId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(sourceId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 12,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_ui_remote_artist,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiLibraryQueryRemoteArtistsConstMeta,
+        argValues: [sourceId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLibraryQueryRemoteArtistsConstMeta =>
+      const TaskConstMeta(
+        debugName: "query_remote_artists",
+        argNames: ["sourceId"],
+      );
+
+  @override
+  Future<List<UiRemoteTrack>> crateApiLibraryQueryRemoteTracks({
+    required String sourceId,
+    required String albumId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(sourceId, serializer);
+          sse_encode_String(albumId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 13,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_ui_remote_track,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiLibraryQueryRemoteTracksConstMeta,
+        argValues: [sourceId, albumId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLibraryQueryRemoteTracksConstMeta =>
+      const TaskConstMeta(
+        debugName: "query_remote_tracks",
+        argNames: ["sourceId", "albumId"],
+      );
+
+  @override
   Future<List<UiTrackStat>> crateApiStatsQueryTrackStats({
     required String source,
     required String sourceId,
@@ -426,7 +652,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 14,
             port: port_,
           );
         },
@@ -457,7 +683,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 15,
             port: port_,
           );
         },
@@ -485,7 +711,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 16,
             port: port_,
           );
         },
@@ -513,7 +739,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 17,
             port: port_,
           );
         },
@@ -541,7 +767,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 18,
             port: port_,
           );
         },
@@ -573,7 +799,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
+            funcId: 19,
             port: port_,
           );
         },
@@ -595,6 +821,53 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<UiRemoteSearchResult> crateApiLibrarySearchRemoteLibrary({
+    required String sourceId,
+    required String query,
+    required int artistCount,
+    required int albumCount,
+    required int songCount,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(sourceId, serializer);
+          sse_encode_String(query, serializer);
+          sse_encode_i_32(artistCount, serializer);
+          sse_encode_i_32(albumCount, serializer);
+          sse_encode_i_32(songCount, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 20,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_ui_remote_search_result,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiLibrarySearchRemoteLibraryConstMeta,
+        argValues: [sourceId, query, artistCount, albumCount, songCount],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLibrarySearchRemoteLibraryConstMeta =>
+      const TaskConstMeta(
+        debugName: "search_remote_library",
+        argNames: [
+          "sourceId",
+          "query",
+          "artistCount",
+          "albumCount",
+          "songCount",
+        ],
+      );
+
+  @override
   Future<UiRemoteAlbumDetail> crateApiSubsonicSubsonicGetAlbum({
     required String sourceId,
     required String albumId,
@@ -608,7 +881,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 21,
             port: port_,
           );
         },
@@ -643,7 +916,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 15,
+            funcId: 22,
             port: port_,
           );
         },
@@ -676,7 +949,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 16,
+            funcId: 23,
             port: port_,
           );
         },
@@ -713,7 +986,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 24,
             port: port_,
           );
         },
@@ -752,7 +1025,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 18,
+            funcId: 25,
             port: port_,
           );
         },
@@ -793,7 +1066,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 19,
+            funcId: 26,
             port: port_,
           );
         },
@@ -834,7 +1107,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 20,
+            funcId: 27,
             port: port_,
           );
         },
@@ -901,6 +1174,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   UiPlayEvent dco_decode_box_autoadd_ui_play_event(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_ui_play_event(raw);
+  }
+
+  @protected
+  UiRemoteSyncMeta dco_decode_box_autoadd_ui_remote_sync_meta(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_ui_remote_sync_meta(raw);
   }
 
   @protected
@@ -1015,6 +1294,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   int? dco_decode_opt_box_autoadd_u_8(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_box_autoadd_u_8(raw);
+  }
+
+  @protected
+  UiRemoteSyncMeta? dco_decode_opt_box_autoadd_ui_remote_sync_meta(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_ui_remote_sync_meta(raw);
   }
 
   @protected
@@ -1193,6 +1480,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  UiRemoteSyncMeta dco_decode_ui_remote_sync_meta(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 8)
+      throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
+    return UiRemoteSyncMeta(
+      sourceId: dco_decode_String(arr[0]),
+      baseUrl: dco_decode_String(arr[1]),
+      generation: dco_decode_i_64(arr[2]),
+      syncedAt: dco_decode_i_64(arr[3]),
+      artistCount: dco_decode_i_64(arr[4]),
+      albumCount: dco_decode_i_64(arr[5]),
+      trackCount: dco_decode_i_64(arr[6]),
+      elapsedMs: dco_decode_i_64(arr[7]),
+    );
+  }
+
+  @protected
   UiRemoteTrack dco_decode_ui_remote_track(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -1365,6 +1670,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_ui_play_event(deserializer));
+  }
+
+  @protected
+  UiRemoteSyncMeta sse_decode_box_autoadd_ui_remote_sync_meta(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_ui_remote_sync_meta(deserializer));
   }
 
   @protected
@@ -1577,6 +1890,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  UiRemoteSyncMeta? sse_decode_opt_box_autoadd_ui_remote_sync_meta(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_ui_remote_sync_meta(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
   Uint8List? sse_decode_opt_list_prim_u_8_strict(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
@@ -1774,6 +2100,31 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       artists: var_artists,
       albums: var_albums,
       tracks: var_tracks,
+    );
+  }
+
+  @protected
+  UiRemoteSyncMeta sse_decode_ui_remote_sync_meta(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_sourceId = sse_decode_String(deserializer);
+    var var_baseUrl = sse_decode_String(deserializer);
+    var var_generation = sse_decode_i_64(deserializer);
+    var var_syncedAt = sse_decode_i_64(deserializer);
+    var var_artistCount = sse_decode_i_64(deserializer);
+    var var_albumCount = sse_decode_i_64(deserializer);
+    var var_trackCount = sse_decode_i_64(deserializer);
+    var var_elapsedMs = sse_decode_i_64(deserializer);
+    return UiRemoteSyncMeta(
+      sourceId: var_sourceId,
+      baseUrl: var_baseUrl,
+      generation: var_generation,
+      syncedAt: var_syncedAt,
+      artistCount: var_artistCount,
+      albumCount: var_albumCount,
+      trackCount: var_trackCount,
+      elapsedMs: var_elapsedMs,
     );
   }
 
@@ -1994,6 +2345,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_ui_remote_sync_meta(
+    UiRemoteSyncMeta self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_ui_remote_sync_meta(self, serializer);
+  }
+
+  @protected
   void sse_encode_f_64(double self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putFloat64(self);
@@ -2184,6 +2544,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_opt_box_autoadd_ui_remote_sync_meta(
+    UiRemoteSyncMeta? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_ui_remote_sync_meta(self, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_opt_list_prim_u_8_strict(
     Uint8List? self,
     SseSerializer serializer,
@@ -2331,6 +2704,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_list_ui_remote_artist(self.artists, serializer);
     sse_encode_list_ui_remote_album(self.albums, serializer);
     sse_encode_list_ui_remote_track(self.tracks, serializer);
+  }
+
+  @protected
+  void sse_encode_ui_remote_sync_meta(
+    UiRemoteSyncMeta self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.sourceId, serializer);
+    sse_encode_String(self.baseUrl, serializer);
+    sse_encode_i_64(self.generation, serializer);
+    sse_encode_i_64(self.syncedAt, serializer);
+    sse_encode_i_64(self.artistCount, serializer);
+    sse_encode_i_64(self.albumCount, serializer);
+    sse_encode_i_64(self.trackCount, serializer);
+    sse_encode_i_64(self.elapsedMs, serializer);
   }
 
   @protected

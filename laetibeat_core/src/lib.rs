@@ -1,5 +1,6 @@
 pub mod metadata;
 pub mod model;
+pub mod remote_library;
 pub mod scanner;
 pub mod stats;
 pub use metadata::{read_cover_bytes, read_lyrics_text};
