@@ -8,6 +8,7 @@ import 'package:laetibeat/src/rust/api/subsonic.dart' as rust_subsonic;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
+import '../cache/cover_cache.dart';
 import 'persistence.dart';
 
 const String _serversKey = 'subsonic.servers'; // 旧版多服务器列表
@@ -231,9 +232,11 @@ class SubsonicServersNotifier
       if (old.id == config.id && old.baseUrl == config.baseUrl) continue;
       try {
         await rust_library.clearRemoteLibrary(sourceId: old.id);
+        await rust_library.clearRemoteLyricsCache(sourceId: old.id);
       } catch (e) {
-        debugPrint('清理旧远端音乐库失败: $e');
+        debugPrint('清理旧远端音乐库/歌词缓存失败: $e');
       }
+      await clearRemoteCoverCache(old.id);
     }
     state = AsyncData(current);
   }
@@ -249,12 +252,14 @@ class SubsonicServersNotifier
     final store = ref.read(subsonicServerStoreProvider);
     await store.deleteSecret(id);
 
-    // 删除服务器时一并清空对应远端音乐库
+    // 删除服务器时一并清空对应远端音乐库、歌词与封面缓存
     try {
       await rust_library.clearRemoteLibrary(sourceId: id);
+      await rust_library.clearRemoteLyricsCache(sourceId: id);
     } catch (e) {
-      debugPrint('清空远端音乐库失败: $e');
+      debugPrint('清空远端音乐库/歌词缓存失败: $e');
     }
+    await clearRemoteCoverCache(id);
 
     // 单服务器模式:删除即清空唯一配置
     const current = <SubsonicServerConfig>[];

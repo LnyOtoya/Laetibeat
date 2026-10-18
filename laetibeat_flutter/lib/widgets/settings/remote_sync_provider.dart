@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:laetibeat/src/rust/api/library.dart' as rust_library;
 import 'package:laetibeat/src/rust/api/sync.dart' as rust_sync;
 
+import '../cache/cover_cache.dart';
 import '../remote_browser_provider.dart';
 import 'subsonic_provider.dart';
 
@@ -80,6 +81,8 @@ class RemoteSyncNotifier extends AsyncNotifier<RemoteSyncState> {
       // 服务器地址已变化时旧快照不再可信,顺手清理
       if (meta != null && meta.baseUrl != config.baseUrl) {
         await rust_library.clearRemoteLibrary(sourceId: config.id);
+        await rust_library.clearRemoteLyricsCache(sourceId: config.id);
+        await clearRemoteCoverCache(config.id);
         meta = null;
       }
     } catch (e) {

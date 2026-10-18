@@ -1,4 +1,5 @@
 use flutter_rust_bridge::frb;
+use laetibeat_core::remote_library as core_lib;
 use laetibeat_remote as remote;
 
 /// 服务器信息
@@ -172,6 +173,62 @@ pub fn subsonic_get_lyrics(
     title: String,
 ) -> Result<Option<String>, String> {
     remote::get_lyrics(&source_id, &track_id, &artist, &title)
+}
+
+/// 远端歌词负缓存有效期(1 天)。服务器曲库可能变化,不宜太长。
+const LYRICS_NEGATIVE_TTL_MS: i64 = 24 * 60 * 60 * 1000;
+
+/// 读取远端歌词,带 SQLite 缓存与负缓存。
+/// 网络/服务端错误不写负缓存,避免把临时故障当成"没有歌词"。
+pub fn subsonic_get_lyrics_cached(
+    source_id: String,
+    track_id: String,
+    artist: String,
+    title: String,
+) -> Result<Option<String>, String> {
+    let cache_key = format!("opensubsonic:{source_id}:{track_id}");
+
+    // 缓存不可用时不影响歌词请求
+    if let Ok(Some(entry)) = core_lib::get_lyrics_cache(&cache_key) {
+        return Ok(entry.raw_text);
+    }
+
+    match remote::get_lyrics(&source_id, &track_id, &artist, &title) {
+        Ok(Some(text)) => {
+            let now = now_ms();
+            let _ = core_lib::put_lyrics_cache(
+                &cache_key,
+                "opensubsonic",
+                Some(&text),
+                false,
+                None,
+                now,
+                None,
+            );
+            Ok(Some(text))
+        }
+        Ok(None) => {
+            let now = now_ms();
+            let _ = core_lib::put_lyrics_cache(
+                &cache_key,
+                "opensubsonic",
+                None,
+                false,
+                None,
+                now,
+                Some(now + LYRICS_NEGATIVE_TTL_MS),
+            );
+            Ok(None)
+        }
+        Err(error) => Err(error),
+    }
+}
+
+fn now_ms() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_millis() as i64)
+        .unwrap_or(0)
 }
 
 /// 获取艺术家列表

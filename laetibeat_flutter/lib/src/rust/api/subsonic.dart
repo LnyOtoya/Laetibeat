@@ -6,7 +6,7 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `map_album`, `map_artist`, `map_server_info`, `map_track`, `parse_auth_mode`
+// These functions are ignored because they are not marked as `pub`: `map_album`, `map_artist`, `map_server_info`, `map_track`, `now_ms`, `parse_auth_mode`
 
 /// 测试连接,只返回服务器信息,不注册客户端。
 Future<UiSubsonicServerInfo> testSubsonicConnection({
@@ -93,6 +93,20 @@ Future<String?> subsonicGetLyrics({
   required String artist,
   required String title,
 }) => RustLib.instance.api.crateApiSubsonicSubsonicGetLyrics(
+  sourceId: sourceId,
+  trackId: trackId,
+  artist: artist,
+  title: title,
+);
+
+/// 读取远端歌词,带 SQLite 缓存与负缓存。
+/// 网络/服务端错误不写负缓存,避免把临时故障当成"没有歌词"。
+Future<String?> subsonicGetLyricsCached({
+  required String sourceId,
+  required String trackId,
+  required String artist,
+  required String title,
+}) => RustLib.instance.api.crateApiSubsonicSubsonicGetLyricsCached(
   sourceId: sourceId,
   trackId: trackId,
   artist: artist,

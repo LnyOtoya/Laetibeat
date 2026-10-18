@@ -7,6 +7,8 @@ import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // These functions are ignored because they are not marked as `pub`: `elapsed_ms`, `emit`, `fetch_tracks_concurrently`, `now_ms`, `run_sync`, `sync_inner`
+// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `SyncFlagGuard`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `drop`
 
 /// 同步 Navidrome 音乐库:拉取艺术家、专辑与曲目,写入本地 library.db。
 /// 失败时通过 failed 事件返回错误,并回滚本次 generation。

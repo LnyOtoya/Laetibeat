@@ -7,6 +7,7 @@ import 'package:laetibeat/src/rust/api/metadata.dart' as rust_meta;
 import 'package:laetibeat/src/rust/api/simple.dart' as rust;
 import 'package:laetibeat/src/rust/api/subsonic.dart' as rust_subsonic;
 
+import '../cache/cover_cache.dart';
 import 'player_provider.dart';
 
 /// 主色取色所需的 Color 类型(dart:ui 命名空间)
@@ -95,6 +96,13 @@ class RemoteCoverProvider {
       return cached;
     }
 
+    // 内存未命中 -> 磁盘缓存 -> 网络
+    final disk = await remoteCoverDiskCache.read(sourceId, coverId);
+    if (disk != null && disk.isNotEmpty) {
+      _putMemory(key, disk);
+      return disk;
+    }
+
     final bytes = await rust_subsonic.subsonicGetCoverArt(
       sourceId: sourceId,
       coverId: coverId,
@@ -102,6 +110,12 @@ class RemoteCoverProvider {
     );
     if (bytes.isEmpty) return null;
 
+    await remoteCoverDiskCache.write(sourceId, coverId, bytes);
+    _putMemory(key, bytes);
+    return bytes;
+  }
+
+  void _putMemory(String key, Uint8List bytes) {
     _cache[key] = bytes;
     _cachedBytes += bytes.length;
     while (_cachedBytes > _maxCacheBytes && _cache.isNotEmpty) {
@@ -109,7 +123,6 @@ class RemoteCoverProvider {
       final removed = _cache.remove(oldestKey);
       _cachedBytes -= removed?.length ?? 0;
     }
-    return bytes;
   }
 }
 

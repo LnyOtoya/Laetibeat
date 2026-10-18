@@ -1,9 +1,15 @@
 use rusqlite::{params, Connection, OptionalExtension};
+use std::path::Path;
 use std::sync::{Mutex, MutexGuard, OnceLock};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// 远端音乐库结构版本;后续变更通过 PRAGMA user_version 迁移。
 /// v1: 艺术家/专辑/曲目 + 同步元数据。
-const SCHEMA_VERSION: i64 = 1;
+/// v2: 歌词缓存。
+const SCHEMA_VERSION: i64 = 2;
+
+/// 歌词缓存文本总量上限(约 20MB)
+const LYRICS_CACHE_MAX_BYTES: i64 = 20 * 1024 * 1024;
 
 static DB: OnceLock<Mutex<Connection>> = OnceLock::new();
 
@@ -87,6 +93,20 @@ CREATE INDEX IF NOT EXISTS idx_remote_tracks_album_lower
     ON remote_tracks(source_id, generation, album_lower);
 "#;
 
+const SCHEMA_V2: &str = r#"
+CREATE TABLE IF NOT EXISTS lyrics_cache (
+    cache_key TEXT PRIMARY KEY,
+    source TEXT NOT NULL,
+    raw_text TEXT,
+    synced INTEGER NOT NULL DEFAULT 0,
+    fingerprint TEXT,
+    fetched_at INTEGER NOT NULL,
+    expires_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_lyrics_cache_fetched
+    ON lyrics_cache(fetched_at);
+"#;
+
 /// 一次成功同步的元数据摘要
 #[derive(Debug, Clone)]
 pub struct SyncMeta {
@@ -150,6 +170,18 @@ pub struct RemoteSearchRows {
     pub tracks: Vec<RemoteTrackRow>,
 }
 
+/// 歌词缓存条目。raw_text 为 None 表示负缓存(确实没有歌词)。
+#[derive(Debug, Clone)]
+pub struct LyricsCacheEntry {
+    pub cache_key: String,
+    pub source: String,
+    pub raw_text: Option<String>,
+    pub synced: bool,
+    pub fingerprint: Option<String>,
+    pub fetched_at: i64,
+    pub expires_at: Option<i64>,
+}
+
 fn map_err<E: std::fmt::Display>(error: E) -> String {
     error.to_string()
 }
@@ -170,6 +202,11 @@ pub fn init_db(path: &str) -> Result<(), String> {
     conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;")
         .map_err(map_err)?;
     migrate(&conn)?;
+    // 启动时清掉已过期的歌词负缓存
+    let _ = conn.execute(
+        "DELETE FROM lyrics_cache WHERE expires_at IS NOT NULL AND expires_at <= ?1",
+        params![now_ms()],
+    );
     DB.set(Mutex::new(conn))
         .map_err(|_| "音乐库数据库已初始化".to_string())?;
     Ok(())
@@ -179,8 +216,14 @@ fn migrate(conn: &Connection) -> Result<(), String> {
     let version: i64 = conn
         .query_row("PRAGMA user_version", [], |row| row.get(0))
         .map_err(map_err)?;
-    if version < SCHEMA_VERSION {
+
+    if version < 1 {
         conn.execute_batch(SCHEMA_V1).map_err(map_err)?;
+    }
+    if version < 2 {
+        conn.execute_batch(SCHEMA_V2).map_err(map_err)?;
+    }
+    if version < SCHEMA_VERSION {
         conn.pragma_update(None, "user_version", SCHEMA_VERSION)
             .map_err(map_err)?;
     }
@@ -520,6 +563,207 @@ fn clear_library_on(conn: &Connection, source_id: &str) -> Result<(), String> {
     )
     .map_err(map_err)?;
     tx.commit().map_err(map_err)
+}
+
+// ---------------------------------------------------------------------------
+// 歌词缓存
+// ---------------------------------------------------------------------------
+
+pub fn now_ms() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis() as i64)
+        .unwrap_or(0)
+}
+
+/// 读取歌词缓存;过期条目会被删除并返回 None。
+pub fn get_lyrics_cache(cache_key: &str) -> Result<Option<LyricsCacheEntry>, String> {
+    let conn = db()?;
+    get_lyrics_cache_on(&conn, cache_key)
+}
+
+fn get_lyrics_cache_on(
+    conn: &Connection,
+    cache_key: &str,
+) -> Result<Option<LyricsCacheEntry>, String> {
+    let entry = conn
+        .query_row(
+            "SELECT cache_key, source, raw_text, synced, fingerprint,
+                    fetched_at, expires_at
+             FROM lyrics_cache WHERE cache_key = ?1",
+            params![cache_key],
+            |row| {
+                Ok(LyricsCacheEntry {
+                    cache_key: row.get(0)?,
+                    source: row.get(1)?,
+                    raw_text: row.get(2)?,
+                    synced: row.get::<_, i64>(3)? != 0,
+                    fingerprint: row.get(4)?,
+                    fetched_at: row.get(5)?,
+                    expires_at: row.get(6)?,
+                })
+            },
+        )
+        .optional()
+        .map_err(map_err)?;
+
+    if let Some(entry) = &entry {
+        if let Some(expires_at) = entry.expires_at {
+            if expires_at <= now_ms() {
+                conn.execute(
+                    "DELETE FROM lyrics_cache WHERE cache_key = ?1",
+                    params![cache_key],
+                )
+                .map_err(map_err)?;
+                return Ok(None);
+            }
+        }
+    }
+    Ok(entry)
+}
+
+/// 写入歌词缓存。raw_text 为 None 时表示负缓存,应同时给出 expires_at。
+pub fn put_lyrics_cache(
+    cache_key: &str,
+    source: &str,
+    raw_text: Option<&str>,
+    synced: bool,
+    fingerprint: Option<&str>,
+    fetched_at: i64,
+    expires_at: Option<i64>,
+) -> Result<(), String> {
+    let conn = db()?;
+    put_lyrics_cache_on(
+        &conn,
+        cache_key,
+        source,
+        raw_text,
+        synced,
+        fingerprint,
+        fetched_at,
+        expires_at,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn put_lyrics_cache_on(
+    conn: &Connection,
+    cache_key: &str,
+    source: &str,
+    raw_text: Option<&str>,
+    synced: bool,
+    fingerprint: Option<&str>,
+    fetched_at: i64,
+    expires_at: Option<i64>,
+) -> Result<(), String> {
+    conn.execute(
+        "INSERT OR REPLACE INTO lyrics_cache (
+            cache_key, source, raw_text, synced, fingerprint, fetched_at, expires_at
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        params![
+            cache_key,
+            source,
+            raw_text,
+            if synced { 1 } else { 0 },
+            fingerprint,
+            fetched_at,
+            expires_at,
+        ],
+    )
+    .map_err(map_err)?;
+
+    // 简单容量控制:超过上限时按最早写入淘汰
+    let total: i64 = conn
+        .query_row(
+            "SELECT COALESCE(SUM(LENGTH(raw_text)), 0) FROM lyrics_cache",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(map_err)?;
+    if total > LYRICS_CACHE_MAX_BYTES {
+        conn.execute(
+            "DELETE FROM lyrics_cache WHERE cache_key IN (
+                SELECT cache_key FROM lyrics_cache ORDER BY fetched_at ASC LIMIT 200
+             )",
+            [],
+        )
+        .map_err(map_err)?;
+    }
+    Ok(())
+}
+
+/// 读取本地曲目歌词,带指纹校验的磁盘缓存。
+/// 本地未命中不写负缓存:新增 .lrc 后应立即生效。
+pub fn resolve_local_lyrics_cached(path: &str) -> Result<Option<String>, String> {
+    let cache_key = format!("local:{path}");
+    let fingerprint = local_lyrics_fingerprint(path);
+
+    if let (Some(fingerprint), Ok(Some(entry))) =
+        (fingerprint.as_deref(), get_lyrics_cache(&cache_key))
+    {
+        if entry.fingerprint.as_deref() == Some(fingerprint) {
+            if let Some(text) = entry.raw_text {
+                return Ok(Some(text));
+            }
+        }
+    }
+
+    let text = crate::metadata::read_lyrics_text(path);
+    if let (Some(fingerprint), Some(text)) = (fingerprint.as_deref(), text.as_ref()) {
+        // 缓存失败不影响歌词展示
+        let _ = put_lyrics_cache(
+            &cache_key,
+            "local",
+            Some(text),
+            false,
+            Some(fingerprint),
+            now_ms(),
+            None,
+        );
+    }
+    Ok(text)
+}
+
+/// 本地歌词指纹:音频文件与同目录 .lrc/.txt 的 mtime + size。
+/// 任一文件变化都会让旧缓存失效。
+fn local_lyrics_fingerprint(path: &str) -> Option<String> {
+    let audio = std::fs::metadata(path).ok()?;
+    let audio_modified = file_modified_ms(&audio)?;
+    let mut parts = vec![format!("a:{audio_modified}:{}", audio.len())];
+
+    let audio_path = Path::new(path);
+    for ext in ["lrc", "txt"] {
+        let sidecar = audio_path.with_extension(ext);
+        match std::fs::metadata(&sidecar) {
+            Ok(meta) => {
+                let modified = file_modified_ms(&meta).unwrap_or(0);
+                parts.push(format!("{ext}:{modified}:{}", meta.len()));
+            }
+            Err(_) => parts.push(format!("{ext}:-")),
+        }
+    }
+    Some(parts.join("|"))
+}
+
+fn file_modified_ms(metadata: &std::fs::Metadata) -> Option<u64> {
+    metadata
+        .modified()
+        .ok()?
+        .duration_since(UNIX_EPOCH)
+        .ok()
+        .map(|duration| duration.as_millis() as u64)
+}
+
+/// 清空某个远端音源的全部歌词缓存(服务器地址变更/删除时使用)。
+pub fn clear_remote_lyrics_cache(source_id: &str) -> Result<(), String> {
+    let conn = db()?;
+    let prefix = format!("opensubsonic:{source_id}:%");
+    conn.execute(
+        "DELETE FROM lyrics_cache WHERE cache_key LIKE ?1",
+        params![prefix],
+    )
+    .map_err(map_err)?;
+    Ok(())
 }
 
 /// 读取同步摘要;从未同步时返回 None。
@@ -961,5 +1205,61 @@ mod tests {
         clear_library_on(&conn, "default").unwrap();
         assert!(get_sync_meta_on(&conn, "default").unwrap().is_none());
         assert!(query_artists_on(&conn, "default").unwrap().is_empty());
+    }
+
+    #[test]
+    fn lyrics_cache_positive_and_negative_expiry() {
+        let conn = Connection::open_in_memory().unwrap();
+        migrate(&conn).unwrap();
+
+        put_lyrics_cache_on(
+            &conn,
+            "local:/music/a.mp3",
+            "local",
+            Some("[00:01.00]hello"),
+            false,
+            Some("fp1"),
+            1_000,
+            None,
+        )
+        .unwrap();
+        let entry = get_lyrics_cache_on(&conn, "local:/music/a.mp3")
+            .unwrap()
+            .unwrap();
+        assert_eq!(entry.raw_text.as_deref(), Some("[00:01.00]hello"));
+        assert_eq!(entry.fingerprint.as_deref(), Some("fp1"));
+
+        // 过期负缓存:读取时删除并返回 None
+        put_lyrics_cache_on(
+            &conn,
+            "opensubsonic:s:t",
+            "opensubsonic",
+            None,
+            false,
+            None,
+            1_000,
+            Some(0),
+        )
+        .unwrap();
+        assert!(get_lyrics_cache_on(&conn, "opensubsonic:s:t")
+            .unwrap()
+            .is_none());
+
+        // 未过期负缓存:返回条目,raw_text 为 None
+        put_lyrics_cache_on(
+            &conn,
+            "opensubsonic:s:t2",
+            "opensubsonic",
+            None,
+            false,
+            None,
+            now_ms(),
+            Some(now_ms() + 60_000),
+        )
+        .unwrap();
+        let entry = get_lyrics_cache_on(&conn, "opensubsonic:s:t2")
+            .unwrap()
+            .unwrap();
+        assert!(entry.raw_text.is_none());
     }
 }

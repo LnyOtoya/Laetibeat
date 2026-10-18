@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:laetibeat/src/rust/api/metadata.dart' as rust_meta;
+import 'package:laetibeat/src/rust/api/library.dart' as rust_library;
 import 'package:laetibeat/src/rust/api/simple.dart' as rust;
 import 'package:laetibeat/src/rust/api/subsonic.dart' as rust_subsonic;
 
@@ -26,68 +26,43 @@ class Lyrics {
 
 /// 歌词来源抽象:按曲目返回歌词;无歌词返回 null。
 abstract class LyricProvider {
-  /// 获取曲目歌词;实现方应按 track.id 缓存,避免重复读盘/拉取。
+  /// 获取曲目歌词;缓存由实现方负责(Rust SQLite 或内存)。
   Future<Lyrics?> lyrics(rust.UiTrack track);
 }
 
-/// 本地歌词来源:内嵌标签 -> 同目录同名 .lrc/.txt,按曲目 id 缓存。
-/// 解析在 Rust 侧完成(与扫描共用 lofty),网络源接入时新增实现即可。
+/// 本地歌词来源:内嵌标签 -> 同目录同名 .lrc/.txt。
+/// 使用 library.db 中的指纹缓存;音频或外挂歌词变化后自动失效。
 class FileLyricProvider implements LyricProvider {
   FileLyricProvider();
 
-  /// 接口级缓存:按曲目 id 缓存原始文本,切回/重复展示不再重读文件
-  final Map<String, Lyrics> _cache = {};
-
   @override
   Future<Lyrics?> lyrics(rust.UiTrack track) async {
-    final cached = _cache[track.id];
-    if (cached != null) return cached;
-    if (track.path.isEmpty) return null; // 未来网络源:url 分支
-
-    final parsed = await _readLyrics(track.path);
-    if (parsed != null) {
-      _cache[track.id] = parsed;
-    }
-    return parsed;
+    if (track.path.isEmpty) return null;
+    final text = await rust_library.resolveLocalLyricsCached(path: track.path);
+    return _toLyrics(text);
   }
 }
 
-/// 读取歌词:内嵌标签 -> sidecar .lrc/.txt。
-/// 解析在 Rust 侧完成,FRB 调用在后台线程执行,不阻塞 UI。
-Future<Lyrics?> _readLyrics(String audioPath) async {
-  final text = await rust_meta.readLyrics(path: audioPath);
-  if (text == null) return null;
-  final trimmed = text.trim();
-  return trimmed.isEmpty ? null : Lyrics(trimmed);
-}
-
-/// 远端歌词来源:按 (sourceId, trackId) 缓存。
-/// OpenSubsonic 结构化歌词会转成 LRC;旧版 getLyrics 返回纯文本。
+/// 远端歌词来源:OpenSubsonic 返回结果 + SQLite 缓存/负缓存。
 class RemoteLyricProvider implements LyricProvider {
   RemoteLyricProvider();
 
-  final Map<String, Lyrics> _cache = {};
-
   @override
   Future<Lyrics?> lyrics(rust.UiTrack track) async {
-    final key = '${track.sourceId}:${track.id}';
-    final cached = _cache[key];
-    if (cached != null) return cached;
-
-    final text = await rust_subsonic.subsonicGetLyrics(
+    final text = await rust_subsonic.subsonicGetLyricsCached(
       sourceId: track.sourceId,
       trackId: track.id,
       artist: track.artist,
       title: track.title,
     );
-    if (text == null) return null;
-    final trimmed = text.trim();
-    if (trimmed.isEmpty) return null;
-
-    final lyrics = Lyrics(trimmed);
-    _cache[key] = lyrics;
-    return lyrics;
+    return _toLyrics(text);
   }
+}
+
+Lyrics? _toLyrics(String? text) {
+  if (text == null) return null;
+  final trimmed = text.trim();
+  return trimmed.isEmpty ? null : Lyrics(trimmed);
 }
 
 // ---------------------------------------------------------------------------

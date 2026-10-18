@@ -73,9 +73,19 @@ pub fn search_remote_library(
     })
 }
 
+/// 读取本地曲目歌词,优先使用带指纹校验的磁盘缓存。
+pub fn resolve_local_lyrics_cached(path: String) -> Result<Option<String>, String> {
+    core_lib::resolve_local_lyrics_cached(&path)
+}
+
 /// 清空某个音源的远端音乐库(服务器地址变更时使用)
 pub fn clear_remote_library(source_id: String) -> Result<(), String> {
     core_lib::clear_library(&source_id)
+}
+
+/// 清空某个音源的远端歌词缓存
+pub fn clear_remote_lyrics_cache(source_id: String) -> Result<(), String> {
+    core_lib::clear_remote_lyrics_cache(&source_id)
 }
 
 fn map_sync_meta(meta: core_lib::SyncMeta) -> UiRemoteSyncMeta {

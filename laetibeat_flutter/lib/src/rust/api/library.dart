@@ -54,9 +54,19 @@ Future<UiRemoteSearchResult> searchRemoteLibrary({
   songCount: songCount,
 );
 
+/// 读取本地曲目歌词,优先使用带指纹校验的磁盘缓存。
+Future<String?> resolveLocalLyricsCached({required String path}) =>
+    RustLib.instance.api.crateApiLibraryResolveLocalLyricsCached(path: path);
+
 /// 清空某个音源的远端音乐库(服务器地址变更时使用)
 Future<void> clearRemoteLibrary({required String sourceId}) =>
     RustLib.instance.api.crateApiLibraryClearRemoteLibrary(sourceId: sourceId);
+
+/// 清空某个音源的远端歌词缓存
+Future<void> clearRemoteLyricsCache({required String sourceId}) => RustLib
+    .instance
+    .api
+    .crateApiLibraryClearRemoteLyricsCache(sourceId: sourceId);
 
 /// 远端音乐库同步摘要
 class UiRemoteSyncMeta {
