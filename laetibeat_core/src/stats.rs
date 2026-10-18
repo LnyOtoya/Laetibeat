@@ -198,25 +198,53 @@ fn query_track_stats_on(
         .map_err(map_err)?;
 
     let rows = stmt
-        .query_map(params![source, source_id], |row| {
-            let play_count: i64 = row.get(3)?;
-            let completed_count: i64 = row.get(8)?;
-            Ok(TrackStat {
-                source: row.get(0)?,
-                source_id: row.get(1)?,
-                track_id: row.get(2)?,
-                play_count,
-                skip_count: row.get(4)?,
-                total_listened_ms: row.get(5)?,
-                first_played_at: row.get(6)?,
-                last_played_at: row.get(7)?,
-                completion_rate: if play_count > 0 {
-                    completed_count as f64 / play_count as f64
-                } else {
-                    0.0
-                },
-            })
-        })
+        .query_map(params![source, source_id], map_track_stat_row)
+        .map_err(map_err)?;
+
+    let mut stats = Vec::new();
+    for row in rows {
+        stats.push(row.map_err(map_err)?);
+    }
+    Ok(stats)
+}
+
+fn map_track_stat_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<TrackStat> {
+    let play_count: i64 = row.get(3)?;
+    let completed_count: i64 = row.get(8)?;
+    Ok(TrackStat {
+        source: row.get(0)?,
+        source_id: row.get(1)?,
+        track_id: row.get(2)?,
+        play_count,
+        skip_count: row.get(4)?,
+        total_listened_ms: row.get(5)?,
+        first_played_at: row.get(6)?,
+        last_played_at: row.get(7)?,
+        completion_rate: if play_count > 0 {
+            completed_count as f64 / play_count as f64
+        } else {
+            0.0
+        },
+    })
+}
+
+/// 查询所有音源的曲目统计(Dart 侧用 source + source_id + track_id 组合区分)。
+pub fn query_all_track_stats() -> Result<Vec<TrackStat>, String> {
+    let conn = db()?;
+    query_all_track_stats_on(&conn)
+}
+
+fn query_all_track_stats_on(conn: &Connection) -> Result<Vec<TrackStat>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT source, source_id, track_id, play_count, skip_count,
+                    total_listened_ms, first_played_at, last_played_at, completed_count
+             FROM track_stats",
+        )
+        .map_err(map_err)?;
+
+    let rows = stmt
+        .query_map([], map_track_stat_row)
         .map_err(map_err)?;
 
     let mut stats = Vec::new();
@@ -358,6 +386,90 @@ fn query_history_summary_on(
     Ok(summary)
 }
 
+/// 跨所有音源的时间段汇总(首页历史/统计使用)。
+pub fn query_history_summary_all(
+    start_ms: i64,
+    end_ms: i64,
+) -> Result<HistorySummary, String> {
+    let conn = db()?;
+    query_history_summary_all_on(&conn, start_ms, end_ms)
+}
+
+fn query_history_summary_all_on(
+    conn: &Connection,
+    start_ms: i64,
+    end_ms: i64,
+) -> Result<HistorySummary, String> {
+    let mut summary = conn
+        .query_row(
+            "SELECT COUNT(*),
+                    COUNT(DISTINCT source || ':' || source_id || ':' || track_id),
+                    COALESCE(SUM(listened_ms), 0)
+             FROM play_events
+             WHERE started_at >= ?1 AND started_at < ?2",
+            params![start_ms, end_ms],
+            |row| {
+                Ok(HistorySummary {
+                    play_count: row.get(0)?,
+                    track_count: row.get(1)?,
+                    listened_ms: row.get(2)?,
+                    ..HistorySummary::default()
+                })
+            },
+        )
+        .map_err(map_err)?;
+
+    let top_artist: Option<(String, i64)> = conn
+        .query_row(
+            "SELECT json_extract(metadata_json, '$.artist') AS name, COUNT(*) AS plays
+             FROM play_events
+             WHERE started_at >= ?1 AND started_at < ?2
+               AND metadata_json IS NOT NULL
+               AND json_valid(metadata_json)
+               AND json_extract(metadata_json, '$.artist') IS NOT NULL
+               AND json_extract(metadata_json, '$.artist') <> ''
+             GROUP BY name
+             ORDER BY plays DESC
+             LIMIT 1",
+            params![start_ms, end_ms],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()
+        .map_err(map_err)?;
+
+    let top_album: Option<(String, Option<String>, i64)> = conn
+        .query_row(
+            "SELECT json_extract(metadata_json, '$.album') AS album,
+                    json_extract(metadata_json, '$.artist') AS artist,
+                    COUNT(*) AS plays
+             FROM play_events
+             WHERE started_at >= ?1 AND started_at < ?2
+               AND metadata_json IS NOT NULL
+               AND json_valid(metadata_json)
+               AND json_extract(metadata_json, '$.album') IS NOT NULL
+               AND json_extract(metadata_json, '$.album') <> ''
+             GROUP BY json_extract(metadata_json, '$.albumId'), album, artist
+             ORDER BY plays DESC
+             LIMIT 1",
+            params![start_ms, end_ms],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+        .optional()
+        .map_err(map_err)?;
+
+    if let Some((artist, plays)) = top_artist {
+        summary.top_artist = Some(artist);
+        summary.top_artist_plays = plays;
+    }
+    if let Some((album, artist, plays)) = top_album {
+        summary.top_album = Some(album);
+        summary.top_album_artist = artist;
+        summary.top_album_plays = plays;
+    }
+
+    Ok(summary)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -409,5 +521,51 @@ mod tests {
         assert_eq!(summary.top_artist_plays, 2);
         assert_eq!(summary.top_album.as_deref(), Some("Alb"));
         assert_eq!(summary.top_album_artist.as_deref(), Some("A"));
+    }
+
+    #[test]
+    fn all_sources_stats_and_summary() {
+        let conn = Connection::open_in_memory().unwrap();
+        migrate(&conn).unwrap();
+
+        let local = PlayEvent {
+            source: "local".to_string(),
+            source_id: "/music".to_string(),
+            track_id: "a.mp3".to_string(),
+            started_at: 1_000,
+            listened_ms: 30_000,
+            track_duration_ms: Some(120_000),
+            completed: true,
+            skipped: false,
+            queue_source: None,
+            metadata_json: Some(
+                r#"{"artist":"Local","album":"LA","albumId":"la"}"#.to_string(),
+            ),
+        };
+        let remote = PlayEvent {
+            source: "opensubsonic".to_string(),
+            source_id: "srv".to_string(),
+            track_id: "r1".to_string(),
+            started_at: 2_000,
+            listened_ms: 40_000,
+            track_duration_ms: Some(180_000),
+            completed: true,
+            skipped: false,
+            queue_source: Some("Navidrome".to_string()),
+            metadata_json: Some(
+                r#"{"artist":"Remote","album":"RA","albumId":"ra"}"#.to_string(),
+            ),
+        };
+        record_event_on(&conn, &local).unwrap();
+        record_event_on(&conn, &remote).unwrap();
+
+        assert_eq!(query_all_track_stats_on(&conn).unwrap().len(), 2);
+
+        let summary = query_history_summary_all_on(&conn, 0, 10_000).unwrap();
+        assert_eq!(summary.play_count, 2);
+        assert_eq!(summary.track_count, 2);
+        assert_eq!(summary.listened_ms, 70_000);
+        assert!(summary.top_artist.is_some());
+        assert!(summary.top_album.is_some());
     }
 }

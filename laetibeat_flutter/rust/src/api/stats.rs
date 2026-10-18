@@ -72,20 +72,27 @@ pub fn query_track_stats(
     source_id: String,
 ) -> Result<Vec<UiTrackStat>, String> {
     let stats = core_stats::query_track_stats(&source, &source_id)?;
-    Ok(stats
-        .into_iter()
-        .map(|stat| UiTrackStat {
-            source: stat.source,
-            source_id: stat.source_id,
-            track_id: stat.track_id,
-            play_count: stat.play_count,
-            skip_count: stat.skip_count,
-            total_listened_ms: stat.total_listened_ms,
-            first_played_at: stat.first_played_at,
-            last_played_at: stat.last_played_at,
-            completion_rate: stat.completion_rate,
-        })
-        .collect())
+    Ok(stats.into_iter().map(map_track_stat).collect())
+}
+
+/// 查询所有音源的曲目统计
+pub fn query_all_track_stats() -> Result<Vec<UiTrackStat>, String> {
+    let stats = core_stats::query_all_track_stats()?;
+    Ok(stats.into_iter().map(map_track_stat).collect())
+}
+
+fn map_track_stat(stat: core_stats::TrackStat) -> UiTrackStat {
+    UiTrackStat {
+        source: stat.source,
+        source_id: stat.source_id,
+        track_id: stat.track_id,
+        play_count: stat.play_count,
+        skip_count: stat.skip_count,
+        total_listened_ms: stat.total_listened_ms,
+        first_played_at: stat.first_played_at,
+        last_played_at: stat.last_played_at,
+        completion_rate: stat.completion_rate,
+    }
 }
 
 /// 最近播放事件
@@ -116,7 +123,20 @@ pub fn query_history_summary(
     end_ms: i64,
 ) -> Result<UiHistorySummary, String> {
     let summary = core_stats::query_history_summary(&source, &source_id, start_ms, end_ms)?;
-    Ok(UiHistorySummary {
+    Ok(map_history_summary(summary))
+}
+
+/// 跨所有音源的时间段播放汇总
+pub fn query_history_summary_all(
+    start_ms: i64,
+    end_ms: i64,
+) -> Result<UiHistorySummary, String> {
+    let summary = core_stats::query_history_summary_all(start_ms, end_ms)?;
+    Ok(map_history_summary(summary))
+}
+
+fn map_history_summary(summary: core_stats::HistorySummary) -> UiHistorySummary {
+    UiHistorySummary {
         play_count: summary.play_count,
         track_count: summary.track_count,
         listened_ms: summary.listened_ms,
@@ -125,5 +145,5 @@ pub fn query_history_summary(
         top_album: summary.top_album,
         top_album_artist: summary.top_album_artist,
         top_album_plays: summary.top_album_plays,
-    })
+    }
 }

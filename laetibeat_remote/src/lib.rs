@@ -203,6 +203,20 @@ pub fn stream_url(source_id: &str, track_id: &str) -> Result<String, String> {
     Ok(url.to_string())
 }
 
+/// 上报 scrobble。
+/// submission=false 为 "now playing" 通知,true 为正式记录一次播放。
+pub fn scrobble(
+    source_id: &str,
+    track_id: &str,
+    time_ms: Option<i64>,
+    submission: bool,
+) -> Result<(), String> {
+    let client = client(source_id)?;
+    runtime()?
+        .block_on(client.scrobble(track_id, time_ms, Some(submission)))
+        .map_err(map_err)
+}
+
 /// 拉取封面字节。size 为服务端建议的最大边长。
 pub fn get_cover_art(
     source_id: &str,

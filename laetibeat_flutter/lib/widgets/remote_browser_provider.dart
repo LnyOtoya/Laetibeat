@@ -40,6 +40,24 @@ final remoteTracksProvider =
       );
     });
 
+/// 已同步的全部远端专辑(首页推荐聚合使用)
+final remoteAllAlbumsProvider =
+    FutureProvider.family<List<rust_subsonic.UiRemoteAlbum>, String>((
+      ref,
+      sourceId,
+    ) {
+      return rust_library.queryRemoteAlbums(sourceId: sourceId);
+    });
+
+/// 已同步的全部远端曲目(首页推荐聚合使用)
+final remoteAllTracksProvider =
+    FutureProvider.family<List<rust_subsonic.UiRemoteTrack>, String>((
+      ref,
+      sourceId,
+    ) {
+      return rust_library.queryRemoteAllTracks(sourceId: sourceId);
+    });
+
 typedef RemoteSearchKey = ({String sourceId, String query});
 
 /// 在已同步的本地快照中搜索,不再直连服务器。

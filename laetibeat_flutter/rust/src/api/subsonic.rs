@@ -156,6 +156,16 @@ pub fn subsonic_stream_url(source_id: String, track_id: String) -> Result<String
     remote::stream_url(&source_id, &track_id)
 }
 
+/// 上报 scrobble。submission=false 为 now playing,true 为正式记录一次播放。
+pub fn subsonic_scrobble(
+    source_id: String,
+    track_id: String,
+    time_ms: Option<i64>,
+    submission: bool,
+) -> Result<(), String> {
+    remote::scrobble(&source_id, &track_id, time_ms, submission)
+}
+
 /// 拉取远端封面字节
 pub fn subsonic_get_cover_art(
     source_id: String,

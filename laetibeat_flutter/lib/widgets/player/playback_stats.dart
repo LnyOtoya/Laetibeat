@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:laetibeat/src/rust/api/stats.dart' as rust_stats;
 
-import '../settings/music_library_provider.dart';
 import 'playback_session_tracker.dart';
 
 /// 播放统计服务:把 Dart 侧的播放会话写入 Rust 统计库
@@ -28,12 +27,6 @@ class PlaybackStatsService {
       ),
     );
   }
-
-  Future<List<rust_stats.UiTrackStat>> trackStats({
-    required String sourceId,
-  }) {
-    return rust_stats.queryTrackStats(source: 'local', sourceId: sourceId);
-  }
 }
 
 /// 统计版本号:每写入一条播放事件 +1,用于刷新统计查询
@@ -48,23 +41,22 @@ class StatsRevisionNotifier extends Notifier<int> {
   void bump() => state = state + 1;
 }
 
-/// 当前本地库的曲目统计,按 track_id 索引
-final trackStatsProvider =
+/// 跨音源的曲目统计 key(本地与远端 track_id 可能重复,必须带 source/sourceId)
+String trackStatKey(String source, String sourceId, String trackId) =>
+    '$source\u0000$sourceId\u0000$trackId';
+
+/// 所有音源的曲目统计,按 source + sourceId + trackId 索引
+final allTrackStatsProvider =
     FutureProvider<Map<String, rust_stats.UiTrackStat>>((ref) async {
   ref.watch(statsRevisionProvider);
-  final directory =
-      ref.watch(musicLibraryProvider.select((s) => s.value?.directory));
-  if (directory == null) return const <String, rust_stats.UiTrackStat>{};
-
   try {
-    final stats = await ref
-        .read(playbackStatsServiceProvider)
-        .trackStats(sourceId: directory);
+    final stats = await rust_stats.queryAllTrackStats();
     return <String, rust_stats.UiTrackStat>{
-      for (final stat in stats) stat.trackId: stat,
+      for (final stat in stats)
+        trackStatKey(stat.source, stat.sourceId, stat.trackId): stat,
     };
   } catch (e) {
-    debugPrint('读取播放统计失败: $e');
+    debugPrint('读取全部播放统计失败: $e');
     return const <String, rust_stats.UiTrackStat>{};
   }
 });
@@ -105,13 +97,10 @@ class HistorySummary {
   final int topAlbumPlays;
 }
 
-/// 首页"播放记录"摘要
+/// 首页"播放记录"摘要(本地 + 远端一起统计)
 final historySummaryProvider =
     FutureProvider.family<HistorySummary, HistoryPeriod>((ref, period) async {
   ref.watch(statsRevisionProvider);
-  final directory =
-      ref.watch(musicLibraryProvider.select((s) => s.value?.directory));
-  if (directory == null) return const HistorySummary.zero();
 
   final now = DateTime.now();
   final start = switch (period) {
@@ -124,9 +113,7 @@ final historySummaryProvider =
   final end = now.add(const Duration(seconds: 1));
 
   try {
-    final summary = await rust_stats.queryHistorySummary(
-      source: 'local',
-      sourceId: directory,
+    final summary = await rust_stats.queryHistorySummaryAll(
       startMs: start.millisecondsSinceEpoch,
       endMs: end.millisecondsSinceEpoch,
     );

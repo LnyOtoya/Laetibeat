@@ -39,6 +39,12 @@ Future<List<UiRemoteTrack>> queryRemoteTracks({
   albumId: albumId,
 );
 
+/// 读取已同步的全部远端曲目(供首页推荐聚合)
+Future<List<UiRemoteTrack>> queryRemoteAllTracks({required String sourceId}) =>
+    RustLib.instance.api.crateApiLibraryQueryRemoteAllTracks(
+      sourceId: sourceId,
+    );
+
 /// 在本地同步库中搜索艺术家/专辑/曲目
 Future<UiRemoteSearchResult> searchRemoteLibrary({
   required String sourceId,

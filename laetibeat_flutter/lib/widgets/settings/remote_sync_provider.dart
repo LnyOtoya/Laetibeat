@@ -6,6 +6,7 @@ import 'package:laetibeat/src/rust/api/library.dart' as rust_library;
 import 'package:laetibeat/src/rust/api/sync.dart' as rust_sync;
 
 import '../cache/cover_cache.dart';
+import '../recommendation_provider.dart';
 import '../remote_browser_provider.dart';
 import 'subsonic_provider.dart';
 
@@ -203,7 +204,10 @@ class RemoteSyncNotifier extends AsyncNotifier<RemoteSyncState> {
       ref.invalidate(remoteArtistsProvider);
       ref.invalidate(remoteAlbumsProvider);
       ref.invalidate(remoteTracksProvider);
+      ref.invalidate(remoteAllAlbumsProvider);
+      ref.invalidate(remoteAllTracksProvider);
       ref.invalidate(remoteSearchProvider);
+      ref.invalidate(albumRecommendationsProvider);
       return;
     }
 

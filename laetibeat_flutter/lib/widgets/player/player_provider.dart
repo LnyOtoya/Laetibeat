@@ -236,6 +236,41 @@ class PlayerNotifier extends Notifier<PlayerState> {
       } catch (e) {
         debugPrint('记录播放事件失败: $e');
       }
+
+      // 远端曲目同步上报给 Navidrome,失败不影响本地统计
+      if (event.source == 'opensubsonic') {
+        try {
+          await rust_subsonic.subsonicScrobble(
+            sourceId: event.sourceId,
+            trackId: event.trackId,
+            timeMs: event.startedAt,
+            submission: true,
+          );
+        } catch (e) {
+          debugPrint('上报 scrobble 失败: $e');
+        }
+      }
+    }());
+  }
+
+  /// 远端曲目起播时上报 "now playing"
+  void _reportNowPlaying(rust.UiTrack? track) {
+    if (track == null ||
+        track.source != 'opensubsonic' ||
+        track.sourceId.isEmpty) {
+      return;
+    }
+    unawaited(() async {
+      try {
+        await rust_subsonic.subsonicScrobble(
+          sourceId: track.sourceId,
+          trackId: track.id,
+          timeMs: DateTime.now().millisecondsSinceEpoch,
+          submission: false,
+        );
+      } catch (e) {
+        debugPrint('上报 now playing 失败: $e');
+      }
     }());
   }
 
@@ -315,6 +350,7 @@ class PlayerNotifier extends Notifier<PlayerState> {
       _sessionTracker.onTrackChanged(track);
       _sessionTracker.onSeek(resumeAt);
       await _backend.play();
+      _reportNowPlaying(track);
       _pendingPosition = Duration.zero;
     } catch (e) {
       if (generation == _openGeneration) {
@@ -423,6 +459,7 @@ class PlayerNotifier extends Notifier<PlayerState> {
       final playbackTrack = await _resolveTrack(track);
       if (generation != _openGeneration) return;
       await _backend.open(playbackTrack);
+      _reportNowPlaying(track);
     } catch (e) {
       if (generation != _openGeneration) return;
       debugPrint('打开曲目失败: $e');
@@ -580,6 +617,7 @@ class PlayerNotifier extends Notifier<PlayerState> {
     state = state.copyWith(position: Duration.zero, isPlaying: true);
     _backend.seek(Duration.zero);
     _backend.play();
+    _reportNowPlaying(state.current);
   }
 
   //上一首

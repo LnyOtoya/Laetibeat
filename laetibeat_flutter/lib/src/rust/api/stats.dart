@@ -6,6 +6,8 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+// These functions are ignored because they are not marked as `pub`: `map_history_summary`, `map_track_stat`
+
 /// 初始化统计库(Dart 启动时传入应用数据目录下的 db 路径)
 Future<void> initStatsDb({required String path}) =>
     RustLib.instance.api.crateApiStatsInitStatsDb(path: path);
@@ -23,6 +25,10 @@ Future<List<UiTrackStat>> queryTrackStats({
   sourceId: sourceId,
 );
 
+/// 查询所有音源的曲目统计
+Future<List<UiTrackStat>> queryAllTrackStats() =>
+    RustLib.instance.api.crateApiStatsQueryAllTrackStats();
+
 /// 最近播放事件
 Future<List<UiPlayEvent>> queryRecentPlayEvents({required int limit}) =>
     RustLib.instance.api.crateApiStatsQueryRecentPlayEvents(limit: limit);
@@ -36,6 +42,15 @@ Future<UiHistorySummary> queryHistorySummary({
 }) => RustLib.instance.api.crateApiStatsQueryHistorySummary(
   source: source,
   sourceId: sourceId,
+  startMs: startMs,
+  endMs: endMs,
+);
+
+/// 跨所有音源的时间段播放汇总
+Future<UiHistorySummary> queryHistorySummaryAll({
+  required PlatformInt64 startMs,
+  required PlatformInt64 endMs,
+}) => RustLib.instance.api.crateApiStatsQueryHistorySummaryAll(
   startMs: startMs,
   endMs: endMs,
 );

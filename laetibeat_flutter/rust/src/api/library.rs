@@ -51,6 +51,12 @@ pub fn query_remote_tracks(
     Ok(tracks.into_iter().map(map_track).collect())
 }
 
+/// 读取已同步的全部远端曲目(供首页推荐聚合)
+pub fn query_remote_all_tracks(source_id: String) -> Result<Vec<UiRemoteTrack>, String> {
+    let tracks = core_lib::query_all_tracks(&source_id)?;
+    Ok(tracks.into_iter().map(map_track).collect())
+}
+
 /// 在本地同步库中搜索艺术家/专辑/曲目
 pub fn search_remote_library(
     source_id: String,

@@ -914,6 +914,35 @@ fn query_tracks_on(
     collect_rows(rows)
 }
 
+/// 读取当前代的全部曲目(供首页推荐等聚合计算使用)。
+pub fn query_all_tracks(source_id: &str) -> Result<Vec<RemoteTrackRow>, String> {
+    let conn = db()?;
+    query_all_tracks_on(&conn, source_id)
+}
+
+fn query_all_tracks_on(
+    conn: &Connection,
+    source_id: &str,
+) -> Result<Vec<RemoteTrackRow>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT t.id, t.album_id, t.artist_id, t.title, t.artist, t.album,
+                    t.cover_id, t.duration_seconds, t.track_number, t.disc_number,
+                    t.year, t.genre, t.bit_rate, t.suffix, t.size
+             FROM remote_tracks t
+             JOIN remote_sync_meta m
+               ON m.source_id = t.source_id AND m.generation = t.generation
+             WHERE t.source_id = ?1
+             ORDER BY t.album_id, t.disc_number IS NULL, t.disc_number,
+                      t.track_number IS NULL, t.track_number, t.title_lower",
+        )
+        .map_err(map_err)?;
+    let rows = stmt
+        .query_map(params![source_id], map_track_row)
+        .map_err(map_err)?;
+    collect_rows(rows)
+}
+
 fn map_track_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<RemoteTrackRow> {
     Ok(RemoteTrackRow {
         id: row.get(0)?,

@@ -1,16 +1,16 @@
+import 'dart:typed_data';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
-import 'package:laetibeat/src/rust/api/simple.dart' as rust;
 
 import '../animations.dart';
 import 'album_card.dart';
 import 'player/cover_provider.dart';
 import 'player/player_provider.dart';
 import 'recommendation_provider.dart';
-import 'settings/music_library_provider.dart';
 
-//为你推荐区块:基于本地播放统计做专辑级推荐
+//为你推荐区块:本地 + 远端播放统计的专辑级推荐
 class DailySection extends ConsumerStatefulWidget {
   const DailySection({super.key});
 
@@ -34,12 +34,9 @@ class _DailySectionState extends ConsumerState<DailySection> {
   @override
   Widget build(BuildContext context) {
     final theme = M3ETheme.of(context);
-    final recommendations = ref.watch(albumRecommendationsProvider(_mode));
-    final library = ref.watch(musicLibraryProvider).value;
-    final byId = {
-      for (final track in library?.tracks ?? const <rust.UiTrack>[])
-        track.id: track,
-    };
+    final asyncRecommendations = ref.watch(albumRecommendationsProvider(_mode));
+    final recommendations =
+        asyncRecommendations.value ?? const <RecommendedAlbum>[];
 
     return AnimatedContainer(
       duration: kSectionAnimDuration,
@@ -76,7 +73,9 @@ class _DailySectionState extends ConsumerState<DailySection> {
             ],
           ),
           SizedBox(height: theme.spacing.lg),
-          if (recommendations.isEmpty)
+          if (asyncRecommendations.isLoading && recommendations.isEmpty)
+            _loading(theme)
+          else if (recommendations.isEmpty)
             _emptyHint(theme)
           else
             LayoutBuilder(
@@ -97,9 +96,9 @@ class _DailySectionState extends ConsumerState<DailySection> {
                           title: recommendations[i].title,
                           subtitle: recommendations[i].artist,
                           cover: _RecommendationCover(
-                            track: byId[recommendations[i].coverTrackId],
+                            album: recommendations[i],
                           ),
-                          onTap: () => _playAlbum(recommendations[i], byId),
+                          onTap: () => _playAlbum(recommendations[i]),
                         ),
                       ),
                     ],
@@ -112,17 +111,25 @@ class _DailySectionState extends ConsumerState<DailySection> {
     );
   }
 
-  void _playAlbum(rust.UiAlbum album, Map<String, rust.UiTrack> byId) {
-    final tracks = <rust.UiTrack>[
-      for (final id in album.trackIds)
-        if (byId[id] != null) byId[id]!,
-    ];
-    if (tracks.isEmpty) return;
+  void _playAlbum(RecommendedAlbum album) {
+    if (album.tracks.isEmpty) return;
     ref.read(playerProvider.notifier).load(
-          tracks,
+          album.tracks,
           0,
           source: album.title,
         );
+  }
+
+  Widget _loading(M3EThemeData theme) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: theme.spacing.md),
+      child: Center(
+        child: M3ELoadingIndicator(
+          color: theme.colorScheme.primary,
+          containerColor: theme.colorScheme.surfaceContainerHighest,
+        ),
+      ),
+    );
   }
 
   Widget _emptyHint(M3EThemeData theme) {
@@ -138,19 +145,17 @@ class _DailySectionState extends ConsumerState<DailySection> {
   }
 }
 
-//推荐卡片封面:有内嵌封面显示真实封面,否则渐变占位
+//推荐卡片封面:本地读内嵌封面,远端读封面缓存,都没有则占位
 class _RecommendationCover extends ConsumerWidget {
-  const _RecommendationCover({required this.track});
+  const _RecommendationCover({required this.album});
 
-  final rust.UiTrack? track;
+  final RecommendedAlbum album;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = M3ETheme.of(context);
     final scheme = theme.colorScheme;
-    final current = track;
-    final bytes =
-        current == null ? null : ref.watch(trackCoverProvider(current)).value;
+    final bytes = _coverBytes(ref);
     final hasArt = bytes != null && bytes.isNotEmpty;
 
     if (hasArt) {
@@ -173,5 +178,21 @@ class _RecommendationCover extends ConsumerWidget {
         color: scheme.onSurfaceVariant,
       ),
     );
+  }
+
+  Uint8List? _coverBytes(WidgetRef ref) {
+    final track = album.coverTrack;
+    if (track != null) {
+      return ref.watch(trackCoverProvider(track)).value;
+    }
+
+    final sourceId = album.remoteSourceId;
+    final coverId = album.remoteCoverId;
+    if (sourceId != null && coverId != null && coverId.isNotEmpty) {
+      return ref
+          .watch(remoteCoverProvider((sourceId: sourceId, coverId: coverId)))
+          .value;
+    }
+    return null;
   }
 }

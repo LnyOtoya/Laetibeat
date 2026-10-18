@@ -75,6 +75,19 @@ Future<String> subsonicStreamUrl({
   trackId: trackId,
 );
 
+/// 上报 scrobble。submission=false 为 now playing,true 为正式记录一次播放。
+Future<void> subsonicScrobble({
+  required String sourceId,
+  required String trackId,
+  PlatformInt64? timeMs,
+  required bool submission,
+}) => RustLib.instance.api.crateApiSubsonicSubsonicScrobble(
+  sourceId: sourceId,
+  trackId: trackId,
+  timeMs: timeMs,
+  submission: submission,
+);
+
 /// 拉取远端封面字节
 Future<Uint8List> subsonicGetCoverArt({
   required String sourceId,
