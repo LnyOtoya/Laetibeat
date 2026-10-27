@@ -3,10 +3,18 @@ use std::path::PathBuf;
 use laetibeat_core::model::{MusicLibrary, SourceType, Track};
 use laetibeat_core::scanner::scan_directory_incremental;
 
-// 弹出系统原生文件夹选择框,选中返回其路径,取消返回None
+// 桌面弹出系统原生文件夹选择框；移动端由 Flutter 原生选择器处理
 pub fn pick_directory() -> Option<String> {
-    let picked = rfd::FileDialog::new().pick_folder()?;
-    Some(picked.to_string_lossy().to_string())
+    #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
+    {
+        let picked = rfd::FileDialog::new().pick_folder()?;
+        Some(picked.to_string_lossy().to_string())
+    }
+
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+    {
+        None
+    }
 }
 
 // 简化版单曲结构体

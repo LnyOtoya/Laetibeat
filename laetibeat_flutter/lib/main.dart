@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
@@ -18,19 +19,32 @@ import 'package:window_manager/window_manager.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await windowManager.ensureInitialized();
-    WindowOptions windowOptions = WindowOptions(
-    size: Size(1200, 800),
-    minimumSize: Size(1200, 800),
-    center: true,
-    backgroundColor: Colors.transparent,
-    skipTaskbar: false,
-    titleBarStyle: TitleBarStyle.hidden,
-  );
-  windowManager.waitUntilReadyToShow(windowOptions, () async {
-    await windowManager.show();
-    await windowManager.focus();
-  });
+
+  // window_manager 仅支持桌面端；移动端不能调用，否则会卡在 runApp 之前
+  final bool isDesktop =
+      defaultTargetPlatform == TargetPlatform.linux ||
+      defaultTargetPlatform == TargetPlatform.macOS ||
+      defaultTargetPlatform == TargetPlatform.windows;
+  if (isDesktop) {
+    try {
+      await windowManager.ensureInitialized();
+      final WindowOptions windowOptions = WindowOptions(
+        size: Size(1200, 800),
+        minimumSize: Size(1200, 800),
+        center: true,
+        backgroundColor: Colors.transparent,
+        skipTaskbar: false,
+        titleBarStyle: TitleBarStyle.hidden,
+      );
+      windowManager.waitUntilReadyToShow(windowOptions, () async {
+        await windowManager.show();
+        await windowManager.focus();
+      });
+    } catch (e) {
+      debugPrint('窗口管理器初始化失败: $e');
+    }
+  }
+
   await RustLib.init();
   // 初始化播放统计库(失败不阻塞应用启动)
   try {

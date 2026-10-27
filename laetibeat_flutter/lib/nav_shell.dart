@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:window_manager/window_manager.dart';
@@ -58,6 +59,37 @@ class _NavShellState extends State<NavShell> {
     ),
   ];
 
+  // 移动端 NavigationBar：搜索从桌面 FAB 变成普通目的地
+  // 顺序即展示顺序，值为对应的 _pages 索引
+  static const List<int> _mobilePageOrder = [0, 1, 5, 3, 4, 2];
+
+  static const List<M3ENavigationBarDestination> _mobileDestinations = [
+    M3ENavigationBarDestination(
+      icon: Icon(M3EIcons.home),
+      label: 'Home',
+    ),
+    M3ENavigationBarDestination(
+      icon: Icon(M3EIcons.music_note),
+      label: 'Library',
+    ),
+    M3ENavigationBarDestination(
+      icon: Icon(M3EIcons.search),
+      label: 'Search',
+    ),
+    M3ENavigationBarDestination(
+      icon: Icon(M3EIcons.queue_music),
+      label: 'Playlists',
+    ),
+    M3ENavigationBarDestination(
+      icon: Icon(M3EIcons.bar_chart),
+      label: 'Charts',
+    ),
+    M3ENavigationBarDestination(
+      icon: Icon(M3EIcons.settings),
+      label: 'Settings',
+    ),
+  ];
+
   void _onDestinationSelected(int index) {
     if (index == _selectedIndex && _pageIndex == index) return;
     setState(() {
@@ -75,9 +107,45 @@ class _NavShellState extends State<NavShell> {
     });
   }
 
+  int get _mobileSelectedIndex {
+    final index = _mobilePageOrder.indexOf(_pageIndex);
+    return index < 0 ? 0 : index;
+  }
+
+  void _onMobileDestinationSelected(int index) {
+    if (index < 0 || index >= _mobilePageOrder.length) return;
+    final pageIndex = _mobilePageOrder[index];
+    setState(() {
+      _pageIndex = pageIndex;
+      _selectedIndex = pageIndex == _searchPageIndex ? -1 : pageIndex;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = M3ETheme.of(context);
+    final bool isDesktop =
+        defaultTargetPlatform == TargetPlatform.linux ||
+        defaultTargetPlatform == TargetPlatform.macOS ||
+        defaultTargetPlatform == TargetPlatform.windows;
+
+    // 移动端：底部 NavigationBar，搜索作为其中一个目的地
+    if (!isDesktop) {
+      return Scaffold(
+        body: SafeArea(
+          bottom: false,
+          child: _pages[_pageIndex],
+        ),
+        bottomNavigationBar: M3ENavigationBar(
+          destinations: _mobileDestinations,
+          selectedIndex: _mobileSelectedIndex,
+          onDestinationSelected: _onMobileDestinationSelected,
+          size: M3ENavBarSize.small,
+          density: M3ENavBarDensity.compact,
+          labelBehavior: M3ENavBarLabelBehavior.onlySelected,
+        ),
+      );
+    }
 
     return Scaffold(
       body: AnimatedContainer(
@@ -106,7 +174,8 @@ class _NavShellState extends State<NavShell> {
             Expanded(
               child: Column(
                 children: [
-                  _buildTitleBar(),
+                  // 自定义窗口按钮只在桌面端显示
+                  if (isDesktop) _buildTitleBar(),
                   Expanded(
                     child: _pages[_pageIndex],
                   ),

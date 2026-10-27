@@ -42,6 +42,7 @@ dependencies:
   window_manager: ^0.5.2
   media_kit: ^1.2.6
   media_kit_libs_linux: ^1.2.1
+  media_kit_libs_android_audio: ^1.3.8
   dbus: ^0.8.0
   flutter_lyric: ^4.1.0
   shared_preferences: ^2.5.6
