@@ -5,6 +5,8 @@ import 'pages/home_page.dart';
 import 'pages/search_page.dart';
 import 'pages/library_page.dart';
 import 'pages/settings_page.dart';
+import 'pages/playlist_page.dart';
+import 'pages/chart_page.dart';
 
 class NavShell extends StatefulWidget {
   const NavShell({super.key});
@@ -16,85 +18,61 @@ class NavShell extends StatefulWidget {
 class _NavShellState extends State<NavShell> {
   static const _animDuration = Duration(milliseconds: 280);
   static const _animCurve = Curves.easeOutCubic;
-  static const _navDestCount = 4;
+
+  // 导航项与页面一一对应；搜索页额外放在末尾，由 FAB 触发
+  static const int _searchPageIndex = 5;
 
   int _selectedIndex = 0;
   int _pageIndex = 0;
-  bool _navRailExpanded = false;
-  _PlaylistItem? _selectedPlaylist;
 
-  final List<Widget> _pages = const [
+  static const List<Widget> _pages = [
     HomePage(),
-    SearchPage(),
     LibraryPage(),
     SettingsPage(),
+    PlaylistPage(),
+    ChartPage(),
+    SearchPage(),
   ];
 
-
-  final List<_PlaylistItem> _playlists = const [
-    _PlaylistItem(icon: M3EIcons.favorite, label: 'Favorite'),
-    _PlaylistItem(icon: M3EIcons.history, label: 'History'),
-    _PlaylistItem(icon: M3EIcons.auto_awesome, label: 'Daily Recommend'),
+  // 侧边栏固定展开，不使用 section headers
+  static const List<M3ENavigationRailDestination> _destinations = [
+    M3ENavigationRailDestination(
+      icon: Icon(M3EIcons.home),
+      label: 'Home',
+    ),
+    M3ENavigationRailDestination(
+      icon: Icon(M3EIcons.music_note),
+      label: 'Library',
+    ),
+    M3ENavigationRailDestination(
+      icon: Icon(M3EIcons.settings),
+      label: 'Settings',
+    ),
+    M3ENavigationRailDestination(
+      icon: Icon(M3EIcons.queue_music),
+      label: 'Playlists',
+    ),
+    M3ENavigationRailDestination(
+      icon: Icon(M3EIcons.bar_chart),
+      label: 'Charts',
+    ),
   ];
 
   void _onDestinationSelected(int index) {
+    if (index == _selectedIndex && _pageIndex == index) return;
     setState(() {
       _selectedIndex = index;
-      if (index < _navDestCount) {
-        _pageIndex = index;
-        _selectedPlaylist = null;
-      } else {
-        _selectedPlaylist = _playlists[index - _navDestCount];
-      }
+      _pageIndex = index;
     });
   }
 
-  List<M3ENavigationRailSection> _buildSections() {
-    final navSection = M3ENavigationRailSection(
-      destinations: const [
-        M3ENavigationRailDestination(
-          icon: Icon(M3EIcons.home),
-          label: 'Home',
-        ),
-        M3ENavigationRailDestination(
-          icon: Icon(M3EIcons.search),
-          label: 'Search',
-        ),
-        M3ENavigationRailDestination(
-          icon: Icon(M3EIcons.music_note),
-          label: 'Library',
-        ),
-        M3ENavigationRailDestination(
-          icon: Icon(M3EIcons.settings),
-          label: 'Settings',
-        ),
-      ],
-    );
-
-    if (!_navRailExpanded) {
-      return [navSection];
-    }
-
-    // 展开时额外显示歌单 Section
-    return [
-      navSection,
-      M3ENavigationRailSection(
-        header: Padding(
-          padding: const EdgeInsets.only(left: 16, top: 12, bottom: 4),
-          child: Text(
-            'Playlists',
-            style: M3ETheme.of(context).typeScale.labelMedium?.copyWith(
-              color: M3ETheme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ),
-        destinations: _playlists.map((p) => M3ENavigationRailDestination(
-          icon: Icon(p.icon),
-          label: p.label,
-          short: true,
-        )).toList(),
-      ),
-    ];
+  // FAB：进入搜索页，此时侧边栏不显示选中项
+  void _openSearch() {
+    if (_pageIndex == _searchPageIndex) return;
+    setState(() {
+      _selectedIndex = -1;
+      _pageIndex = _searchPageIndex;
+    });
   }
 
   @override
@@ -107,33 +85,38 @@ class _NavShellState extends State<NavShell> {
         curve: _animCurve,
         color: theme.colorScheme.surfaceContainer,
         child: Row(
-        children: [
-          M3ENavigationRail(
-            background: theme.colorScheme.surfaceContainer,
-            sections: _buildSections(),
-            selectedIndex: _selectedIndex,
-            onDestinationSelected: _onDestinationSelected,
-            type: M3ENavigationRailType.collapsed,
-            modality: M3ENavigationRailModality.standard,
-            labelBehavior: M3ENavigationRailLabelBehavior.alwaysShow,
-            onTypeChanged: (type) {
-              setState(() => _navRailExpanded = type == M3ENavigationRailType.expanded);
-            },
-          ),
-          Expanded(
-            child: Column(
-              children: [
-                _buildTitleBar(),
-                Expanded(
-                  child: _pages[_pageIndex],
-                ),
+          children: [
+            M3ENavigationRail(
+              background: theme.colorScheme.surfaceContainer,
+              sections: const [
+                M3ENavigationRailSection(destinations: _destinations),
               ],
+              selectedIndex: _selectedIndex,
+              onDestinationSelected: _onDestinationSelected,
+              type: M3ENavigationRailType.alwaysExpand,
+              modality: M3ENavigationRailModality.standard,
+              labelBehavior: M3ENavigationRailLabelBehavior.alwaysShow,
+              fab: M3ENavigationRailFabSlot(
+                icon: const Icon(M3EIcons.search),
+                label: 'Search',
+                onPressed: _openSearch,
+              ),
+              expandedWidth: 220,
             ),
-          ),
-        ],
+            Expanded(
+              child: Column(
+                children: [
+                  _buildTitleBar(),
+                  Expanded(
+                    child: _pages[_pageIndex],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
   }
 
   // 自定义顶栏
@@ -144,14 +127,14 @@ class _NavShellState extends State<NavShell> {
       child: AnimatedContainer(
         duration: _animDuration,
         curve: _animCurve,
-        color:  theme.colorScheme.surfaceContainer,
+        color: theme.colorScheme.surfaceContainer,
         // height: theme.spacing.xxl,
         padding: EdgeInsets.symmetric(
           horizontal: theme.spacing.xs,
         ),
         child: Row(
           children: [
-            Expanded(child: SizedBox()),      
+            Expanded(child: SizedBox()),
             M3EIconButton(
               size: M3EIconButtonSize.xs,
               icon: const Icon(M3EIcons.minimize),
@@ -175,18 +158,10 @@ class _NavShellState extends State<NavShell> {
               icon: const Icon(M3EIcons.close),
               tooltip: '关闭',
               onPressed: () => windowManager.close(),
-            ),      
+            ),
           ],
         ),
       ),
     );
   }
-
-}
-
-// 歌单项结构辅助类
-class _PlaylistItem {
-  final IconData icon;
-  final String label;
-  const _PlaylistItem({required this.icon, required this.label});
 }

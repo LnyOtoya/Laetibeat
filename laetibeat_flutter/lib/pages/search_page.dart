@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:laetibeat/src/rust/api/simple.dart' as rust;
 import 'package:laetibeat/src/rust/api/subsonic.dart' as rust_subsonic;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../animations.dart';
 import '../widgets/player/cover_provider.dart';
@@ -30,7 +31,12 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   /// 音源切换里的"本地音乐"哨兵值
   static const String _localSource = '__local__';
 
-  final TextEditingController _controller = TextEditingController();
+  static const String _searchHint = '搜索你的专辑，艺术家，单曲';
+  static const String _recentSearchesKey = 'search.recent_queries';
+
+  final M3ESearchController _controller = M3ESearchController();
+
+  List<String> _recentSearches = <String>[];
 
   //右区播放面板,点击搜索结果后仍复用同一播放器
   final GlobalKey<PlayerRightPaneState> _rightPaneKey =
@@ -48,10 +54,56 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   rust_subsonic.UiRemoteArtist? _remoteArtist;
 
   @override
+  void initState() {
+    super.initState();
+    // 清除按钮等程序化修改不会触发 onChanged，用监听同步页面结果
+    _controller.addListener(_onControllerChanged);
+    _loadRecentSearches();
+  }
+
+  @override
   void dispose() {
     _debounce?.cancel();
+    _controller.removeListener(_onControllerChanged);
     _controller.dispose();
     super.dispose();
+  }
+
+  void _onControllerChanged() {
+    if (_controller.text == _query) return;
+    _onQueryChanged(_controller.text);
+  }
+
+  Future<void> _loadRecentSearches() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getStringList(_recentSearchesKey);
+    if (!mounted || stored == null) return;
+    setState(() => _recentSearches = stored);
+  }
+
+  // 记录搜索词：最近的排前面，去重并限制 10 条
+  Future<void> _rememberSearch(String value) async {
+    final query = value.trim();
+    if (query.isEmpty) return;
+    final next = <String>[
+      query,
+      ..._recentSearches.where((item) => item != query),
+    ];
+    if (next.length > 10) {
+      next.removeRange(10, next.length);
+    }
+    if (!mounted) return;
+    setState(() => _recentSearches = next);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_recentSearchesKey, next);
+  }
+
+  void _applyRecentSearch(String query) {
+    _controller.value = TextEditingValue(
+      text: query,
+      selection: TextSelection.collapsed(offset: query.length),
+    );
+    _rememberSearch(query);
   }
 
   String get _filterLabel => switch (_filter) {
@@ -124,16 +176,25 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          //搜索框
-          M3ESearchBar(
-            controller: _controller,
-            hintText: '搜索曲目、艺术家、专辑',
-            leading: const Icon(M3EIcons.search),
-            autoFocus: true,
-            showClearButton: true,
-            margin: 0,
-            focusedMargin: 0,
+          // 搜索锚点：点击打开 search view
+          M3ESearchAnchor.bar(
+            searchController: _controller,
+            // contained 样式；isFullScreen 不传 => 自动布局（窄屏全屏/宽屏 docked）
+            viewStyle: M3ESearchViewStyle.contained,
+            barHintText: _searchHint,
+            viewHintText: _searchHint,
+            // 收起态：leading 搜索，trailing 头像
+            barLeading: const Icon(M3EIcons.search),
+            barAvatar: _buildAvatar(theme),
+            // 展开态：同样保留头像；clear 按钮由 showViewClearButton 控制
+            viewTrailing: [_buildAvatar(theme)],
+            showViewClearButton: true,
+            // 页面已有内边距，关闭搜索框自带的外扩 margin
+            expandOnFocus: false,
             onChanged: _onQueryChanged,
+            onSubmitted: _rememberSearch,
+            onClose: () => _rememberSearch(_controller.text),
+            suggestionsBuilder: _buildSuggestions,
           ),
           SizedBox(height: theme.spacing.lg),
           //结果类型 + 音源切换(内容自适应宽度,与音乐库页一致)
@@ -195,6 +256,524 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         ],
       ),
     );
+  }
+
+  // 搜索框/搜索视图右侧的占位头像
+  Widget _buildAvatar(M3EThemeData theme) {
+    return CircleAvatar(
+      radius: 16,
+      backgroundColor: theme.colorScheme.secondaryContainer,
+      child: Icon(
+        M3EIcons.person,
+        size: 18,
+        color: theme.colorScheme.onSecondaryContainer,
+      ),
+    );
+  }
+
+  // ===== Search view 内容 =====
+
+  // 空输入显示最近搜索；有输入时上下分为 Navidrome / 本地两部分
+  Future<Iterable<Widget>> _buildSuggestions(
+    BuildContext context,
+    M3ESearchController controller,
+  ) async {
+    final theme = M3ETheme.of(context);
+    final query = controller.text.trim();
+    if (query.isEmpty) {
+      return <Widget>[_buildRecentSearches(theme)];
+    }
+
+    final music = ref.read(musicLibraryProvider).value;
+    final servers =
+        ref.read(subsonicServersProvider).value ??
+        const <SubsonicServerConfig>[];
+    final remoteServer = _activeRemoteServer(servers);
+
+    return <Widget>[
+      await _buildRemoteSearchSection(theme, query, remoteServer),
+      _buildLocalSearchSection(theme, query, music),
+    ];
+  }
+
+  // 当前优先的远端音源：跟随页面上的音源选择，否则取第一个
+  SubsonicServerConfig? _activeRemoteServer(
+    List<SubsonicServerConfig> servers,
+  ) {
+    for (final server in servers) {
+      if (server.id == _sourceId) return server;
+    }
+    return servers.isEmpty ? null : servers.first;
+  }
+
+  Widget _buildRecentSearches(M3EThemeData theme) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        theme.spacing.lg,
+        theme.spacing.sm,
+        theme.spacing.lg,
+        theme.spacing.lg,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('最近搜索', style: theme.typeScale.titleMedium),
+          SizedBox(height: theme.spacing.md),
+          if (_recentSearches.isEmpty)
+            Text(
+              '暂无最近搜索',
+              style: theme.typeScale.bodyMedium.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            )
+          else
+            Wrap(
+              spacing: theme.spacing.sm,
+              runSpacing: theme.spacing.sm,
+              children: [
+                for (final query in _recentSearches)
+                  M3EChip(
+                    label: query,
+                    type: M3EChipType.suggestion,
+                    leading: const Icon(M3EIcons.history, size: 18),
+                    onPressed: () => _applyRecentSearch(query),
+                  ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<Widget> _buildRemoteSearchSection(
+    M3EThemeData theme,
+    String query,
+    SubsonicServerConfig? server,
+  ) async {
+    final title = server?.name ?? 'Navidrome';
+    if (server == null) {
+      return _searchSection(
+        theme: theme,
+        title: title,
+        children: [_searchSectionHint(theme, '未配置 Navidrome 服务')],
+      );
+    }
+
+    final sync = ref.read(remoteSyncProvider).value;
+    if (sync != null && sync.meta == null && !sync.isSyncing) {
+      return _searchSection(
+        theme: theme,
+        title: title,
+        children: [_searchSectionHint(theme, '远端音乐尚未同步')],
+      );
+    }
+
+    rust_subsonic.UiRemoteSearchResult result;
+    final provider = remoteSearchProvider(
+      (sourceId: server.id, query: query),
+    );
+    // 查询期间保持 autoDispose provider 存活
+    final keepAlive = ref.listenManual(provider, (_, _) {});
+    try {
+      result = await ref.read(provider.future);
+    } catch (error) {
+      return _searchSection(
+        theme: theme,
+        title: title,
+        children: [_searchSectionHint(theme, '远端搜索失败：$error')],
+      );
+    } finally {
+      keepAlive.close();
+    }
+
+    return _searchSection(
+      theme: theme,
+      title: title,
+      children: [
+        if (result.tracks.isNotEmpty) ...[
+          _searchCategoryTitle(theme, '单曲'),
+          _searchHorizontalCards(
+            theme,
+            height: 144,
+            count: result.tracks.length,
+            itemBuilder: (index) =>
+                _remoteTrackCard(theme, server, result.tracks, index),
+          ),
+        ],
+        if (result.albums.isNotEmpty) ...[
+          _searchCategoryTitle(theme, '专辑'),
+          _searchHorizontalCards(
+            theme,
+            height: 184,
+            count: result.albums.length,
+            itemBuilder: (index) =>
+                _remoteAlbumCard(theme, server, result.albums[index]),
+          ),
+        ],
+        if (result.artists.isNotEmpty) ...[
+          _searchCategoryTitle(theme, '艺术家'),
+          _searchHorizontalCards(
+            theme,
+            height: 144,
+            count: result.artists.length,
+            itemBuilder: (index) =>
+                _remoteArtistCard(theme, server, result.artists[index]),
+          ),
+        ],
+        if (result.tracks.isEmpty &&
+            result.albums.isEmpty &&
+            result.artists.isEmpty)
+          _searchSectionHint(theme, '未找到相关内容'),
+      ],
+    );
+  }
+
+  Widget _buildLocalSearchSection(
+    M3EThemeData theme,
+    String query,
+    MusicLibraryState? state,
+  ) {
+    if (state == null) {
+      return _searchSection(
+        theme: theme,
+        title: '本地',
+        children: [_searchSectionHint(theme, '本地音乐库加载中…')],
+      );
+    }
+
+    final lower = query.toLowerCase();
+    final tracks = <rust.UiTrack>[
+      for (final track in state.tracks)
+        if (_matches(track.title, lower) ||
+            _matches(track.artist, lower) ||
+            _matches(track.album, lower) ||
+            _matches(track.albumArtist, lower))
+          track,
+    ].take(30).toList();
+    final albums = <rust.UiAlbum>[
+      for (final album in state.albums)
+        if (_matches(album.title, lower) || _matches(album.artist, lower))
+          album,
+    ].take(20).toList();
+    final artists = <rust.UiArtist>[
+      for (final artist in state.artists)
+        if (_matches(artist.name, lower)) artist,
+    ].take(20).toList();
+
+    final byId = {for (final track in state.tracks) track.id: track};
+
+    return _searchSection(
+      theme: theme,
+      title: '本地',
+      children: [
+        if (tracks.isNotEmpty) ...[
+          _searchCategoryTitle(theme, '单曲'),
+          _searchHorizontalCards(
+            theme,
+            height: 144,
+            count: tracks.length,
+            itemBuilder: (index) => _localTrackCard(theme, tracks, index),
+          ),
+        ],
+        if (albums.isNotEmpty) ...[
+          _searchCategoryTitle(theme, '专辑'),
+          _searchHorizontalCards(
+            theme,
+            height: 184,
+            count: albums.length,
+            itemBuilder: (index) =>
+                _localAlbumCard(theme, state, byId, albums[index]),
+          ),
+        ],
+        if (artists.isNotEmpty) ...[
+          _searchCategoryTitle(theme, '艺术家'),
+          _searchHorizontalCards(
+            theme,
+            height: 144,
+            count: artists.length,
+            itemBuilder: (index) =>
+                _localArtistCard(theme, state, byId, artists[index]),
+          ),
+        ],
+        if (tracks.isEmpty && albums.isEmpty && artists.isEmpty)
+          _searchSectionHint(theme, '未找到相关内容'),
+      ],
+    );
+  }
+
+  Widget _searchSection({
+    required M3EThemeData theme,
+    required String title,
+    required List<Widget> children,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(
+            theme.spacing.lg,
+            theme.spacing.lg,
+            theme.spacing.lg,
+            theme.spacing.xs,
+          ),
+          child: Text(title, style: theme.typeScale.titleMedium),
+        ),
+        ...children,
+      ],
+    );
+  }
+
+  Widget _searchCategoryTitle(M3EThemeData theme, String title) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        theme.spacing.lg,
+        theme.spacing.md,
+        theme.spacing.lg,
+        theme.spacing.sm,
+      ),
+      child: Text(
+        title,
+        style: theme.typeScale.titleSmall.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+
+  Widget _searchSectionHint(M3EThemeData theme, String message) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        theme.spacing.lg,
+        0,
+        theme.spacing.lg,
+        theme.spacing.lg,
+      ),
+      child: Text(
+        message,
+        style: theme.typeScale.bodySmall.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+
+  Widget _searchHorizontalCards(
+    M3EThemeData theme, {
+    required double height,
+    required int count,
+    required Widget Function(int index) itemBuilder,
+  }) {
+    return SizedBox(
+      height: height,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.symmetric(horizontal: theme.spacing.lg),
+        itemCount: count,
+        separatorBuilder: (_, _) => SizedBox(width: theme.spacing.md),
+        itemBuilder: (context, index) => itemBuilder(index),
+      ),
+    );
+  }
+
+  Widget _localTrackCard(
+    M3EThemeData theme,
+    List<rust.UiTrack> tracks,
+    int index,
+  ) {
+    final track = tracks[index];
+    return _searchMediaCard(
+      theme: theme,
+      width: 112,
+      cover: _CoverThumb(track: track, size: 96, circle: true),
+      title: track.title,
+      onTap: () => _playLocalTracks(tracks, index),
+    );
+  }
+
+  Widget _remoteTrackCard(
+    M3EThemeData theme,
+    SubsonicServerConfig server,
+    List<rust_subsonic.UiRemoteTrack> tracks,
+    int index,
+  ) {
+    final track = tracks[index];
+    return _searchMediaCard(
+      theme: theme,
+      width: 112,
+      cover: _RemoteThumb(
+        sourceId: server.id,
+        coverId: track.coverId,
+        fallbackIcon: M3EIcons.music_note,
+        size: 96,
+        circle: true,
+      ),
+      title: track.title,
+      onTap: () => _playRemoteTracks(
+        tracks,
+        index,
+        sourceId: server.id,
+        sourceLabel: server.name,
+      ),
+    );
+  }
+
+  Widget _localAlbumCard(
+    M3EThemeData theme,
+    MusicLibraryState state,
+    Map<String, rust.UiTrack> byId,
+    rust.UiAlbum album,
+  ) {
+    final cover = byId[album.coverTrackId];
+    return _searchMediaCard(
+      theme: theme,
+      cover: cover == null
+          ? _IconThumb(
+              theme: theme,
+              scheme: theme.colorScheme,
+              icon: M3EIcons.album,
+              size: 140,
+            )
+          : _CoverThumb(track: cover, size: 140),
+      title: album.title,
+      onTap: () => _playLocalAlbum(state, album),
+    );
+  }
+
+  Widget _localArtistCard(
+    M3EThemeData theme,
+    MusicLibraryState state,
+    Map<String, rust.UiTrack> byId,
+    rust.UiArtist artist,
+  ) {
+    final cover = byId[artist.coverTrackId];
+    return _searchMediaCard(
+      theme: theme,
+      width: 112,
+      cover: cover == null
+          ? _IconThumb(
+              theme: theme,
+              scheme: theme.colorScheme,
+              icon: M3EIcons.person,
+              size: 96,
+              circle: true,
+            )
+          : _CoverThumb(track: cover, size: 96, circle: true),
+      title: artist.name,
+      onTap: () => _playLocalArtist(state, artist),
+    );
+  }
+
+  Widget _remoteAlbumCard(
+    M3EThemeData theme,
+    SubsonicServerConfig server,
+    rust_subsonic.UiRemoteAlbum album,
+  ) {
+    return _searchMediaCard(
+      theme: theme,
+      cover: _RemoteThumb(
+        sourceId: server.id,
+        coverId: album.coverId,
+        fallbackIcon: M3EIcons.album,
+        size: 140,
+      ),
+      title: album.title,
+      onTap: () => _playRemoteAlbum(album, sourceId: server.id),
+    );
+  }
+
+  Widget _remoteArtistCard(
+    M3EThemeData theme,
+    SubsonicServerConfig server,
+    rust_subsonic.UiRemoteArtist artist,
+  ) {
+    return _searchMediaCard(
+      theme: theme,
+      width: 112,
+      cover: _RemoteThumb(
+        sourceId: server.id,
+        coverId: artist.coverId,
+        fallbackIcon: M3EIcons.person,
+        size: 96,
+        circle: true,
+      ),
+      title: artist.name,
+      onTap: () {
+        // 远端艺术家：切到该音源并在页面里下钻专辑
+        setState(() {
+          _sourceId = server.id;
+          _debouncedQuery = _query.trim();
+          _remoteArtist = artist;
+        });
+        _controller.closeView(null);
+      },
+    );
+  }
+
+  Widget _searchMediaCard({
+    required M3EThemeData theme,
+    required Widget cover,
+    required String title,
+    required VoidCallback onTap,
+    double width = 150,
+  }) {
+    return M3ECard(
+      width: width,
+      variant: M3ECardVariant.filled,
+      padding: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      borderRadius: M3EDimensions.borderRadiusLarge,
+      onPressed: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Padding(
+            padding: EdgeInsets.only(top: theme.spacing.xs),
+            child: cover,
+          ),
+          Padding(
+            padding: EdgeInsets.all(theme.spacing.sm),
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: theme.typeScale.titleSmall,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _playLocalTracks(
+    List<rust.UiTrack> tracks,
+    int index, {
+    String? sourceLabel,
+  }) {
+    if (tracks.isEmpty) return;
+    ref
+        .read(playerProvider.notifier)
+        .load(tracks, index, source: sourceLabel ?? '搜索');
+  }
+
+  void _playLocalAlbum(MusicLibraryState state, rust.UiAlbum album) {
+    final byId = {for (final track in state.tracks) track.id: track};
+    final tracks = <rust.UiTrack>[
+      for (final id in album.trackIds)
+        if (byId[id] != null) byId[id]!,
+    ];
+    _playLocalTracks(tracks, 0, sourceLabel: album.title);
+  }
+
+  void _playLocalArtist(MusicLibraryState state, rust.UiArtist artist) {
+    final tracks = <rust.UiTrack>[
+      for (final track in state.tracks)
+        if (track.artistId == artist.id) track,
+    ];
+    _playLocalTracks(tracks, 0, sourceLabel: artist.name);
   }
 
   Widget _buildResults(
@@ -581,10 +1160,12 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   void _playRemoteTracks(
     List<rust_subsonic.UiRemoteTrack> tracks,
     int index, {
+    String? sourceId,
     String? sourceLabel,
   }) {
+    final id = sourceId ?? _sourceId;
     final queue = <rust.UiTrack>[
-      for (final track in tracks) remoteTrackToUiTrack(track, _sourceId),
+      for (final track in tracks) remoteTrackToUiTrack(track, id),
     ];
     ref
         .read(playerProvider.notifier)
@@ -600,13 +1181,22 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         );
   }
 
-  Future<void> _playRemoteAlbum(rust_subsonic.UiRemoteAlbum album) async {
+  Future<void> _playRemoteAlbum(
+    rust_subsonic.UiRemoteAlbum album, {
+    String? sourceId,
+  }) async {
+    final id = sourceId ?? _sourceId;
     try {
       final tracks = await ref.read(
-        remoteTracksProvider((sourceId: _sourceId, albumId: album.id)).future,
+        remoteTracksProvider((sourceId: id, albumId: album.id)).future,
       );
       if (!mounted || tracks.isEmpty) return;
-      _playRemoteTracks(tracks, 0, sourceLabel: album.title);
+      _playRemoteTracks(
+        tracks,
+        0,
+        sourceId: id,
+        sourceLabel: album.title,
+      );
     } catch (e) {
       debugPrint('播放远端专辑失败: $e');
     }
@@ -662,30 +1252,38 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
 //搜索结果行首封面:懒加载曲目封面,无封面回退占位图标
 class _CoverThumb extends ConsumerWidget {
-  const _CoverThumb({required this.track});
+  const _CoverThumb({
+    required this.track,
+    this.size,
+    this.circle = false,
+  });
 
   final rust.UiTrack track;
+  final double? size;
+  final bool circle;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = M3ETheme.of(context);
     final scheme = theme.colorScheme;
-    final size = theme.spacing.xxl * 1.5;
+    final dimension = size ?? theme.spacing.xxl * 1.5;
     final bytes = ref.watch(trackCoverProvider(track)).value;
     final hasArt = bytes != null && bytes.isNotEmpty;
 
     return ClipRRect(
-      borderRadius: M3EDimensions.borderRadiusSmall,
+      borderRadius: circle
+          ? BorderRadius.circular(dimension / 2)
+          : M3EDimensions.borderRadiusSmall,
       child: SizedBox(
-        width: size,
-        height: size,
+        width: dimension,
+        height: dimension,
         child: hasArt
             ? Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true)
             : ColoredBox(
                 color: scheme.secondaryContainer,
                 child: Icon(
                   M3EIcons.music_note,
-                  size: 24,
+                  size: dimension * 0.32,
                   color: scheme.onSecondaryContainer,
                 ),
               ),
@@ -700,29 +1298,39 @@ class _RemoteThumb extends ConsumerWidget {
     required this.sourceId,
     required this.coverId,
     required this.fallbackIcon,
+    this.size,
+    this.circle = false,
   });
 
   final String sourceId;
   final String? coverId;
   final IconData fallbackIcon;
+  final double? size;
+  final bool circle;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = M3ETheme.of(context);
     final scheme = theme.colorScheme;
-    final size = theme.spacing.xxl * 1.5;
+    final dimension = size ?? theme.spacing.xxl * 1.5;
     final id = coverId;
 
     Widget fallback() => ColoredBox(
       color: scheme.secondaryContainer,
-      child: Icon(fallbackIcon, size: 24, color: scheme.onSecondaryContainer),
+      child: Icon(
+        fallbackIcon,
+        size: dimension * 0.32,
+        color: scheme.onSecondaryContainer,
+      ),
     );
 
     return ClipRRect(
-      borderRadius: M3EDimensions.borderRadiusSmall,
+      borderRadius: circle
+          ? BorderRadius.circular(dimension / 2)
+          : M3EDimensions.borderRadiusSmall,
       child: SizedBox(
-        width: size,
-        height: size,
+        width: dimension,
+        height: dimension,
         child: id == null || id.isEmpty
             ? fallback()
             : ref
@@ -745,19 +1353,32 @@ class _IconThumb extends StatelessWidget {
     required this.theme,
     required this.scheme,
     required this.icon,
+    this.size,
+    this.circle = false,
   });
 
   final M3EThemeData theme;
   final M3EColorScheme scheme;
   final IconData icon;
+  final double? size;
+  final bool circle;
 
   @override
   Widget build(BuildContext context) {
-    return M3EShapeContainer.square(
-      width: theme.spacing.xxl * 1.5,
-      height: theme.spacing.xxl * 1.5,
-      color: scheme.secondaryContainer,
-      child: Icon(icon, size: 24),
-    );
+    final dimension = size ?? theme.spacing.xxl * 1.5;
+    final child = Icon(icon, size: dimension * 0.32);
+    return circle
+        ? M3EShapeContainer.circle(
+            width: dimension,
+            height: dimension,
+            color: scheme.secondaryContainer,
+            child: child,
+          )
+        : M3EShapeContainer.square(
+            width: dimension,
+            height: dimension,
+            color: scheme.secondaryContainer,
+            child: child,
+          );
   }
 }
