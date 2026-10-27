@@ -6,7 +6,10 @@ import 'settings_provider.dart';
 
 //设置页左侧分类列表
 class SettingsSection extends ConsumerWidget {
-  const SettingsSection({super.key});
+  const SettingsSection({super.key, this.onSelected});
+
+  // 移动端点击分类后由页面负责跳转；桌面端为 null，右侧详情直接切换
+  final ValueChanged<SettingsCategory>? onSelected;
 
   //分组假数据
   static const List<_CategoryGroup> _groups = <_CategoryGroup>[
@@ -67,7 +70,9 @@ class SettingsSection extends ConsumerWidget {
             M3EList(
               itemCount: _groups[g].items.length,
               onTap: (i) {
-                ref.read(settingsCategoryProvider.notifier).select(_groups[g].items[i].category);
+                final category = _groups[g].items[i].category;
+                ref.read(settingsCategoryProvider.notifier).select(category);
+                onSelected?.call(category);
               },
               itemBuilder: (context, i) {
                 final item = _groups[g].items[i];

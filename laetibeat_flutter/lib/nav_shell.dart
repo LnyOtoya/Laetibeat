@@ -8,6 +8,7 @@ import 'pages/library_page.dart';
 import 'pages/settings_page.dart';
 import 'pages/playlist_page.dart';
 import 'pages/chart_page.dart';
+import 'widgets/player/mini_player.dart';
 
 class NavShell extends StatefulWidget {
   const NavShell({super.key});
@@ -136,13 +137,20 @@ class _NavShellState extends State<NavShell> {
           bottom: false,
           child: _pages[_pageIndex],
         ),
-        bottomNavigationBar: M3ENavigationBar(
-          destinations: _mobileDestinations,
-          selectedIndex: _mobileSelectedIndex,
-          onDestinationSelected: _onMobileDestinationSelected,
-          size: M3ENavBarSize.small,
-          density: M3ENavBarDensity.compact,
-          labelBehavior: M3ENavBarLabelBehavior.onlySelected,
+        bottomNavigationBar: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 导航栏上方的全局迷你播放器，仅移动端显示
+            const MiniPlayer(),
+            M3ENavigationBar(
+              destinations: _mobileDestinations,
+              selectedIndex: _mobileSelectedIndex,
+              onDestinationSelected: _onMobileDestinationSelected,
+              size: M3ENavBarSize.small,
+              density: M3ENavBarDensity.compact,
+              labelBehavior: M3ENavBarLabelBehavior.onlySelected,
+            ),
+          ],
         ),
       );
     }
