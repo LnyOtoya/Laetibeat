@@ -133,24 +133,32 @@ class _NavShellState extends State<NavShell> {
     // 移动端：底部 NavigationBar，搜索作为其中一个目的地
     if (!isDesktop) {
       return Scaffold(
-        body: SafeArea(
-          bottom: false,
-          child: _pages[_pageIndex],
-        ),
-        bottomNavigationBar: Column(
-          mainAxisSize: MainAxisSize.min,
+        // 页面内容自身负责底色；toolbar 外圈不再有独立底栏背景
+        backgroundColor: theme.colorScheme.surfaceContainer,
+        body: Stack(
           children: [
-            // 导航栏上方的全局迷你播放器，仅移动端显示
-            const MiniPlayer(),
-            M3ENavigationBar(
-              destinations: _mobileDestinations,
-              selectedIndex: _mobileSelectedIndex,
-              onDestinationSelected: _onMobileDestinationSelected,
-              size: M3ENavBarSize.small,
-              density: M3ENavBarDensity.compact,
-              labelBehavior: M3ENavBarLabelBehavior.onlySelected,
+            Positioned.fill(
+              child: SafeArea(
+                bottom: false,
+                child: _pages[_pageIndex],
+              ),
+            ),
+            // 浮动在页面内容之上；周围留白直接透出页面内容
+            const Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: MiniPlayer(),
             ),
           ],
+        ),
+        bottomNavigationBar: M3ENavigationBar(
+          destinations: _mobileDestinations,
+          selectedIndex: _mobileSelectedIndex,
+          onDestinationSelected: _onMobileDestinationSelected,
+          size: M3ENavBarSize.small,
+          density: M3ENavBarDensity.compact,
+          labelBehavior: M3ENavBarLabelBehavior.onlySelected,
         ),
       );
     }

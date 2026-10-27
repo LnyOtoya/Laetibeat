@@ -87,44 +87,55 @@ class _SettingsCategoryPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surfaceContainer,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                theme.spacing.sm,
-                theme.spacing.sm,
-                theme.spacing.sm,
-                0,
-              ),
-              child: Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: M3EIconButton(
-                  size: M3EIconButtonSize.sm,
-                  icon: const Icon(M3EIcons.arrow_back),
-                  tooltip: '返回',
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: SafeArea(
+              child: Column(
+                children: [
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      theme.spacing.sm,
+                      theme.spacing.sm,
+                      theme.spacing.sm,
+                      0,
+                    ),
+                    child: Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: M3EIconButton(
+                        size: M3EIconButtonSize.sm,
+                        icon: const Icon(M3EIcons.arrow_back),
+                        tooltip: '返回',
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        theme.spacing.sm,
+                        0,
+                        theme.spacing.sm,
+                        theme.spacing.md,
+                      ),
+                      child: _settingsContent(category),
+                    ),
+                  ),
+                ],
               ),
             ),
-            Expanded(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(
-                  theme.spacing.sm,
-                  0,
-                  theme.spacing.sm,
-                  theme.spacing.md,
-                ),
-                child: _settingsContent(category),
-              ),
+          ),
+          // 独立详情页也保留浮动迷你播放器，直接覆盖在内容之上
+          const Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: SafeArea(
+              top: false,
+              child: MiniPlayer(),
             ),
-          ],
-        ),
-      ),
-      // 独立详情页也保留全局迷你播放器
-      bottomNavigationBar: const SafeArea(
-        top: false,
-        child: MiniPlayer(),
+          ),
+        ],
       ),
     );
   }
