@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 
+import 'player/mini_player.dart' show MiniPlayerScope;
+
 const double kSinglePaneBreakpoint = 720;
 
 // 与 TwoPaneLayout 使用同一套单栏判断，供页面自己决定是否走独立页面导航
@@ -40,6 +42,10 @@ class TwoPaneLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = M3ETheme.of(context);
+    // 移动端有 mini player 时让页面容器贴底，避免容器下缘在胶囊周围形成外壳
+    final bottomPad = MiniPlayerScope.reservedHeightOf(context) > 0
+        ? 0.0
+        : theme.spacing.md;
 
     return LayoutBuilder(
       builder: (context, c) {
@@ -54,7 +60,7 @@ class TwoPaneLayout extends StatelessWidget {
               theme.spacing.md,
               0,
               theme.spacing.md,
-              theme.spacing.md,
+              bottomPad,
             ),
             child: left,
           );

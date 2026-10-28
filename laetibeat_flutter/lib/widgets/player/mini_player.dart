@@ -5,6 +5,32 @@ import 'cover_provider.dart';
 import 'playback_panel.dart';
 import 'player_provider.dart';
 
+/// 移动端 mini player 需要预留的布局高度：
+/// 64dp toolbar + 上下各 16dp 的 floating 外边距。
+const double kMiniPlayerReservedHeight = 96;
+
+/// 由移动端导航壳提供：页面内容需要给浮动 mini player 预留的底部高度。
+/// 桌面端没有该作用域时返回 0。
+class MiniPlayerScope extends InheritedWidget {
+  const MiniPlayerScope({
+    super.key,
+    required this.reservedHeight,
+    required super.child,
+  });
+
+  final double reservedHeight;
+
+  static double reservedHeightOf(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<MiniPlayerScope>()
+          ?.reservedHeight ??
+      0;
+
+  @override
+  bool updateShouldNotify(MiniPlayerScope oldWidget) =>
+      oldWidget.reservedHeight != reservedHeight;
+}
+
 // 移动端全局迷你播放器：M3E floating toolbar + 封面 + 标题/艺术家 + 三个控制按钮
 class MiniPlayer extends ConsumerWidget {
   const MiniPlayer({super.key});
@@ -30,6 +56,7 @@ class MiniPlayer extends ConsumerWidget {
           return M3EToolbar.floating(
             colorStyle: M3EToolbarColorStyle.standard,
             axis: Axis.horizontal,
+            // 胶囊保留自己的背景，并与播放页共用封面取色
             backgroundColor: background,
             foregroundColor: foreground,
             leading: GestureDetector(

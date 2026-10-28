@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import '../widgets/two_pane_layout.dart';
+import '../widgets/player/mini_player.dart' show MiniPlayerScope;
 import '../widgets/player/player_right_pane.dart';
 import '../widgets/welcome_section.dart';
 import '../widgets/recent_section.dart';
@@ -23,6 +24,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final theme = M3ETheme.of(context);
+    final bottomInset = MiniPlayerScope.reservedHeightOf(context);
 
     return TwoPaneLayout(
       leftFlex: 3,
@@ -31,16 +33,19 @@ class _HomePageState extends State<HomePage> {
       left: ScrollConfiguration(
         behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
         child: SingleChildScrollView(
-          child: Column(
-            children: [
-              WelcomeSection(),
-              SizedBox(height: theme.spacing.md),
-              RecentSection(),
-              SizedBox(height: theme.spacing.md),
-              DailySection(),
-              SizedBox(height: theme.spacing.md),
-              HistorySection(),
-            ],
+          child: Padding(
+            padding: EdgeInsets.only(bottom: bottomInset),
+            child: Column(
+              children: [
+                WelcomeSection(),
+                SizedBox(height: theme.spacing.md),
+                RecentSection(),
+                SizedBox(height: theme.spacing.md),
+                DailySection(),
+                SizedBox(height: theme.spacing.md),
+                HistorySection(),
+              ],
+            ),
           ),
         ),
       ),

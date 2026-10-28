@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../animations.dart';
+import '../player/mini_player.dart' show MiniPlayerScope;
 import 'settings_provider.dart';
 
 //设置页左侧分类列表
@@ -34,6 +35,7 @@ class SettingsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = M3ETheme.of(context);
     final scheme = theme.colorScheme;
+    final miniPlayerInset = MiniPlayerScope.reservedHeightOf(context);
     final selected = ref.watch(settingsCategoryProvider);
 
     return AnimatedContainer(
@@ -45,10 +47,13 @@ class SettingsSection extends ConsumerWidget {
         borderRadius: M3EDimensions.borderRadiusMedium,
       ),
       padding: EdgeInsets.all(theme.spacing.xl),
-      child: ScrollConfiguration(
-        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-        child: SingleChildScrollView(
-          child: Column(
+      child: Padding(
+        padding: EdgeInsets.only(bottom: miniPlayerInset),
+        child: ScrollConfiguration(
+          behavior:
+              ScrollConfiguration.of(context).copyWith(scrollbars: false),
+          child: SingleChildScrollView(
+            child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
           //标题
@@ -92,8 +97,9 @@ class SettingsSection extends ConsumerWidget {
         ],
       ),
     ),
-    ),
-  );
+  ),
+),
+);
 }
 }
 

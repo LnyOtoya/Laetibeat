@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../animations.dart';
 import '../widgets/player/cover_provider.dart';
+import '../widgets/player/mini_player.dart' show MiniPlayerScope;
 import '../widgets/player/player_provider.dart';
 import '../widgets/player/player_right_pane.dart';
 import '../widgets/remote_browser_provider.dart';
@@ -111,6 +112,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   Widget _buildLeft(BuildContext context) {
     final theme = M3ETheme.of(context);
     final scheme = theme.colorScheme;
+    final miniPlayerInset = MiniPlayerScope.reservedHeightOf(context);
     final query = _query.trim();
 
     return AnimatedContainer(
@@ -139,9 +141,12 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           ),
           SizedBox(height: theme.spacing.lg),
           Expanded(
-            child: query.isEmpty
-                ? _buildSearchHistory(theme)
-                : _buildSearchResults(theme, query),
+            child: Padding(
+              padding: EdgeInsets.only(bottom: miniPlayerInset),
+              child: query.isEmpty
+                  ? _buildSearchHistory(theme)
+                  : _buildSearchResults(theme, query),
+            ),
           ),
         ],
       ),

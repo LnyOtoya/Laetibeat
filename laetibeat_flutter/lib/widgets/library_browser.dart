@@ -8,6 +8,7 @@ import 'settings/music_library_provider.dart';
 import 'settings/subsonic_provider.dart';
 import 'player/player_provider.dart';
 import 'player/cover_provider.dart';
+import 'player/mini_player.dart' show MiniPlayerScope;
 
 //音乐库浏览筛选
 enum LibraryFilter { track, artist, album }
@@ -59,6 +60,7 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
   Widget build(BuildContext context) {
     final theme = M3ETheme.of(context);
     final scheme = theme.colorScheme;
+    final miniPlayerInset = MiniPlayerScope.reservedHeightOf(context);
     final music = ref.watch(musicLibraryProvider);
     final servers =
         ref.watch(subsonicServersProvider).value ??
@@ -120,10 +122,13 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
           ],
           if (remoteSourceId != null) ...[
             Expanded(
-              child: RemoteLibraryView(
-                key: ValueKey(remoteSourceId),
-                sourceId: remoteSourceId,
-                serverName: selectedServer!.name,
+              child: Padding(
+                padding: EdgeInsets.only(bottom: miniPlayerInset),
+                child: RemoteLibraryView(
+                  key: ValueKey(remoteSourceId),
+                  sourceId: remoteSourceId,
+                  serverName: selectedServer!.name,
+                ),
               ),
             ),
           ] else ...[
@@ -157,10 +162,13 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
             ),
             SizedBox(height: theme.spacing.lg),
             Expanded(
-              child: ScrollConfiguration(
-                behavior:
-                    ScrollConfiguration.of(context).copyWith(scrollbars: false),
-                child: _buildBody(theme, scheme, music.value),
+              child: Padding(
+                padding: EdgeInsets.only(bottom: miniPlayerInset),
+                child: ScrollConfiguration(
+                  behavior: ScrollConfiguration.of(context)
+                      .copyWith(scrollbars: false),
+                  child: _buildBody(theme, scheme, music.value),
+                ),
               ),
             ),
           ],

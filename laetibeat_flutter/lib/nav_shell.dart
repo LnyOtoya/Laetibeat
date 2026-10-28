@@ -205,20 +205,23 @@ class _NavShellState extends State<NavShell> {
         body: Stack(
           children: [
             Positioned.fill(
-              child: NotificationListener<ScrollNotification>(
-                onNotification: _onPageScroll,
-                child: _pageIndex == 0
-                    ? Column(
-                        children: [
-                          // 移动端首页顶部 AppBar
-                          _buildHomeAppBar(theme),
-                          Expanded(child: _pages[_pageIndex]),
-                        ],
-                      )
-                    : SafeArea(
-                        bottom: false,
-                        child: _pages[_pageIndex],
-                      ),
+              child: MiniPlayerScope(
+                reservedHeight: kMiniPlayerReservedHeight,
+                child: NotificationListener<ScrollNotification>(
+                  onNotification: _onPageScroll,
+                  child: _pageIndex == 0
+                      ? Column(
+                          children: [
+                            // 移动端首页顶部 AppBar
+                            _buildHomeAppBar(theme),
+                            Expanded(child: _pages[_pageIndex]),
+                          ],
+                        )
+                      : SafeArea(
+                          bottom: false,
+                          child: _pages[_pageIndex],
+                        ),
+                ),
               ),
             ),
             // 浮动在页面内容之上；周围留白直接透出页面内容
