@@ -1,5 +1,4 @@
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
@@ -87,10 +86,10 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
           // 永远保持正方形,高度余量被 Expanded 吸收;文字/图标/圆角始终原生像素渲染。
           return LayoutBuilder(
             builder: (context, c) {
-              // 窄屏(如未来 Android 竖屏)进入紧凑模式:收拢次要控件
+              // 窄屏(如 Android 竖屏)进入紧凑模式:收紧留白,把空间让给封面
               final compact = c.maxWidth < _compactBreakpoint;
-              final hPad = theme.spacing.xl;
-              final vPad = theme.spacing.lg;
+              final hPad = compact ? theme.spacing.lg : theme.spacing.xl;
+              final vPad = compact ? theme.spacing.md : theme.spacing.lg;
 
               // 面板主体:矮窗口退化为可滚动,否则用 Expanded 流式填充
               Widget body() {
@@ -103,7 +102,13 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _sourceArea(theme, scheme, player),
+                        _sourceArea(
+                          theme,
+                          scheme,
+                          player,
+                          bottomGap:
+                              compact ? theme.spacing.sm : theme.spacing.lg,
+                        ),
                         // 封面/歌词区:封面向上滑出淡出,歌词平滑进入(反向亦然)。
                         // 歌词态同时放大可用高度,把来源区收起释放的空间让给歌词;
                         // 沉浸模式下底部控件再收起,歌词进一步扩展。
@@ -123,9 +128,17 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
                           ),
                           child: _mainArea(theme, bytes),
                         ),
-                        SizedBox(height: theme.spacing.xxl),
+                        SizedBox(
+                          height: compact
+                              ? theme.spacing.lg
+                              : theme.spacing.xxl,
+                        ),
                         _infoRow(context, theme, track, bytes),
-                        SizedBox(height: theme.spacing.xxl),
+                        SizedBox(
+                          height: compact
+                              ? theme.spacing.lg
+                              : theme.spacing.xxl,
+                        ),
                         _controlRegion(context, theme, scheme, player, ref,
                             compact: compact),
                       ],
@@ -141,14 +154,29 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // 来源区顶部留缝,整体稍下移;歌词态整体收起,空间让给歌词
-                      _sourceArea(theme, scheme, player,
-                          topGap: theme.spacing.xl),
+                      // 来源区顶部留缝;窄屏收紧,让来源文字上移、封面获得更多空间
+                      _sourceArea(
+                        theme,
+                        scheme,
+                        player,
+                        topGap: compact
+                            ? theme.spacing.sm
+                            : theme.spacing.xl,
+                        bottomGap: compact
+                            ? theme.spacing.sm
+                            : theme.spacing.lg,
+                      ),
                       Expanded(child: _mainArea(theme, bytes)),
                       // 信息行距离控制区: 间距稍大
-                      SizedBox(height: theme.spacing.xxl),
+                      SizedBox(
+                        height:
+                            compact ? theme.spacing.lg : theme.spacing.xxl,
+                      ),
                       _infoRow(context, theme, track, bytes),
-                      SizedBox(height: theme.spacing.xxl),
+                      SizedBox(
+                        height:
+                            compact ? theme.spacing.lg : theme.spacing.xxl,
+                      ),
                       _controlRegion(context, theme, scheme, player, ref,
                           compact: compact),
                     ],
@@ -241,6 +269,7 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
     M3EColorScheme scheme,
     PlayerState player, {
     double topGap = 0,
+    double? bottomGap,
   }) {
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 1, end: _showLyrics ? 0 : 1),
@@ -262,7 +291,7 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
         children: [
           if (topGap > 0) SizedBox(height: topGap),
           _sourceRegion(theme, scheme, player),
-          SizedBox(height: theme.spacing.lg),
+          SizedBox(height: bottomGap ?? theme.spacing.lg),
         ],
       ),
     );
@@ -423,8 +452,11 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
               if (_showLyrics) {
                 // 歌词页:全屏按钮 = 歌词沉浸模式开关(不进入全屏页)
                 setState(() => _lyricsImmersive = !_lyricsImmersive);
+              } else if (widget.fullscreen) {
+                // 已经处于全屏播放页:直接退出,避免重复 push
+                Navigator.of(context).maybePop();
               } else {
-                // 播放页(封面):保持原有全屏播放页行为
+                // 播放页(封面):进入全屏播放页
                 _openFullscreen(context);
               }
             }
@@ -438,10 +470,14 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
             }
           },
           actions: [
-            const M3EButtonGroupAction(
-              icon: Icon(Icons.fullscreen),
-              semanticLabel: '全屏',
-              tooltip: '全屏',
+            M3EButtonGroupAction(
+              icon: Icon(
+                widget.fullscreen && !_showLyrics
+                    ? Icons.fullscreen_exit
+                    : Icons.fullscreen,
+              ),
+              semanticLabel: widget.fullscreen && !_showLyrics ? '退出全屏' : '全屏',
+              tooltip: widget.fullscreen && !_showLyrics ? '退出全屏' : '全屏',
             ),
             const M3EButtonGroupAction(
               icon: Icon(Icons.lyrics),
@@ -889,14 +925,31 @@ class PlaybackFullscreenPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final bool isMobile =
+        defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
+
     //封面取色作用域包住整页:Scaffold 底色也随封面带色(secondaryContainer)
     return PlaybackCoverScope(
       child: Builder(
         builder: (inner) {
           final theme = M3ETheme.of(inner);
           final coverInfo = ref.watch(playbackCoverProvider).value;
+          final background = playbackPanelBackground(theme, coverInfo);
+
+          // 移动端:不显示左上角退出按钮,播放面板直接占满安全区
+          if (isMobile) {
+            return Scaffold(
+              backgroundColor: background,
+              body: SafeArea(
+                child: PlaybackPanel(fullscreen: true),
+              ),
+            );
+          }
+
+          // 桌面端保持原有居中布局和关闭按钮
           return Scaffold(
-            backgroundColor: playbackPanelBackground(theme, coverInfo),
+            backgroundColor: background,
             body: SafeArea(
               child: Padding(
                 padding: EdgeInsets.all(theme.spacing.xxl),
