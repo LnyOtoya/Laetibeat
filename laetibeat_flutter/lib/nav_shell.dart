@@ -27,6 +27,10 @@ class _NavShellState extends State<NavShell> {
   int _selectedIndex = 0;
   int _pageIndex = 0;
 
+  // 移动端底部导航栏的显隐控制（配合 hideOnScroll）
+  final M3ENavigationBarController _navBarController =
+      M3ENavigationBarController();
+
   static const List<Widget> _pages = [
     HomePage(),
     LibraryPage(),
@@ -60,9 +64,9 @@ class _NavShellState extends State<NavShell> {
     ),
   ];
 
-  // 移动端 NavigationBar：搜索从桌面 FAB 变成普通目的地
-  // 顺序即展示顺序，值为对应的 _pages 索引
-  static const List<int> _mobilePageOrder = [0, 1, 5, 3, 4, 2];
+  // 移动端 NavigationBar：只保留首页/音乐库/搜索
+  // 歌单、图表、设置改由首页 AppBar 右侧按钮进入
+  static const List<int> _mobilePageOrder = [0, 1, 5];
 
   static const List<M3ENavigationBarDestination> _mobileDestinations = [
     M3ENavigationBarDestination(
@@ -76,18 +80,6 @@ class _NavShellState extends State<NavShell> {
     M3ENavigationBarDestination(
       icon: Icon(M3EIcons.search),
       label: 'Search',
-    ),
-    M3ENavigationBarDestination(
-      icon: Icon(M3EIcons.queue_music),
-      label: 'Playlists',
-    ),
-    M3ENavigationBarDestination(
-      icon: Icon(M3EIcons.bar_chart),
-      label: 'Charts',
-    ),
-    M3ENavigationBarDestination(
-      icon: Icon(M3EIcons.settings),
-      label: 'Settings',
     ),
   ];
 
@@ -120,6 +112,81 @@ class _NavShellState extends State<NavShell> {
       _pageIndex = pageIndex;
       _selectedIndex = pageIndex == _searchPageIndex ? -1 : pageIndex;
     });
+    _showNavBar();
+  }
+
+  // 首页 AppBar 的快捷入口：歌单/图表/设置
+  void _openPage(int pageIndex) {
+    if (_pageIndex == pageIndex) return;
+    setState(() {
+      _pageIndex = pageIndex;
+      _selectedIndex = pageIndex == _searchPageIndex ? -1 : pageIndex;
+    });
+    _showNavBar();
+  }
+
+  void _showNavBar() {
+    _navBarController.show();
+  }
+
+  // 跟随页面最外层纵向滚动控制底部导航栏显隐
+  bool _onPageScroll(ScrollNotification notification) {
+    if (notification.depth != 0 ||
+        notification.metrics.axis != Axis.vertical) {
+      return false;
+    }
+    // 回到顶部时始终显示
+    if (notification.metrics.pixels <= 0) {
+      _showNavBar();
+      return false;
+    }
+    if (notification is ScrollUpdateNotification) {
+      final double delta = notification.scrollDelta ?? 0;
+      if (delta > 0) {
+        _navBarController.hide();
+      } else if (delta < 0) {
+        _showNavBar();
+      }
+    }
+    return false;
+  }
+
+  @override
+  void dispose() {
+    _navBarController.dispose();
+    super.dispose();
+  }
+
+  Widget _buildHomeAppBar(M3EThemeData theme) {
+    return M3EAppBar.top(
+      titleText: '首页',
+      variant: M3EAppBarVariant.small,
+      hideMode: M3EAppBarHideMode.entire,
+      density: M3EAppBarDensity.regular,
+      shapeFamily: M3EAppBarShapeFamily.square,
+      safeArea: true,
+      backgroundColor: theme.colorScheme.surfaceContainer,
+      actions: [
+        M3EIconButton(
+          variant: M3EIconButtonVariant.standard,
+          icon: const Icon(M3EIcons.queue_music),
+          tooltip: '播放列表',
+          onPressed: () => _openPage(3),
+        ),
+        M3EIconButton(
+          variant: M3EIconButtonVariant.standard,
+          icon: const Icon(M3EIcons.bar_chart),
+          tooltip: '图表',
+          onPressed: () => _openPage(4),
+        ),
+        M3EIconButton(
+          variant: M3EIconButtonVariant.standard,
+          icon: const Icon(M3EIcons.settings),
+          tooltip: '设置',
+          onPressed: () => _openPage(2),
+        ),
+      ],
+    );
   }
 
   @override
@@ -138,9 +205,20 @@ class _NavShellState extends State<NavShell> {
         body: Stack(
           children: [
             Positioned.fill(
-              child: SafeArea(
-                bottom: false,
-                child: _pages[_pageIndex],
+              child: NotificationListener<ScrollNotification>(
+                onNotification: _onPageScroll,
+                child: _pageIndex == 0
+                    ? Column(
+                        children: [
+                          // 移动端首页顶部 AppBar
+                          _buildHomeAppBar(theme),
+                          Expanded(child: _pages[_pageIndex]),
+                        ],
+                      )
+                    : SafeArea(
+                        bottom: false,
+                        child: _pages[_pageIndex],
+                      ),
               ),
             ),
             // 浮动在页面内容之上；周围留白直接透出页面内容
@@ -156,9 +234,12 @@ class _NavShellState extends State<NavShell> {
           destinations: _mobileDestinations,
           selectedIndex: _mobileSelectedIndex,
           onDestinationSelected: _onMobileDestinationSelected,
-          size: M3ENavBarSize.small,
+          controller: _navBarController,
+          size: M3ENavBarSize.medium,
           density: M3ENavBarDensity.compact,
-          labelBehavior: M3ENavBarLabelBehavior.onlySelected,
+          shapeFamily: M3ENavBarShapeFamily.square,
+          labelBehavior: M3ENavBarLabelBehavior.alwaysShow,
+          hideOnScroll: true,
         ),
       );
     }

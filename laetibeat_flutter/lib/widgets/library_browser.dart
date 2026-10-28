@@ -18,9 +18,12 @@ class LibraryBrowser extends ConsumerStatefulWidget {
     super.key,
     //点击某行时的回调,由页面打开右侧详情
     this.onSelect,
+    //单栏布局(移动端/窄窗口)下把音源切换按钮移到内容容器上方
+    this.sourceSplitAboveContainer = false,
   });
 
   final void Function(String headline, String supporting)? onSelect;
+  final bool sourceSplitAboveContainer;
 
   @override
   ConsumerState<LibraryBrowser> createState() => _LibraryBrowserState();
@@ -70,7 +73,34 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
     }
     final remoteSourceId = selectedServer?.id;
 
-    return AnimatedContainer(
+    //音源切换:配置了远端服务器后才显示
+    final Widget? sourceSplitButton = servers.isEmpty
+        ? null
+        : M3ESplitButton<String>(
+            items: [
+              const M3ESplitButtonItem(
+                value: _localSource,
+                child: Text('本地音乐'),
+              ),
+              for (final server in servers)
+                M3ESplitButtonItem(
+                  value: server.id,
+                  child: Text(server.name),
+                ),
+            ],
+            selectedValue: remoteSourceId ?? _localSource,
+            label: selectedServer?.name ?? '本地音乐',
+            style: M3EButtonStyle.filled,
+            size: M3EButtonSize.md,
+            shape: M3EButtonShape.round,
+            onSelected: (value) => setState(() {
+              _sourceId = value == _localSource ? null : value;
+              _openedAlbum = null;
+              _selectionController.clear();
+            }),
+          );
+
+    final Widget container = AnimatedContainer(
       duration: kSectionAnimDuration,
       curve: kSectionAnimCurve,
       clipBehavior: Clip.hardEdge,
@@ -82,31 +112,10 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          //音源切换:配置了远端服务器后才显示
-          if (servers.isNotEmpty) ...[
-            M3ESplitButton<String>(
-              items: [
-                const M3ESplitButtonItem(
-                  value: _localSource,
-                  child: Text('本地音乐'),
-                ),
-                for (final server in servers)
-                  M3ESplitButtonItem(
-                    value: server.id,
-                    child: Text(server.name),
-                  ),
-              ],
-              selectedValue: remoteSourceId ?? _localSource,
-              label: selectedServer?.name ?? '本地音乐',
-              style: M3EButtonStyle.filled,
-              size: M3EButtonSize.md,
-              shape: M3EButtonShape.round,
-              onSelected: (value) => setState(() {
-                _sourceId = value == _localSource ? null : value;
-                _openedAlbum = null;
-                _selectionController.clear();
-              }),
-            ),
+          //桌面双栏时音源切换仍在容器内
+          if (!widget.sourceSplitAboveContainer &&
+              sourceSplitButton != null) ...[
+            sourceSplitButton,
             SizedBox(height: theme.spacing.md),
           ],
           if (remoteSourceId != null) ...[
@@ -157,6 +166,19 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
           ],
         ],
       ),
+    );
+
+    //单栏时音源切换按钮独立浮在内容容器上方
+    if (!widget.sourceSplitAboveContainer || sourceSplitButton == null) {
+      return container;
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        sourceSplitButton,
+        SizedBox(height: theme.spacing.md),
+        Expanded(child: container),
+      ],
     );
   }
 

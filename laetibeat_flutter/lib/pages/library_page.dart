@@ -18,12 +18,20 @@ class _LibraryPageState extends State<LibraryPage> {
 
   @override
   Widget build(BuildContext context) {
-    return TwoPaneLayout(
-      leftFlex: 3,
-      rightFlex: 2,
-      rightMaxWidth: 520,
-      left: LibraryBrowser(onSelect: _openDetail),
-      right: PlayerRightPane(key: _rightPaneKey),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final singlePane = useSinglePaneLayout(context, constraints.maxWidth);
+        return TwoPaneLayout(
+          leftFlex: 3,
+          rightFlex: 2,
+          rightMaxWidth: 520,
+          left: LibraryBrowser(
+            onSelect: _openDetail,
+            sourceSplitAboveContainer: singlePane,
+          ),
+          right: PlayerRightPane(key: _rightPaneKey),
+        );
+      },
     );
   }
 
