@@ -1,8 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 网络访问：release 也必须声明，否则无法连接 Navidrome / 播放网络音乐 -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="laetibeat"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"
