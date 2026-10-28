@@ -40,8 +40,6 @@ class _RemoteLibraryViewState extends ConsumerState<RemoteLibraryView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _header(theme: theme, title: widget.serverName, subtitle: '远端艺术家'),
-        SizedBox(height: theme.spacing.md),
         Expanded(
           child: artists.when(
             loading: () => _loading(theme),

@@ -183,7 +183,10 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        sourceSplitButton,
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: theme.spacing.md),
+          child: sourceSplitButton,
+        ),
         SizedBox(height: theme.spacing.md),
         Expanded(child: container),
       ],

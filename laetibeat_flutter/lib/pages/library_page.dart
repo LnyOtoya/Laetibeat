@@ -25,6 +25,7 @@ class _LibraryPageState extends State<LibraryPage> {
           leftFlex: 3,
           rightFlex: 2,
           rightMaxWidth: 520,
+          fullBleedSinglePane: true,
           left: LibraryBrowser(
             onSelect: _openDetail,
             sourceSplitAboveContainer: singlePane,

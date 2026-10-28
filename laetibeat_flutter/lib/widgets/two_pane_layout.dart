@@ -30,6 +30,8 @@ class TwoPaneLayout extends StatelessWidget {
     this.rightMaxWidth,
     // 小于该宽度时只显示左侧,右区暂时隐藏
     this.singlePaneBreakpoint = kSinglePaneBreakpoint,
+    // 单栏时是否让内容容器左右贴边
+    this.fullBleedSinglePane = false,
   });
 
   final Widget left;
@@ -38,6 +40,7 @@ class TwoPaneLayout extends StatelessWidget {
   final int rightFlex;
   final double? rightMaxWidth;
   final double singlePaneBreakpoint;
+  final bool fullBleedSinglePane;
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +49,7 @@ class TwoPaneLayout extends StatelessWidget {
     final bottomPad = MiniPlayerScope.reservedHeightOf(context) > 0
         ? 0.0
         : theme.spacing.md;
+    final horizontalPad = fullBleedSinglePane ? 0.0 : theme.spacing.md;
 
     return LayoutBuilder(
       builder: (context, c) {
@@ -57,9 +61,9 @@ class TwoPaneLayout extends StatelessWidget {
         )) {
           return Padding(
             padding: EdgeInsets.fromLTRB(
-              theme.spacing.md,
+              horizontalPad,
               0,
-              theme.spacing.md,
+              horizontalPad,
               bottomPad,
             ),
             child: left,
