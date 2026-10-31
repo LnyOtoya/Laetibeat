@@ -82,9 +82,9 @@
 ## 阶段7：跨平台与系统集成
 
 - [x] 7.1 Linux 桌面音频输出与调试构建
-- [x] 7.2 导航壳解耦：DesktopShell / MobileShell 分离，页面按形态独立组合
+- [x] 7.2 导航壳解耦：DesktopApp / MobileApp 分离，页面按形态独立组合
 - [x] 7.3 页面响应式：桌面 TwoPaneLayout 窄屏折叠，移动端使用独立单栏页面
-- [x] 7.4 移动端播放页：迷你播放器 + 全屏页，隐藏 DevicePanel
+- [ ] 7.4 移动端播放页：待在新 MobileApp 中重写迷你播放器 + 全屏页
 - [ ] 7.5 MPRIS 迁移到 audio_service + audio_service_mpris（当前自研 MPRIS 已停用）
 - [ ] 7.6 Android 后台播放、媒体会话、常驻通知
 - [ ] 7.7 Windows / macOS / Android 打包与适配测试
@@ -99,6 +99,7 @@
 - 本地音乐库仍使用 JSON 快照；播放统计与远端库使用两个独立 SQLite
 - 多个设置分类仍是占位：播放器与音频、储存、备份与还原、更新日志
 - 导航 Favorite/History/Daily Recommend 目前只改变选中态，不切换页面
+- 移动端 UI 已收缩为 `lib/pages/mobile/mobile_app.dart` 占位壳，旧移动页面已删除，待重写
 - 移动端目录选择已抽象为 DirectoryPicker，但 MobileDirectoryPicker 仍返回 null，需接 SAF / READ_MEDIA_AUDIO
 - 移动端后台播放与 MediaSession 尚未接入，MediaSessionService 当前为 Noop
 - 远端推荐依赖先执行一次「同步音乐」
