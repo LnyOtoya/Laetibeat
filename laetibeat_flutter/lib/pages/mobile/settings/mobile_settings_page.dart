@@ -14,6 +14,7 @@ class MobileSettingsPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: theme.colorScheme.surfaceContainer,
       appBar: M3EAppBar.top(
+        backgroundColor: theme.colorScheme.surfaceContainer,
         titleText: '设置',
         leading: M3EIconButton(
           variant: M3EIconButtonVariant.standard,

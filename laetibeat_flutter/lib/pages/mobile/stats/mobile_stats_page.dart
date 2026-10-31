@@ -14,6 +14,7 @@ class MobileStatsPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: theme.colorScheme.surfaceContainer,
       appBar: M3EAppBar.top(
+        backgroundColor: theme.colorScheme.surfaceContainer,
         titleText: '统计',
         leading: M3EIconButton(
           variant: M3EIconButtonVariant.standard,

@@ -50,6 +50,7 @@ class _MobileAppState extends State<MobileApp> {
   late final _MobileNavigatorObserver _navigatorObserver =
       _MobileNavigatorObserver(_handleRouteChanged);
   AppDestination _currentTab = AppDestination.home;
+  bool _showNavigationBar = true;
 
   String _routeNameOf(AppDestination destination) {
     return switch (destination) {
@@ -60,6 +61,8 @@ class _MobileAppState extends State<MobileApp> {
   }
 
   void _handleRouteChanged(Route<dynamic>? route) {
+    if (!mounted) return;
+
     final String? name = route?.settings.name;
     final AppDestination? tab = switch (name) {
       MobileRoutes.home => AppDestination.home,
@@ -67,14 +70,32 @@ class _MobileAppState extends State<MobileApp> {
       MobileRoutes.search => AppDestination.search,
       _ => null,
     };
+    final bool? showNavigationBar = switch (name) {
+      MobileRoutes.home ||
+      MobileRoutes.library ||
+      MobileRoutes.search => true,
+      MobileRoutes.stats || MobileRoutes.settings => false,
+      _ => null,
+    };
 
-    // 详情页等未知 route 不改变底部导航的选中项。
-    if (tab == null || tab == _currentTab) return;
+    bool changed = false;
+    if (tab != null && tab != _currentTab) {
+      _currentTab = tab;
+      changed = true;
+    }
+    // 统计 / 设置是独立页面，不显示底部导航。
+    // 未知 route（例如详情页）保持当前导航栏状态。
+    if (showNavigationBar != null &&
+        showNavigationBar != _showNavigationBar) {
+      _showNavigationBar = showNavigationBar;
+      changed = true;
+    }
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || tab == _currentTab) return;
-      setState(() => _currentTab = tab);
-    });
+    if (changed) {
+      // NavigatorObserver 已经统一在 post-frame 回调中通知，
+      // 此时 setState 是安全的。
+      setState(() {});
+    }
   }
 
   void _selectTab(AppDestination destination) {
@@ -99,9 +120,10 @@ class _MobileAppState extends State<MobileApp> {
       return;
     }
 
-    // 底部导航是平级目的地：先回到 Home，再打开目标页面。
-    // 这样任意非 Home 页面的返回栈都是 Home -> 目标页面。
-    navigator.popUntil((Route<dynamic> route) => route.isFirst);
+    // 保留真实的 tab 历史：
+    // Home -> Library -> Search
+    // 返回时 Search -> Library -> Home。
+    // 这里直接 push，不 pop 到 Home，也不会出现 Home 的闪现。
     navigator.pushNamed(routeName);
   }
 
@@ -136,18 +158,20 @@ class _MobileAppState extends State<MobileApp> {
           onGenerateRoute: _onGenerateRoute,
         ),
       ),
-      bottomNavigationBar: M3ENavigationBar(
-        destinations: _destinations,
-        selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
-        onDestinationSelected: (int index) {
-          if (index < 0 || index >= _tabs.length) return;
-          _selectTab(_tabs[index]);
-        },
-        size: M3ENavBarSize.medium,
-        density: M3ENavBarDensity.compact,
-        shapeFamily: M3ENavBarShapeFamily.square,
-        labelBehavior: M3ENavBarLabelBehavior.alwaysShow,
-      ),
+      bottomNavigationBar: _showNavigationBar
+          ? M3ENavigationBar(
+              destinations: _destinations,
+              selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
+              onDestinationSelected: (int index) {
+                if (index < 0 || index >= _tabs.length) return;
+                _selectTab(_tabs[index]);
+              },
+              size: M3ENavBarSize.medium,
+              density: M3ENavBarDensity.compact,
+              shapeFamily: M3ENavBarShapeFamily.square,
+              labelBehavior: M3ENavBarLabelBehavior.alwaysShow,
+            )
+          : null,
     );
   }
 }
@@ -156,24 +180,52 @@ class _MobileNavigatorObserver extends NavigatorObserver {
   _MobileNavigatorObserver(this.onChanged);
 
   final void Function(Route<dynamic>? route) onChanged;
+  final List<Route<dynamic>> _routes = <Route<dynamic>>[];
+  bool _syncScheduled = false;
+
+  void _scheduleSync() {
+    if (_syncScheduled) return;
+    _syncScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncScheduled = false;
+      onChanged(_routes.isEmpty ? null : _routes.last);
+    });
+  }
 
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    onChanged(route);
+    _routes.add(route);
+    _scheduleSync();
   }
 
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    onChanged(previousRoute);
+    _routes.remove(route);
+    _scheduleSync();
   }
 
   @override
   void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    onChanged(previousRoute);
+    _routes.remove(route);
+    _scheduleSync();
   }
 
   @override
   void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
-    onChanged(newRoute);
+    if (oldRoute != null) {
+      final int index = _routes.indexOf(oldRoute);
+      if (index >= 0) {
+        if (newRoute != null) {
+          _routes[index] = newRoute;
+        } else {
+          _routes.removeAt(index);
+        }
+      } else if (newRoute != null) {
+        _routes.add(newRoute);
+      }
+    } else if (newRoute != null) {
+      _routes.add(newRoute);
+    }
+    _scheduleSync();
   }
 }

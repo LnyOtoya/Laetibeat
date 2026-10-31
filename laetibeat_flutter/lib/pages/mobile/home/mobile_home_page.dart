@@ -16,6 +16,7 @@ class MobileHomePage extends StatelessWidget {
     return Scaffold(
       backgroundColor: theme.colorScheme.surfaceContainer,
       appBar: M3EAppBar.top(
+        backgroundColor: theme.colorScheme.surfaceContainer,
         variant: M3EAppBarVariant.small,
         hideMode: M3EAppBarHideMode.entire,
         density: M3EAppBarDensity.compact,
@@ -29,7 +30,8 @@ class MobileHomePage extends StatelessWidget {
             onPressed: () => Navigator.of(context).pushNamed(MobileRoutes.stats),
           ),
           M3EIconButton(
-            variant: M3EIconButtonVariant.standard,
+            variant: M3EIconButtonVariant.tonal,
+            shape: M3EIconButtonShapeVariant.round,
             icon: const Icon(M3EIcons.settings),
             tooltip: '设置',
             onPressed: () =>
