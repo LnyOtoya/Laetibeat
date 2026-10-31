@@ -13,10 +13,17 @@ import 'lyrics_view.dart';
 //共享播放面板:三个区域(来源区/播放显示区/控制区)
 //主页/搜索/音乐库右侧默认显示;全屏页复用同一面板
 class PlaybackPanel extends ConsumerStatefulWidget {
-  const PlaybackPanel({super.key, this.fullscreen = false});
+  const PlaybackPanel({
+    super.key,
+    this.fullscreen = false,
+    this.onOpenFullscreen,
+  });
 
   //是否处于全屏布局
   final bool fullscreen;
+
+  //由桌面/移动页面注入“打开全屏”导航，共享面板不直接创建平台页面
+  final VoidCallback? onOpenFullscreen;
 
   @override
   ConsumerState<PlaybackPanel> createState() => _PlaybackPanelState();
@@ -456,8 +463,8 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
                 // 已经处于全屏播放页:直接退出,避免重复 push
                 Navigator.of(context).maybePop();
               } else {
-                // 播放页(封面):进入全屏播放页
-                _openFullscreen(context);
+                // 播放页(封面):由外层页面决定如何进入全屏
+                widget.onOpenFullscreen?.call();
               }
             }
             if (idx == 1) {
@@ -892,13 +899,6 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
     );
   }
 
-  //打开全屏播放页(全局路由,关闭回到进入前视图)
-  void _openFullscreen(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const PlaybackFullscreenPage()),
-    );
-  }
-
   /// 松手后才真正 seek;拖动过程中只改本地显示值
   void _commitSeek(PlayerNotifier notifier, double value, int totalMs) {
     // 以本地拖动值为准,避免拖拽最后一帧的回调值尚未同步
@@ -916,75 +916,6 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
     final hours = totalMinutes ~/ 60;
     final minutes = (totalMinutes % 60).toString().padLeft(2, '0');
     return '$hours:$minutes:$seconds';
-  }
-}
-
-//全屏播放页:复用PlaybackPanel,整体覆盖当前页
-class PlaybackFullscreenPage extends ConsumerWidget {
-  const PlaybackFullscreenPage({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final bool isMobile =
-        defaultTargetPlatform == TargetPlatform.android ||
-        defaultTargetPlatform == TargetPlatform.iOS;
-
-    //封面取色作用域包住整页:Scaffold 底色也随封面带色(secondaryContainer)
-    return PlaybackCoverScope(
-      child: Builder(
-        builder: (inner) {
-          final theme = M3ETheme.of(inner);
-          final coverInfo = ref.watch(playbackCoverProvider).value;
-          final background = playbackPanelBackground(theme, coverInfo);
-
-          // 移动端:不显示左上角退出按钮,播放面板直接占满安全区
-          if (isMobile) {
-            return Scaffold(
-              backgroundColor: background,
-              body: SafeArea(
-                child: PlaybackPanel(fullscreen: true),
-              ),
-            );
-          }
-
-          // 桌面端保持原有居中布局和关闭按钮
-          return Scaffold(
-            backgroundColor: background,
-            body: SafeArea(
-              child: Padding(
-                padding: EdgeInsets.all(theme.spacing.xxl),
-                child: Column(
-                  children: [
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: M3EIconButton(
-                        size: M3EIconButtonSize.md,
-                        icon: const Icon(Icons.close),
-                        tooltip: '关闭',
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                    ),
-                    Expanded(
-                      child: Center(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 560),
-                          child: AnimatedSwitcher(
-                            duration: kSectionAnimDuration,
-                            switchInCurve: kSectionAnimCurve,
-                            switchOutCurve: kSectionAnimCurve,
-                            child: const PlaybackPanel(fullscreen: true),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
   }
 }
 

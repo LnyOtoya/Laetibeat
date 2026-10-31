@@ -1,6 +1,9 @@
+import 'dart:math' as math;
+
 import 'package:flutter/widgets.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import '../../animations.dart';
+import '../../shared/layout/app_bottom_inset.dart';
 
 /// 给设置内容内部滚动区追加底部间距，避免内容被浮动 mini player 遮挡。
 /// 桌面端没有该作用域时返回 0。
@@ -36,7 +39,10 @@ class SettingsPane extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = M3ETheme.of(context);
-    final bottomInset = SettingsPaneInset.bottomOf(context);
+    final bottomInset = math.max(
+      SettingsPaneInset.bottomOf(context),
+      AppBottomInsetScope.bottomInsetOf(context),
+    );
 
     return AnimatedContainer(
       duration: kSectionAnimDuration,

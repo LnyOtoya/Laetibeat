@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import '../../animations.dart';
-import 'playback_panel.dart';
-import 'cover_provider.dart';
+import '../../widgets/player/cover_provider.dart';
+import '../../widgets/player/playback_panel.dart';
+import 'desktop_playback_page.dart';
 import 'device_panel.dart';
 
 //右侧内容区复用外壳:默认播放面板,点击左侧进入本页详情
@@ -75,7 +76,17 @@ class PlayerRightPaneState extends ConsumerState<PlayerRightPane> {
                             switchOutCurve: kSectionAnimCurve,
                             child: KeyedSubtree(
                               key: ValueKey(_detail != null),
-                              child: _detail ?? const PlaybackPanel(),
+                              child: _detail ??
+                                  PlaybackPanel(
+                                    onOpenFullscreen: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute<void>(
+                                          builder: (_) =>
+                                              const DesktopPlaybackPage(),
+                                        ),
+                                      );
+                                    },
+                                  ),
                             ),
                           ),
                         ),

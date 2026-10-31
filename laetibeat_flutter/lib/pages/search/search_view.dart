@@ -5,25 +5,26 @@ import 'package:laetibeat/src/rust/api/simple.dart' as rust;
 import 'package:laetibeat/src/rust/api/subsonic.dart' as rust_subsonic;
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../animations.dart';
-import '../widgets/player/cover_provider.dart';
-import '../widgets/player/mini_player.dart' show MiniPlayerScope;
-import '../widgets/player/player_provider.dart';
-import '../widgets/player/player_right_pane.dart';
-import '../widgets/remote_browser_provider.dart';
-import '../widgets/settings/music_library_provider.dart';
-import '../widgets/settings/remote_sync_provider.dart';
-import '../widgets/settings/subsonic_provider.dart';
-import '../widgets/two_pane_layout.dart';
+import '../../animations.dart';
+import '../../shared/layout/app_bottom_inset.dart';
+import '../../widgets/player/cover_provider.dart';
+import '../../widgets/player/player_provider.dart';
+import '../../widgets/remote_browser_provider.dart';
+import '../../widgets/settings/music_library_provider.dart';
+import '../../widgets/settings/remote_sync_provider.dart';
+import '../../widgets/settings/subsonic_provider.dart';
 
-class SearchPage extends ConsumerStatefulWidget {
-  const SearchPage({super.key});
+/// 搜索功能的共享状态与内容。布局由桌面/移动页面通过 layoutBuilder 注入。
+class SearchView extends ConsumerStatefulWidget {
+  const SearchView({super.key, required this.layoutBuilder});
+
+  final Widget Function(BuildContext context, Widget content) layoutBuilder;
 
   @override
-  ConsumerState<SearchPage> createState() => _SearchPageState();
+  ConsumerState<SearchView> createState() => _SearchViewState();
 }
 
-class _SearchPageState extends ConsumerState<SearchPage> {
+class _SearchViewState extends ConsumerState<SearchView> {
   static const String _searchHint = '搜索你的专辑，艺术家，单曲';
   static const String _recentSearchesKey = 'search.recent_queries';
 
@@ -31,10 +32,6 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
   List<String> _recentSearches = <String>[];
   String _query = '';
-
-  //右区播放面板,点击搜索结果后仍复用同一播放器
-  final GlobalKey<PlayerRightPaneState> _rightPaneKey =
-      GlobalKey<PlayerRightPaneState>();
 
   @override
   void initState() {
@@ -100,19 +97,13 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
   @override
   Widget build(BuildContext context) {
-    return TwoPaneLayout(
-      leftFlex: 3,
-      rightFlex: 2,
-      rightMaxWidth: 520,
-      left: _buildLeft(context),
-      right: PlayerRightPane(key: _rightPaneKey),
-    );
+    return widget.layoutBuilder(context, _buildLeft(context));
   }
 
   Widget _buildLeft(BuildContext context) {
     final theme = M3ETheme.of(context);
     final scheme = theme.colorScheme;
-    final miniPlayerInset = MiniPlayerScope.reservedHeightOf(context);
+    final bottomInset = AppBottomInsetScope.bottomInsetOf(context);
     final query = _query.trim();
 
     return AnimatedContainer(
@@ -142,7 +133,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           SizedBox(height: theme.spacing.lg),
           Expanded(
             child: Padding(
-              padding: EdgeInsets.only(bottom: miniPlayerInset),
+              padding: EdgeInsets.only(bottom: bottomInset),
               child: query.isEmpty
                   ? _buildSearchHistory(theme)
                   : _buildSearchResults(theme, query),

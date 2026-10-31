@@ -8,23 +8,20 @@ import 'settings/music_library_provider.dart';
 import 'settings/subsonic_provider.dart';
 import 'player/player_provider.dart';
 import 'player/cover_provider.dart';
-import 'player/mini_player.dart' show MiniPlayerScope;
+import '../shared/layout/app_bottom_inset.dart';
 
 //音乐库浏览筛选
 enum LibraryFilter { track, artist, album }
 
-//音乐库左侧浏览面板:标题+筛选按钮+列表
+//音乐库浏览面板:标题+筛选按钮+列表。布局无关，由页面决定详情如何展示。
 class LibraryBrowser extends ConsumerStatefulWidget {
   const LibraryBrowser({
     super.key,
-    //点击某行时的回调,由页面打开右侧详情
+    //点击某行时的回调,由页面决定打开右侧详情还是新页面
     this.onSelect,
-    //单栏布局(移动端/窄窗口)下把音源切换按钮移到内容容器上方
-    this.sourceSplitAboveContainer = false,
   });
 
   final void Function(String headline, String supporting)? onSelect;
-  final bool sourceSplitAboveContainer;
 
   @override
   ConsumerState<LibraryBrowser> createState() => _LibraryBrowserState();
@@ -60,7 +57,7 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
   Widget build(BuildContext context) {
     final theme = M3ETheme.of(context);
     final scheme = theme.colorScheme;
-    final miniPlayerInset = MiniPlayerScope.reservedHeightOf(context);
+    final bottomInset = AppBottomInsetScope.bottomInsetOf(context);
     final music = ref.watch(musicLibraryProvider);
     final servers =
         ref.watch(subsonicServersProvider).value ??
@@ -114,16 +111,15 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          //桌面双栏时音源切换仍在容器内
-          if (!widget.sourceSplitAboveContainer &&
-              sourceSplitButton != null) ...[
+          //音源切换统一放在内容容器内，页面不再感知布局形态
+          if (sourceSplitButton != null) ...[
             sourceSplitButton,
             SizedBox(height: theme.spacing.md),
           ],
           if (remoteSourceId != null) ...[
             Expanded(
               child: Padding(
-                padding: EdgeInsets.only(bottom: miniPlayerInset),
+                padding: EdgeInsets.only(bottom: bottomInset),
                 child: RemoteLibraryView(
                   key: ValueKey(remoteSourceId),
                   sourceId: remoteSourceId,
@@ -163,7 +159,7 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
             SizedBox(height: theme.spacing.lg),
             Expanded(
               child: Padding(
-                padding: EdgeInsets.only(bottom: miniPlayerInset),
+                padding: EdgeInsets.only(bottom: bottomInset),
                 child: ScrollConfiguration(
                   behavior: ScrollConfiguration.of(context)
                       .copyWith(scrollbars: false),
@@ -176,21 +172,7 @@ class _LibraryBrowserState extends ConsumerState<LibraryBrowser> {
       ),
     );
 
-    //单栏时音源切换按钮独立浮在内容容器上方
-    if (!widget.sourceSplitAboveContainer || sourceSplitButton == null) {
-      return container;
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: theme.spacing.md),
-          child: sourceSplitButton,
-        ),
-        SizedBox(height: theme.spacing.md),
-        Expanded(child: container),
-      ],
-    );
+    return container;
   }
 
   Widget _buildBody(

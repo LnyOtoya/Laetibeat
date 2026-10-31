@@ -1,15 +1,15 @@
 # Laetibeat 项目蓝图
 
-> 最后更新：2026-10-18
-> 当前阶段：桌面端功能补全 + 跨平台准备
+> 最后更新：2026-10-31
+> 当前阶段：桌面端功能补全 + 移动端解耦
 
 ## 当前状态速览
 
 - 本地音乐：扫描、增量复用、专辑/艺术家聚合、播放、封面、歌词、统计、推荐
 - Navidrome：单服务端配置、手动同步、SQLite 快照、浏览/搜索、播放、封面/歌词、scrobble
 - 缓存：本地封面按需读取；远端封面内存 + 磁盘 LRU；歌词 SQLite 正负缓存
-- 跨平台：Linux 桌面可用；Windows/macOS 打包、Android 播放与媒体会话尚未开始
-- 主要缺口：收藏/歌单/队列编辑/下载、播放设置、MPRIS 迁移、移动端导航壳与页面适配
+- 跨平台：Linux 桌面可用；Android 已完成 Shell/页面/服务解耦，本地目录选择与后台媒体会话待接入；Windows/macOS 打包未开始
+- 主要缺口：收藏/歌单/队列编辑/下载、播放设置、MPRIS/MediaSession 迁移、移动端存储权限与 SAF
 
 ## 阶段1：数据模型与基础扫描
 
@@ -82,13 +82,13 @@
 ## 阶段7：跨平台与系统集成
 
 - [x] 7.1 Linux 桌面音频输出与调试构建
-- [ ] 7.2 导航壳解耦：统一目的地模型，桌面 rail / 移动 navigation bar 可替换
-- [ ] 7.3 页面响应式：TwoPaneLayout 在窄屏折叠为单列
-- [ ] 7.4 移动端播放页：迷你播放器 + 全屏页，隐藏 DevicePanel
+- [x] 7.2 导航壳解耦：DesktopShell / MobileShell 分离，页面按形态独立组合
+- [x] 7.3 页面响应式：桌面 TwoPaneLayout 窄屏折叠，移动端使用独立单栏页面
+- [x] 7.4 移动端播放页：迷你播放器 + 全屏页，隐藏 DevicePanel
 - [ ] 7.5 MPRIS 迁移到 audio_service + audio_service_mpris（当前自研 MPRIS 已停用）
 - [ ] 7.6 Android 后台播放、媒体会话、常驻通知
 - [ ] 7.7 Windows / macOS / Android 打包与适配测试
-- [ ] 7.8 window_manager 平台门控与移动端启动配置
+- [x] 7.8 window_manager 平台门控与移动端启动配置
 
 ## 已知问题 / 技术债
 
@@ -99,5 +99,7 @@
 - 本地音乐库仍使用 JSON 快照；播放统计与远端库使用两个独立 SQLite
 - 多个设置分类仍是占位：播放器与音频、储存、备份与还原、更新日志
 - 导航 Favorite/History/Daily Recommend 目前只改变选中态，不切换页面
+- 移动端目录选择已抽象为 DirectoryPicker，但 MobileDirectoryPicker 仍返回 null，需接 SAF / READ_MEDIA_AUDIO
+- 移动端后台播放与 MediaSession 尚未接入，MediaSessionService 当前为 Noop
 - 远端推荐依赖先执行一次「同步音乐」
 - 远端歌词正缓存没有 TTL，服务器更新歌词后需要手动清理

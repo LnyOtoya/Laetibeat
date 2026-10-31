@@ -1,30 +1,35 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:laetibeat/main.dart';
+import 'package:laetibeat/app/app_form_factor.dart';
+import 'package:laetibeat/app/app_size.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  tearDown(() {
+    debugDefaultTargetPlatformOverride = null;
+  });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+  test('android/iOS map to mobile form factor', () {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    expect(detectAppFormFactor(), AppFormFactor.mobile);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    expect(detectAppFormFactor(), AppFormFactor.mobile);
+  });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  test('desktop platforms map to desktop form factor', () {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    expect(detectAppFormFactor(), AppFormFactor.desktop);
+
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    expect(detectAppFormFactor(), AppFormFactor.desktop);
+
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    expect(detectAppFormFactor(), AppFormFactor.desktop);
+  });
+
+  test('single pane policy depends only on width', () {
+    expect(isSinglePaneWidth(400), isTrue);
+    expect(isSinglePaneWidth(kSinglePaneBreakpoint), isFalse);
+    expect(isSinglePaneWidth(1200), isFalse);
   });
 }

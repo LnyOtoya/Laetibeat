@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import '../../animations.dart';
-import 'player_provider.dart';
-import 'playback_backend.dart';
+import '../../widgets/player/playback_backend.dart';
+import '../../widgets/player/player_provider.dart';
 
 /// 设备 / 输出面板 —— 挂在右侧内容区底部、播放面板之下。
 ///

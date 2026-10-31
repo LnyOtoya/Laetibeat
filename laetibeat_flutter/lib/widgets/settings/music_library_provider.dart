@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:laetibeat/src/rust/api/simple.dart' as rust;
 
+import '../../core/services/directory_picker.dart';
 import 'persistence.dart';
 
 //本地音乐库状态:记录选中的目录与扫描出的单曲/专辑/艺术家
@@ -97,7 +98,7 @@ class MusicLibraryNotifier extends AsyncNotifier<MusicLibraryState> {
 
   //选择本地音乐目录
   Future<void> pickDirectory() async {
-    final path = await rust.pickDirectory();
+    final path = await ref.read(directoryPickerProvider).pickMusicDirectory();
     if (path == null) return;
 
     final current = state.value ?? const MusicLibraryState();

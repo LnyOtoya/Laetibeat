@@ -2,15 +2,22 @@ import 'package:flutter/widgets.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../animations.dart';
-import '../player/mini_player.dart' show MiniPlayerScope;
+import '../../shared/layout/app_bottom_inset.dart';
 import 'settings_provider.dart';
 
-//设置页左侧分类列表
+//设置页分类列表
 class SettingsSection extends ConsumerWidget {
-  const SettingsSection({super.key, this.onSelected});
+  const SettingsSection({
+    super.key,
+    this.onSelected,
+    this.showTitle = true,
+  });
 
-  // 移动端点击分类后由页面负责跳转；桌面端为 null，右侧详情直接切换
+  // 点击分类后由页面负责跳转；桌面端为 null，右侧详情直接切换
   final ValueChanged<SettingsCategory>? onSelected;
+
+  // 移动端子页面已经有 AppBar 标题，可关闭列表内部标题
+  final bool showTitle;
 
   //分组假数据
   static const List<_CategoryGroup> _groups = <_CategoryGroup>[
@@ -35,7 +42,7 @@ class SettingsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = M3ETheme.of(context);
     final scheme = theme.colorScheme;
-    final miniPlayerInset = MiniPlayerScope.reservedHeightOf(context);
+    final bottomInset = AppBottomInsetScope.bottomInsetOf(context);
     final selected = ref.watch(settingsCategoryProvider);
 
     return AnimatedContainer(
@@ -48,7 +55,7 @@ class SettingsSection extends ConsumerWidget {
       ),
       padding: EdgeInsets.all(theme.spacing.xl),
       child: Padding(
-        padding: EdgeInsets.only(bottom: miniPlayerInset),
+        padding: EdgeInsets.only(bottom: bottomInset),
         child: ScrollConfiguration(
           behavior:
               ScrollConfiguration.of(context).copyWith(scrollbars: false),
@@ -57,11 +64,13 @@ class SettingsSection extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
           //标题
-          Text(
-            '设置',
-            style: theme.typeScale.titleLarge,
-          ),
-          SizedBox(height: theme.spacing.lg),
+          if (showTitle) ...[
+            Text(
+              '设置',
+              style: theme.typeScale.titleLarge,
+            ),
+            SizedBox(height: theme.spacing.lg),
+          ],
           //分组:标题+组内汉堡样式卡片列表
           for (int g = 0; g < _groups.length; g++) ...[
             if (g > 0) SizedBox(height: theme.spacing.lg),

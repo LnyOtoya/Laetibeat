@@ -1,21 +1,17 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 
-import 'player/mini_player.dart' show MiniPlayerScope;
+import '../../app/app_size.dart';
 
-const double kSinglePaneBreakpoint = 720;
+export '../../app/app_size.dart' show kSinglePaneBreakpoint;
 
-// 与 TwoPaneLayout 使用同一套单栏判断，供页面自己决定是否走独立页面导航
+/// 桌面端的双栏到单栏判断。这里只关心可用宽度，不再判断平台。
 bool useSinglePaneLayout(
   BuildContext context,
   double width, {
   double breakpoint = kSinglePaneBreakpoint,
 }) {
-  final bool isMobilePlatform =
-      defaultTargetPlatform == TargetPlatform.android ||
-      defaultTargetPlatform == TargetPlatform.iOS;
-  return isMobilePlatform || width < breakpoint;
+  return isSinglePaneWidth(width, breakpoint: breakpoint);
 }
 
 class TwoPaneLayout extends StatelessWidget {
@@ -45,15 +41,11 @@ class TwoPaneLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = M3ETheme.of(context);
-    // 移动端有 mini player 时让页面容器贴底，避免容器下缘在胶囊周围形成外壳
-    final bottomPad = MiniPlayerScope.reservedHeightOf(context) > 0
-        ? 0.0
-        : theme.spacing.md;
     final horizontalPad = fullBleedSinglePane ? 0.0 : theme.spacing.md;
 
     return LayoutBuilder(
       builder: (context, c) {
-        // 移动端/窄窗口暂时隐藏右区,左侧占满可用宽度
+        // 窄窗口隐藏右区,左侧占满可用宽度
         if (useSinglePaneLayout(
           context,
           c.maxWidth,
@@ -64,7 +56,7 @@ class TwoPaneLayout extends StatelessWidget {
               horizontalPad,
               0,
               horizontalPad,
-              bottomPad,
+              theme.spacing.md,
             ),
             child: left,
           );

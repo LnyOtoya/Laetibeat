@@ -1,13 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:laetibeat/main.dart';
-import 'package:laetibeat/src/rust/frb_generated.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:laetibeat/app/app_form_factor.dart';
+import 'package:laetibeat/src/rust/frb_generated.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(() async => await RustLib.init());
-  testWidgets('Can call rust function', (WidgetTester tester) async {
-    await tester.pumpWidget(const MyApp());
-    expect(find.textContaining('Result: `Hello, Tom!`'), findsOneWidget);
+
+  testWidgets('app form factor is resolved on device', (tester) async {
+    expect(AppFormFactor.values, contains(detectAppFormFactor()));
   });
 }

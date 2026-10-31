@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:laetibeat/src/rust/api/simple.dart' as rust;
 import 'package:laetibeat/src/rust/api/subsonic.dart' as rust_subsonic;
+import '../../core/providers/playback_backend_provider.dart';
 import '../settings/persistence.dart';
 import '../settings/subsonic_provider.dart';
 import 'playback_backend.dart';
@@ -137,7 +138,7 @@ class PlayerNotifier extends Notifier<PlayerState> {
 
   @override
   PlayerState build() {
-    _backend = createPlaybackBackend();
+    _backend = ref.read(playbackBackendProvider);
     _sessionTracker = PlaybackSessionTracker(
       // 直接从持久化设置读取当前音乐库目录,启动恢复时也不会拿到空 sourceId
       sourceId: () =>

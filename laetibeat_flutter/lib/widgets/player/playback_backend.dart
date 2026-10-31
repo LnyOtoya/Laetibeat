@@ -81,8 +81,8 @@ abstract class PlaybackBackend {
   Future<void> dispose();
 }
 
-/// 选择当前平台要用的后端。这是"换后端"的唯一入口。
-PlaybackBackend createPlaybackBackend() => MediaKitBackend();
+// 具体后端的创建由 bootstrap 通过 playbackBackendProvider 注入，
+// 播放状态层不再直接依赖 MediaKitBackend。
 
 // ---------------------------------------------------------------------------
 // media_kit 实现(Linux/桌面首发)
