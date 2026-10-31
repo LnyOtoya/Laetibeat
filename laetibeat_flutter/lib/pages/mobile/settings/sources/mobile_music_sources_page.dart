@@ -1,7 +1,10 @@
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../mobile_navigation.dart';
+import '../../routes.dart';
 import '../../widgets/mobile_large_subpage_app_bar.dart';
+import 'opensubsonic/mobile_opensubsonic_config_page.dart';
 
 /// 音乐源配置页面。
 class MobileMusicSourcesPage extends StatelessWidget {
@@ -26,6 +29,14 @@ class MobileMusicSourcesPage extends StatelessWidget {
             M3EList(
               color: theme.colorScheme.surface,
               variant: M3ECardVariant.filled,
+              onTap: (int index) {
+                if (index != 0) return;
+                pushMobileRootPage(
+                  context,
+                  const MobileOpensubsonicConfigPage(),
+                  name: MobileRoutes.opensubsonicConfig,
+                );
+              },
               itemCount: 6,
               itemBuilder: (BuildContext context, int index) {
                 return switch (index) {

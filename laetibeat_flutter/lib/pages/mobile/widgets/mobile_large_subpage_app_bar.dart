@@ -20,6 +20,10 @@ M3EAppBar mobileLargeSubpageAppBar(
       padding: EdgeInsetsDirectional.only(start: centerTitle ? 0 : 12),
       child: Text(
         title,
+        maxLines: 1,
+        softWrap: false,
+        overflow: TextOverflow.ellipsis,
+        textAlign: centerTitle ? TextAlign.center : TextAlign.start,
         style: theme.typeScale.displaySmall.copyWith(
           color: theme.colorScheme.onSurface,
         ),
