@@ -1,3 +1,8 @@
+import 'dart:async';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:laetibeat/widgets/settings/remote_sync_provider.dart';
+import 'package:laetibeat/widgets/settings/subsonic_provider.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -6,23 +11,38 @@ import '../../../widgets/mobile_large_subpage_app_bar.dart';
 enum _ServerScheme { http, https }
 
 /// Opensubsonic 服务器配置页面。
-class MobileOpensubsonicConfigPage extends StatefulWidget {
+class MobileOpensubsonicConfigPage extends ConsumerStatefulWidget {
   const MobileOpensubsonicConfigPage({super.key});
 
   @override
-  State<MobileOpensubsonicConfigPage> createState() =>
+  ConsumerState<MobileOpensubsonicConfigPage> createState() =>
       _MobileOpensubsonicConfigPageState();
 }
 
 class _MobileOpensubsonicConfigPageState
-    extends State<MobileOpensubsonicConfigPage> {
+    extends ConsumerState<MobileOpensubsonicConfigPage> {
   final TextEditingController _urlController = TextEditingController();
   final TextEditingController _portController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
+  late String _id;
   _ServerScheme _scheme = _ServerScheme.http;
-  bool _tested = false;
+  String? _existingName;
+
+  bool _testing = false;
+  bool _saving = false;
+  bool _testPassed = false;
+  String? _testedFingerprint;
+  String? _error;
+  String? _info;
+
+  @override
+  void initState() {
+    super.initState();
+    _id = SubsonicServersNotifier.newId();
+    unawaited(_loadExisting());
+  }
 
   @override
   void dispose() {
@@ -33,12 +53,229 @@ class _MobileOpensubsonicConfigPageState
     super.dispose();
   }
 
+  Future<void> _loadExisting() async {
+    try {
+      final servers = await ref.read(subsonicServersProvider.future);
+      if (servers.isEmpty || !mounted) return;
+
+      final config = servers.first;
+      final secret = await ref
+          .read(subsonicServersProvider.notifier)
+          .readSecret(config.id);
+      if (!mounted) return;
+
+      final uri = Uri.tryParse(config.baseUrl);
+      if (uri == null || uri.host.isEmpty) return;
+
+      final path = uri.path == '/' ? '' : uri.path;
+      setState(() {
+        _id = config.id;
+        _existingName = config.name;
+        _scheme = uri.scheme == 'http'
+            ? _ServerScheme.http
+            : _ServerScheme.https;
+        _urlController.text = '${uri.host}$path';
+        _portController.text = uri.hasPort ? '${uri.port}' : '';
+        _usernameController.text = config.username ?? '';
+        _passwordController.text = secret ?? '';
+      });
+    } catch (e) {
+      debugPrint('读取 Opensubsonic 配置失败: $e');
+    }
+  }
+
+  String _fingerprint() {
+    return [
+      _scheme.name,
+      _urlController.text.trim(),
+      _portController.text.trim(),
+      _usernameController.text.trim(),
+      _passwordController.text,
+    ].join('\u0000');
+  }
+
+  bool get _testMatchesInput =>
+      _testPassed && _testedFingerprint == _fingerprint();
+
+  void _resetTestState() {
+    _testPassed = false;
+    _testedFingerprint = null;
+    _info = null;
+    _error = null;
+  }
+
+  void _onFieldChanged(String _) {
+    setState(_resetTestState);
+  }
+
+  void _onSchemeChanged(Set<_ServerScheme> next) {
+    if (next.isEmpty) return;
+    setState(() {
+      _scheme = next.first;
+      _resetTestState();
+    });
+  }
+
+  /// 把 URL、端口、用户名和密码组合成服务器配置。
+  SubsonicServerConfig? _buildConfig() {
+    final rawUrl = _urlController.text.trim();
+    if (rawUrl.isEmpty) {
+      _error = '请输入服务器 URL';
+      return null;
+    }
+
+    final rawWithScheme = rawUrl.contains('://')
+        ? rawUrl
+        : '${_scheme.name}://$rawUrl';
+    final uri = Uri.tryParse(rawWithScheme);
+    if (uri == null || uri.host.isEmpty) {
+      _error = '请输入有效的服务器 URL';
+      return null;
+    }
+
+    final portText = _portController.text.trim();
+    final int port;
+    if (portText.isEmpty) {
+      port = 4533;
+    } else {
+      final parsed = int.tryParse(portText);
+      if (parsed == null || parsed < 1 || parsed > 65535) {
+        _error = '请输入有效的端口号';
+        return null;
+      }
+      port = parsed;
+    }
+
+    final username = _usernameController.text.trim();
+    if (username.isEmpty) {
+      _error = '请输入用户名';
+      return null;
+    }
+
+    final password = _passwordController.text;
+    if (password.isEmpty) {
+      _error = '请输入密码';
+      return null;
+    }
+
+    final baseUrl = Uri(
+      scheme: _scheme.name,
+      host: uri.host,
+      port: port,
+      path: uri.path,
+    ).toString();
+
+    return SubsonicServerConfig(
+      id: _id,
+      name: _existingName ?? uri.host,
+      baseUrl: baseUrl,
+      authMode: SubsonicAuthMode.token,
+      username: username,
+    );
+  }
+
+  Future<void> _test() async {
+    final config = _buildConfig();
+    if (config == null) {
+      setState(() {});
+      return;
+    }
+
+    final fingerprint = _fingerprint();
+    setState(() {
+      _testing = true;
+      _testPassed = false;
+      _testedFingerprint = null;
+      _error = null;
+      _info = null;
+    });
+
+    try {
+      final info = await ref
+          .read(subsonicServersProvider.notifier)
+          .test(config: config, secret: _passwordController.text);
+      if (!mounted) return;
+      setState(() {
+        _testPassed = true;
+        _testedFingerprint = fingerprint;
+        _info = '连接成功：${info.serverType ?? 'Subsonic'} '
+            '${info.serverVersion ?? ''}'
+            '${info.openSubsonic ? ' · OpenSubsonic' : ''}';
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _testing = false);
+    }
+  }
+
+  Future<void> _scan() async {
+    if (!_testMatchesInput || _saving) return;
+
+    final config = _buildConfig();
+    if (config == null) {
+      setState(() {});
+      return;
+    }
+
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+
+    try {
+      await ref
+          .read(subsonicServersProvider.notifier)
+          .save(config: config, secret: _passwordController.text);
+      _id = config.id;
+      _existingName = config.name;
+      if (!mounted) return;
+      await ref.read(remoteSyncProvider.notifier).start();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  String? _syncStatusText(RemoteSyncState? sync) {
+    if (sync == null) return null;
+    if (sync.isSyncing) {
+      return switch (sync.phase) {
+        RemoteSyncPhase.artists => sync.message ?? '正在获取艺术家…',
+        RemoteSyncPhase.albums => sync.completed > 0
+            ? '已获取 ${sync.completed} 张专辑'
+            : '正在获取专辑…',
+        RemoteSyncPhase.tracks => sync.total > 0
+            ? '正在获取曲目 ${sync.completed}/${sync.total}'
+            : '正在获取曲目 ${sync.completed} 首',
+        _ => sync.message ?? '正在扫描…',
+      };
+    }
+    if (sync.phase == RemoteSyncPhase.failed) {
+      return '扫描失败：${sync.error ?? sync.message ?? '请稍后重试'}';
+    }
+    if (sync.hasResult) {
+      final count = sync.meta?.trackCount.toInt() ?? sync.trackCount;
+      return '扫描完成，共 $count 首歌曲';
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = M3ETheme.of(context);
+    final scheme = theme.colorScheme;
+    final sync = ref.watch(remoteSyncProvider).value;
+    final bool syncing = sync?.isSyncing ?? false;
+    final bool canScan =
+        _testMatchesInput && !_testing && !_saving && !syncing;
+    final String? syncStatus = _syncStatusText(sync);
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.surfaceContainer,
+      backgroundColor: scheme.surfaceContainer,
       appBar: mobileLargeSubpageAppBar(
         context,
         title: 'Opensubsonic',
@@ -75,10 +312,9 @@ class _MobileOpensubsonicConfigPageState
                     ),
                     onSelectionChanged:
                         (List<M3EDropdownItem<_ServerScheme>> items) {
-                          if (items.isEmpty) return;
-                          final _ServerScheme next = items.first.value;
-                          if (next == _scheme) return;
-                          setState(() => _scheme = next);
+                          _onSchemeChanged(
+                            items.map((item) => item.value).toSet(),
+                          );
                         },
                   ),
                 ),
@@ -95,6 +331,7 @@ class _MobileOpensubsonicConfigPageState
                     supportingTextOnFocusOnly: false,
                     isRequired: true,
                     placeholder: 'music.example.com',
+                    onChanged: _onFieldChanged,
                   ),
                 ),
                 const Padding(
@@ -114,6 +351,7 @@ class _MobileOpensubsonicConfigPageState
                     supportingTextOnFocusOnly: false,
                     isRequired: false,
                     placeholder: '4533',
+                    onChanged: _onFieldChanged,
                   ),
                 ),
               ],
@@ -130,6 +368,7 @@ class _MobileOpensubsonicConfigPageState
               supportingTextOnFocusOnly: false,
               isRequired: true,
               leading: const Icon(M3EIcons.person),
+              onChanged: _onFieldChanged,
             ),
             const SizedBox(height: 16),
             M3ETextField(
@@ -147,7 +386,45 @@ class _MobileOpensubsonicConfigPageState
               showPasswordToggle: true,
               showPasswordSemanticsLabel: '显示密码',
               hidePasswordSemanticsLabel: '隐藏密码',
+              onChanged: _onFieldChanged,
             ),
+            if (_saving || syncing) ...[
+              const SizedBox(height: 16),
+              Center(
+                child: M3EProgressIndicator.circularWavy(
+                  size: 48,
+                  strokeWidth: 8,
+                  trackStrokeWidth: 8,
+                  semanticsLabel: '正在扫描',
+                ),
+              ),
+            ],
+            if (_error != null || _info != null || syncStatus != null) ...[
+              const SizedBox(height: 16),
+              if (_error != null)
+                Text(
+                  _error!,
+                  style: theme.typeScale.bodyMedium.copyWith(
+                    color: scheme.error,
+                  ),
+                ),
+              if (_info != null)
+                Text(
+                  _info!,
+                  style: theme.typeScale.bodyMedium.copyWith(
+                    color: scheme.primary,
+                  ),
+                ),
+              if (syncStatus != null)
+                Text(
+                  syncStatus,
+                  style: theme.typeScale.bodyMedium.copyWith(
+                    color: sync?.phase == RemoteSyncPhase.failed
+                        ? scheme.error
+                        : scheme.onSurfaceVariant,
+                  ),
+                ),
+            ],
             const SizedBox(height: 24),
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -155,19 +432,17 @@ class _MobileOpensubsonicConfigPageState
                 M3EButton(
                   size: M3EButtonSize.md,
                   shape: M3EButtonShape.square,
-                  label: const Text('测试'),
-                  onPressed: () {
-                    setState(() => _tested = true);
-                  },
+                  label: Text(_testing ? '测试中…' : '测试'),
+                  onPressed: _testing || _saving ? null : _test,
                 ),
                 const SizedBox(height: 12),
                 M3EButton(
                   size: M3EButtonSize.md,
                   shape: M3EButtonShape.square,
                   style: M3EButtonStyle.tonal,
-                  enabled: _tested,
-                  label: const Text('扫描'),
-                  onPressed: () {},
+                  enabled: canScan,
+                  label: Text(_saving || syncing ? '扫描中…' : '扫描'),
+                  onPressed: canScan ? _scan : null,
                 ),
               ],
             ),
