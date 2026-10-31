@@ -6,4 +6,5 @@ abstract final class MobileRoutes {
   static const String stats = '/stats';
   static const String settings = '/settings';
   static const String contentSettings = '/settings/content';
+  static const String musicSources = '/settings/music-sources';
 }

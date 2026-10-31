@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import '../mobile_navigation.dart';
 import '../routes.dart';
 import '../settings/mobile_settings_page.dart';
+import '../settings/sources/mobile_music_sources_page.dart';
 import '../stats/mobile_stats_page.dart';
 
 /// 移动端页面统一的顶部 AppBar。
@@ -26,12 +27,27 @@ M3EAppBar mobileTopAppBar(
   );
 }
 
-/// Home / Library 共用的右侧操作：统计 + 设置。
+/// Home / Library 共用的右侧操作：音乐源配置 + 统计 + 设置。
 List<Widget> mobileHomeAppBarActions(BuildContext context) {
   return <Widget>[
+    mobileMusicSourcesAction(context),
     mobileStatsAction(context),
     mobileSettingsAction(context),
   ];
+}
+
+/// 音乐源配置入口。
+Widget mobileMusicSourcesAction(BuildContext context) {
+  return M3EIconButton(
+    variant: M3EIconButtonVariant.standard,
+    icon: const Icon(M3EIcons.cloud),
+    tooltip: '音乐源配置',
+    onPressed: () => pushMobileRootPage(
+      context,
+      const MobileMusicSourcesPage(),
+      name: MobileRoutes.musicSources,
+    ),
+  );
 }
 
 /// 统计入口。

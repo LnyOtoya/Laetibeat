@@ -1,6 +1,8 @@
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../widgets/mobile_large_subpage_app_bar.dart';
+
 /// 内容设置子页面。
 class MobileContentSettingsPage extends StatelessWidget {
   const MobileContentSettingsPage({super.key});
@@ -11,28 +13,7 @@ class MobileContentSettingsPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surfaceContainer,
-      appBar: M3EAppBar.top(
-        backgroundColor: theme.colorScheme.surfaceContainer,
-        variant: M3EAppBarVariant.large,
-        hideMode: M3EAppBarHideMode.none,
-        shapeFamily: M3EAppBarShapeFamily.square,
-        safeArea: true,
-        title: Padding(
-          padding: const EdgeInsetsDirectional.only(start: 12),
-          child: Text(
-            '内容',
-            style: theme.typeScale.displaySmall.copyWith(
-              color: theme.colorScheme.onSurface,
-            ),
-          ),
-        ),
-        leading: Padding(
-          padding: const EdgeInsetsDirectional.only(start: 24),
-          child: _ContentBackButton(
-            onPressed: () => Navigator.of(context).maybePop(),
-          ),
-        ),
-      ),
+      appBar: mobileLargeSubpageAppBar(context, title: '内容'),
       body: SafeArea(
         top: false,
         child: ListView(
@@ -92,41 +73,6 @@ class MobileContentSettingsPage extends StatelessWidget {
               ],
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ContentBackButton extends StatelessWidget {
-  const _ContentBackButton({required this.onPressed});
-
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = M3ETheme.of(context);
-
-    return Semantics(
-      button: true,
-      label: '返回',
-      child: GestureDetector(
-        onTap: onPressed,
-        child: SizedBox.square(
-          dimension: 40,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer,
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Icon(
-                M3EIcons.arrow_back,
-                size: 20,
-                color: theme.colorScheme.onPrimaryContainer,
-              ),
-            ),
-          ),
         ),
       ),
     );
