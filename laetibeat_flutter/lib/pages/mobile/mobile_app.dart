@@ -4,7 +4,10 @@ import 'package:material_ui/material_ui.dart';
 import '../../app/app_destination.dart';
 import 'home/mobile_home_page.dart';
 import 'library/mobile_library_page.dart';
+import 'routes.dart';
 import 'search/mobile_search_page.dart';
+import 'settings/mobile_settings_page.dart';
+import 'stats/mobile_stats_page.dart';
 
 /// 移动端 UI 的唯一入口。
 ///
@@ -22,10 +25,6 @@ class MobileApp extends StatefulWidget {
 }
 
 class _MobileAppState extends State<MobileApp> {
-  static const String _homeRoute = '/';
-  static const String _libraryRoute = '/library';
-  static const String _searchRoute = '/search';
-
   static const List<AppDestination> _tabs = [
     AppDestination.home,
     AppDestination.library,
@@ -54,18 +53,18 @@ class _MobileAppState extends State<MobileApp> {
 
   String _routeNameOf(AppDestination destination) {
     return switch (destination) {
-      AppDestination.library => _libraryRoute,
-      AppDestination.search => _searchRoute,
-      _ => _homeRoute,
+      AppDestination.library => MobileRoutes.library,
+      AppDestination.search => MobileRoutes.search,
+      _ => MobileRoutes.home,
     };
   }
 
   void _handleRouteChanged(Route<dynamic>? route) {
     final String? name = route?.settings.name;
     final AppDestination? tab = switch (name) {
-      _homeRoute => AppDestination.home,
-      _libraryRoute => AppDestination.library,
-      _searchRoute => AppDestination.search,
+      MobileRoutes.home => AppDestination.home,
+      MobileRoutes.library => AppDestination.library,
+      MobileRoutes.search => AppDestination.search,
       _ => null,
     };
 
@@ -83,16 +82,23 @@ class _MobileAppState extends State<MobileApp> {
     if (navigator == null) return;
 
     if (destination == AppDestination.home) {
-      if (_currentTab == AppDestination.home) return;
-      setState(() => _currentTab = AppDestination.home);
+      // 即使底部导航已经选中 Home，也可能有统计 / 设置等二级页
+      // push 在 Home 之上，此时点 Home 应该回到根页面。
+      if (_currentTab == AppDestination.home && !navigator.canPop()) return;
       navigator.popUntil((Route<dynamic> route) => route.isFirst);
       return;
     }
 
     final String routeName = _routeNameOf(destination);
-    if (_currentTab == destination) return;
+    if (_currentTab == destination) {
+      // 当前 tab 上可能还有详情页：重复点选时回到该 tab 的根 route。
+      navigator.popUntil(
+        (Route<dynamic> route) =>
+            route.isFirst || route.settings.name == routeName,
+      );
+      return;
+    }
 
-    setState(() => _currentTab = destination);
     // 底部导航是平级目的地：先回到 Home，再打开目标页面。
     // 这样任意非 Home 页面的返回栈都是 Home -> 目标页面。
     navigator.popUntil((Route<dynamic> route) => route.isFirst);
@@ -101,9 +107,11 @@ class _MobileAppState extends State<MobileApp> {
 
   Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
     final Widget page = switch (settings.name) {
-      _homeRoute => const MobileHomePage(),
-      _libraryRoute => const MobileLibraryPage(),
-      _searchRoute => const MobileSearchPage(),
+      MobileRoutes.home => const MobileHomePage(),
+      MobileRoutes.library => const MobileLibraryPage(),
+      MobileRoutes.search => const MobileSearchPage(),
+      MobileRoutes.stats => const MobileStatsPage(),
+      MobileRoutes.settings => const MobileSettingsPage(),
       _ => const MobileHomePage(),
     };
 
