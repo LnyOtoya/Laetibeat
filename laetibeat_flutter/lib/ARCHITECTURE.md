@@ -98,18 +98,26 @@ lib/widgets/player/playback_panel.dart
 lib/pages/mobile/mobile_app.dart
 ```
 
-`MobileApp` 是移动端唯一入口，当前是最小重写壳：
+`MobileApp` 是移动端唯一入口：
 
 - 底部三个 Tab：Home / Library / Search
-- 使用 `IndexedStack` 保持 Tab 状态
-- 页面内容为占位实现
-- 后续重写时，替换 `_buildTab()` 返回的页面即可
+- `body` 内使用嵌套 `Navigator`，Home 是根 route
+- 打开 Library / Search 会 push 新 route，底部导航外框保持不动
+- 返回时 pop 回 Home，支持系统返回与 Android 预测性返回
+- 使用 `NavigatorPopHandler` 将系统返回代理给嵌套 Navigator
+- AndroidManifest 已开启 `android:enableOnBackInvokedCallback="true"`
 
 移动端目录：
 
 ```text
 lib/pages/mobile/
-  mobile_app.dart               # 移动端入口（当前占位壳）
+  mobile_app.dart               # 移动端入口 + 底部导航 + 嵌套 Navigator
+  home/
+    mobile_home_page.dart       # 独立首页
+  library/
+    mobile_library_page.dart    # 独立音乐库页
+  search/
+    mobile_search_page.dart     # 独立搜索页
 ```
 
 移动端新增页面时，建议继续放在 `lib/pages/mobile/` 下，例如：
