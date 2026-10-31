@@ -1,9 +1,9 @@
 import 'package:flutter/widgets.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 
-import '../../widgets/library_browser.dart';
-import 'player_right_pane.dart';
-import 'two_pane_layout.dart';
+import '../../../widgets/library_browser.dart';
+import '../layout/two_pane_layout.dart';
+import '../player/player_right_pane.dart';
 
 class DesktopLibraryPage extends StatefulWidget {
   const DesktopLibraryPage({super.key});

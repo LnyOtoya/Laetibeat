@@ -1,9 +1,9 @@
 import 'package:flutter/widgets.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 
-import '../../app/app_size.dart';
+import '../../../app/app_size.dart';
 
-export '../../app/app_size.dart' show kSinglePaneBreakpoint;
+export '../../../app/app_size.dart' show kSinglePaneBreakpoint;
 
 /// 桌面端的双栏到单栏判断。这里只关心可用宽度，不再判断平台。
 bool useSinglePaneLayout(

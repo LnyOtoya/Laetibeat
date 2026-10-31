@@ -1,11 +1,11 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../animations.dart';
-import '../../widgets/settings/settings_provider.dart';
-import '../../widgets/settings/settings_section.dart';
-import '../settings/settings_content.dart';
-import 'two_pane_layout.dart';
+import '../../../animations.dart';
+import '../../../widgets/settings/settings_provider.dart';
+import '../../../widgets/settings/settings_section.dart';
+import '../layout/two_pane_layout.dart';
+import 'settings_content.dart';
 
 class DesktopSettingsPage extends StatelessWidget {
   const DesktopSettingsPage({super.key});

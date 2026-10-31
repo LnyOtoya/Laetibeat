@@ -1,8 +1,8 @@
 import 'package:flutter/widgets.dart';
 
-import '../search/search_view.dart';
-import 'player_right_pane.dart';
-import 'two_pane_layout.dart';
+import '../layout/two_pane_layout.dart';
+import '../player/player_right_pane.dart';
+import 'search_view.dart';
 
 class DesktopSearchPage extends StatefulWidget {
   const DesktopSearchPage({super.key});

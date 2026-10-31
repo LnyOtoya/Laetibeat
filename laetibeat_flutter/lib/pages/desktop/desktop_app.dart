@@ -1,24 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 
-import '../../pages/chart_page.dart';
-import '../../pages/desktop/desktop_home_page.dart';
-import '../../pages/desktop/desktop_library_page.dart';
-import '../../pages/desktop/desktop_search_page.dart';
-import '../../pages/desktop/desktop_settings_page.dart';
-import '../../pages/playlist_page.dart';
-import '../app_destination.dart';
+import '../../app/app_destination.dart';
+import 'chart_page.dart';
 import 'desktop_title_bar.dart';
+import 'home/desktop_home_page.dart';
+import 'library/desktop_library_page.dart';
+import 'playlist_page.dart';
+import 'search/desktop_search_page.dart';
+import 'settings/desktop_settings_page.dart';
 
-/// 桌面端专属导航壳：NavigationRail + 自定义标题栏 + 双栏页面。
-class DesktopShell extends StatefulWidget {
-  const DesktopShell({super.key});
+/// 桌面端唯一入口：NavigationRail + 自定义标题栏 + 双栏页面。
+class DesktopApp extends StatefulWidget {
+  const DesktopApp({super.key});
 
   @override
-  State<DesktopShell> createState() => _DesktopShellState();
+  State<DesktopApp> createState() => _DesktopAppState();
 }
 
-class _DesktopShellState extends State<DesktopShell> {
+class _DesktopAppState extends State<DesktopApp> {
   AppDestination _current = AppDestination.home;
 
   static const List<AppDestination> _railOrder = [

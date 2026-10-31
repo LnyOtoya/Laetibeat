@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 
-import '../../widgets/player/cover_provider.dart';
-import '../../widgets/player/playback_panel.dart';
+import '../../../widgets/player/cover_provider.dart';
+import '../../../widgets/player/playback_panel.dart';
 
 /// 桌面端全屏播放页：居中限宽 + 左上角关闭按钮。
 class DesktopPlaybackPage extends ConsumerWidget {

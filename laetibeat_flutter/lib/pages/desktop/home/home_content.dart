@@ -1,11 +1,11 @@
 import 'package:flutter/widgets.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 
-import '../../shared/layout/app_bottom_inset.dart';
-import '../../widgets/daily_section.dart';
-import '../../widgets/history_section.dart';
-import '../../widgets/recent_section.dart';
-import '../../widgets/welcome_section.dart';
+import '../../../shared/layout/app_bottom_inset.dart';
+import '../../../widgets/daily_section.dart';
+import '../../../widgets/history_section.dart';
+import '../../../widgets/recent_section.dart';
+import '../../../widgets/welcome_section.dart';
 
 /// 首页内容本身与布局形态无关：桌面端放进右栏布局，移动端直接作为 Tab。
 class HomeContent extends StatelessWidget {

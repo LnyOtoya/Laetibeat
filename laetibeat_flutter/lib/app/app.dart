@@ -2,11 +2,11 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 
+import '../pages/desktop/desktop_app.dart';
+import '../pages/mobile/mobile_app.dart';
 import '../widgets/integration/media_integration_host.dart';
 import '../widgets/settings/settings_provider.dart';
 import 'app_form_factor.dart';
-import 'shell/desktop_shell.dart';
-import 'shell/mobile_shell.dart';
 import 'theme/app_theme.dart';
 
 /// 应用根节点：只负责形态选择、主题装配与全局宿主。
@@ -37,8 +37,8 @@ class LaetibeatApp extends ConsumerWidget {
       ),
       home: MediaIntegrationHost(
         child: switch (formFactor) {
-          AppFormFactor.desktop => const DesktopShell(),
-          AppFormFactor.mobile => const MobileShell(),
+          AppFormFactor.desktop => const DesktopApp(),
+          AppFormFactor.mobile => const MobileApp(),
         },
       ),
     );

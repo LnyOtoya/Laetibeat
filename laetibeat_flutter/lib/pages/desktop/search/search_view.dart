@@ -5,14 +5,14 @@ import 'package:laetibeat/src/rust/api/simple.dart' as rust;
 import 'package:laetibeat/src/rust/api/subsonic.dart' as rust_subsonic;
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../animations.dart';
-import '../../shared/layout/app_bottom_inset.dart';
-import '../../widgets/player/cover_provider.dart';
-import '../../widgets/player/player_provider.dart';
-import '../../widgets/remote_browser_provider.dart';
-import '../../widgets/settings/music_library_provider.dart';
-import '../../widgets/settings/remote_sync_provider.dart';
-import '../../widgets/settings/subsonic_provider.dart';
+import '../../../animations.dart';
+import '../../../shared/layout/app_bottom_inset.dart';
+import '../../../widgets/player/cover_provider.dart';
+import '../../../widgets/player/player_provider.dart';
+import '../../../widgets/remote_browser_provider.dart';
+import '../../../widgets/settings/music_library_provider.dart';
+import '../../../widgets/settings/remote_sync_provider.dart';
+import '../../../widgets/settings/subsonic_provider.dart';
 
 /// 搜索功能的共享状态与内容。布局由桌面/移动页面通过 layoutBuilder 注入。
 class SearchView extends ConsumerStatefulWidget {

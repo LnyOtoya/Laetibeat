@@ -1,8 +1,8 @@
 import 'package:flutter/widgets.dart';
 
-import '../home/home_content.dart';
-import 'player_right_pane.dart';
-import 'two_pane_layout.dart';
+import '../layout/two_pane_layout.dart';
+import '../player/player_right_pane.dart';
+import 'home_content.dart';
 
 class DesktopHomePage extends StatelessWidget {
   const DesktopHomePage({super.key});

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
-import '../../animations.dart';
-import '../../widgets/player/cover_provider.dart';
-import '../../widgets/player/playback_panel.dart';
+import '../../../animations.dart';
+import '../../../widgets/player/cover_provider.dart';
+import '../../../widgets/player/playback_panel.dart';
 import 'desktop_playback_page.dart';
 import 'device_panel.dart';
 

@@ -1,10 +1,10 @@
 import 'package:flutter/widgets.dart';
 
-import '../../widgets/settings/about_settings.dart';
-import '../../widgets/settings/appearance_settings.dart';
-import '../../widgets/settings/content_settings.dart';
-import '../../widgets/settings/settings_pane.dart';
-import '../../widgets/settings/settings_provider.dart';
+import '../../../widgets/settings/about_settings.dart';
+import '../../../widgets/settings/appearance_settings.dart';
+import '../../../widgets/settings/content_settings.dart';
+import '../../../widgets/settings/settings_pane.dart';
+import '../../../widgets/settings/settings_provider.dart';
 
 String settingsCategoryLabel(SettingsCategory category) {
   return switch (category) {
