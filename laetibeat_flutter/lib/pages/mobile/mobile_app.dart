@@ -6,6 +6,7 @@ import 'home/mobile_home_page.dart';
 import 'library/mobile_library_page.dart';
 import 'routes.dart';
 import 'search/mobile_search_page.dart';
+import 'settings/content/mobile_content_settings_page.dart';
 import 'settings/mobile_settings_page.dart';
 import 'stats/mobile_stats_page.dart';
 
@@ -74,7 +75,9 @@ class _MobileAppState extends State<MobileApp> {
       MobileRoutes.home ||
       MobileRoutes.library ||
       MobileRoutes.search => true,
-      MobileRoutes.stats || MobileRoutes.settings => false,
+      MobileRoutes.stats ||
+      MobileRoutes.settings ||
+      MobileRoutes.contentSettings => false,
       _ => null,
     };
 
@@ -134,6 +137,7 @@ class _MobileAppState extends State<MobileApp> {
       MobileRoutes.search => const MobileSearchPage(),
       MobileRoutes.stats => const MobileStatsPage(),
       MobileRoutes.settings => const MobileSettingsPage(),
+      MobileRoutes.contentSettings => const MobileContentSettingsPage(),
       _ => const MobileHomePage(),
     };
 

@@ -1,6 +1,7 @@
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../routes.dart';
 import '../widgets/mobile_search_bar.dart';
 
 /// 移动端设置页面。
@@ -30,7 +31,7 @@ class MobileSettingsPage extends StatelessWidget {
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                children: const [
+                children: [
                   _SettingsGroup(
                     items: [
                       M3EListItem(
@@ -44,6 +45,13 @@ class MobileSettingsPage extends StatelessWidget {
                   ),
                   SizedBox(height: 12),
                   _SettingsGroup(
+                    onTap: (int index) {
+                      if (index == 1) {
+                        Navigator.of(context).pushNamed(
+                          MobileRoutes.contentSettings,
+                        );
+                      }
+                    },
                     items: [
                       M3EListItem(
                         headline: '播放器与音频',
@@ -103,9 +111,10 @@ class MobileSettingsPage extends StatelessWidget {
 }
 
 class _SettingsGroup extends StatelessWidget {
-  const _SettingsGroup({required this.items});
+  const _SettingsGroup({required this.items, this.onTap});
 
   final List<M3EListItem> items;
+  final ValueChanged<int>? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -114,6 +123,7 @@ class _SettingsGroup extends StatelessWidget {
     return M3EList(
       color: theme.colorScheme.surface,
       variant: M3ECardVariant.filled,
+      onTap: onTap,
       itemCount: items.length,
       itemBuilder: (BuildContext context, int index) => items[index],
     );
