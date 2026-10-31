@@ -1,7 +1,9 @@
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../mobile_navigation.dart';
 import '../routes.dart';
+import 'content/mobile_content_settings_page.dart';
 import '../widgets/mobile_search_bar.dart';
 
 /// 移动端设置页面。
@@ -47,8 +49,10 @@ class MobileSettingsPage extends StatelessWidget {
                   _SettingsGroup(
                     onTap: (int index) {
                       if (index == 1) {
-                        Navigator.of(context).pushNamed(
-                          MobileRoutes.contentSettings,
+                        pushMobileRootPage(
+                          context,
+                          const MobileContentSettingsPage(),
+                          name: MobileRoutes.contentSettings,
                         );
                       }
                     },

@@ -1,7 +1,10 @@
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../mobile_navigation.dart';
 import '../routes.dart';
+import '../settings/mobile_settings_page.dart';
+import '../stats/mobile_stats_page.dart';
 
 /// 移动端页面统一的顶部 AppBar。
 M3EAppBar mobileTopAppBar(
@@ -37,7 +40,11 @@ Widget mobileStatsAction(BuildContext context) {
     variant: M3EIconButtonVariant.standard,
     icon: const Icon(M3EIcons.bar_chart),
     tooltip: '统计',
-    onPressed: () => Navigator.of(context).pushNamed(MobileRoutes.stats),
+    onPressed: () => pushMobileRootPage(
+      context,
+      const MobileStatsPage(),
+      name: MobileRoutes.stats,
+    ),
   );
 }
 
@@ -51,7 +58,11 @@ Widget mobileSettingsAction(BuildContext context) {
       shape: M3EIconButtonShapeVariant.round,
       icon: const Icon(M3EIcons.settings),
       tooltip: '设置',
-      onPressed: () => Navigator.of(context).pushNamed(MobileRoutes.settings),
+      onPressed: () => pushMobileRootPage(
+        context,
+        const MobileSettingsPage(),
+        name: MobileRoutes.settings,
+      ),
     ),
   );
 }
