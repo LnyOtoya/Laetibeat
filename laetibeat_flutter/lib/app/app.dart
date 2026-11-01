@@ -7,7 +7,9 @@ import 'package:material_ui/material_ui.dart' show GlobalMaterialLocalizations;
 
 import '../l10n/generated/app_localizations.dart';
 import '../pages/desktop/desktop_app.dart';
+import '../pages/mobile/home/mobile_home_page.dart';
 import '../pages/mobile/mobile_app.dart';
+import '../pages/mobile/mobile_navigation.dart';
 import '../widgets/integration/media_integration_host.dart';
 import '../widgets/settings/settings_provider.dart';
 import 'app_form_factor.dart';
@@ -27,6 +29,7 @@ class LaetibeatApp extends ConsumerWidget {
     final initialTheme = followSystem
         ? null
         : (themeMode == AppThemeMode.dark ? Brightness.dark : Brightness.light);
+    final themeData = AppThemeFactory.dataFor(formFactor);
 
     return M3EMaterialApp(
       debugShowCheckedModeBanner: false,
@@ -45,7 +48,7 @@ class LaetibeatApp extends ConsumerWidget {
         flutter_l10n.GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: AppLocalizations.supportedLocales,
-      data: AppThemeFactory.dataFor(formFactor),
+      data: themeData,
       dynamicColoring: true,
       autoTheming: followSystem,
       initialTheme: initialTheme,
@@ -55,12 +58,37 @@ class LaetibeatApp extends ConsumerWidget {
         syncWghtToWeight: true,
         emphasizedGrad: 50,
       ),
-      home: MediaIntegrationHost(
-        child: switch (formFactor) {
-          AppFormFactor.desktop => const DesktopApp(),
-          AppFormFactor.mobile => const MobileApp(),
-        },
-      ),
+      navigatorKey: formFactor == AppFormFactor.mobile
+          ? mobileNavigatorKey
+          : null,
+      navigatorObservers: formFactor == AppFormFactor.mobile
+          ? <NavigatorObserver>[mobileNavigatorObserver]
+          : const <NavigatorObserver>[],
+      onGenerateRoute: formFactor == AppFormFactor.mobile
+          ? mobileOnGenerateRoute
+          : null,
+      appBuilder: formFactor == AppFormFactor.mobile
+          ? (BuildContext context, Widget? child) {
+              // appBuilder 位于 M3EMaterialApp 内部 M3ETheme 的外层。
+              // Shell 必须再套一层同数据的 M3ETheme，否则底部导航会
+              // 回退到 Material Theme 推导出的另一套取色。
+              return M3ETheme(
+                data: themeData,
+                autoTheming: followSystem,
+                dynamicColoring: true,
+                initialTheme: initialTheme,
+                child: MediaIntegrationHost(
+                  child: MobileShell(child: child ?? const SizedBox.shrink()),
+                ),
+              );
+            }
+          : null,
+      home: switch (formFactor) {
+        AppFormFactor.desktop => const MediaIntegrationHost(
+          child: DesktopApp(),
+        ),
+        AppFormFactor.mobile => const MobileHomePage(),
+      },
     );
   }
 }

@@ -2,22 +2,37 @@ import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../l10n/generated/app_localizations.dart';
+import '../routes.dart';
 import '../widgets/mobile_app_bar.dart';
 import 'views/albums_library_view.dart';
 import 'views/artists_library_view.dart';
 import 'views/playlists_library_view.dart';
 import 'views/songs_library_view.dart';
 
-/// 移动端音乐库页面。
-class MobileLibraryPage extends StatefulWidget {
-  const MobileLibraryPage({super.key});
+/// 音乐库分类。每个分类都是独立的根 Navigator route。
+enum LibrarySection {
+  songs,
+  playlists,
+  artists,
+  albums,
+  podcasts;
 
-  @override
-  State<MobileLibraryPage> createState() => _MobileLibraryPageState();
+  String get routeName {
+    return switch (this) {
+      LibrarySection.songs => MobileRoutes.librarySongs,
+      LibrarySection.playlists => MobileRoutes.libraryPlaylists,
+      LibrarySection.artists => MobileRoutes.libraryArtists,
+      LibrarySection.albums => MobileRoutes.libraryAlbums,
+      LibrarySection.podcasts => MobileRoutes.libraryPodcasts,
+    };
+  }
 }
 
-class _MobileLibraryPageState extends State<MobileLibraryPage> {
-  int _selectedIndex = 0;
+/// 移动端音乐库页面。
+class MobileLibraryPage extends StatelessWidget {
+  const MobileLibraryPage({super.key, required this.section});
+
+  final LibrarySection section;
 
   @override
   Widget build(BuildContext context) {
@@ -62,10 +77,12 @@ class _MobileLibraryPageState extends State<MobileLibraryPage> {
                 selectionRequired: true,
                 neighborSquish: true,
                 overflow: M3EButtonGroupOverflow.scroll,
-                selectedIndex: _selectedIndex,
+                selectedIndex: section.index,
                 onSelectedIndexChanged: (int? index) {
                   if (index == null) return;
-                  setState(() => _selectedIndex = index);
+                  final next = LibrarySection.values[index];
+                  if (next == section) return;
+                  Navigator.of(context).pushNamed(next.routeName);
                 },
                 actions: [
                   action(M3EIcons.music_note, l10n.librarySongs),
@@ -84,12 +101,12 @@ class _MobileLibraryPageState extends State<MobileLibraryPage> {
   }
 
   Widget _buildContent(AppLocalizations l10n) {
-    return switch (_selectedIndex) {
-      0 => const SongsLibraryView(),
-      1 => const PlaylistsLibraryView(),
-      2 => const ArtistsLibraryView(),
-      3 => const AlbumsLibraryView(),
-      _ => _LibraryPlaceholder(l10n.libraryPodcasts),
+    return switch (section) {
+      LibrarySection.songs => const SongsLibraryView(),
+      LibrarySection.playlists => const PlaylistsLibraryView(),
+      LibrarySection.artists => const ArtistsLibraryView(),
+      LibrarySection.albums => const AlbumsLibraryView(),
+      LibrarySection.podcasts => _LibraryPlaceholder(l10n.libraryPodcasts),
     };
   }
 }
