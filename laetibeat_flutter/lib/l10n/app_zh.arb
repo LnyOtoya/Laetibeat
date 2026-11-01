@@ -261,6 +261,21 @@
   "searchLocalLoading": "本地音乐库加载中…",
   "searchRemoteLoading": "正在搜索…",
   "searchFailed": "搜索失败",
+  "homeGreetingMorning": "早上好",
+  "homeGreetingAfternoon": "下午好",
+  "homeGreetingEvening": "晚上好",
+  "homeGreetingQuestion": "今天想听点什么？",
+  "homeGreetingWithName": "{greeting}，{name}",
+  "@homeGreetingWithName": {
+    "placeholders": {
+      "greeting": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "searchRecentTitle": "最近搜索",
   "searchRecentEmpty": "暂无最近搜索",
   "searchRecentClear": "清除",

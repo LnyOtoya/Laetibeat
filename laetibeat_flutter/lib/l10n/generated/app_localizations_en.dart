@@ -577,6 +577,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchFailed => 'Search failed';
 
   @override
+  String get homeGreetingMorning => 'Good morning';
+
+  @override
+  String get homeGreetingAfternoon => 'Good afternoon';
+
+  @override
+  String get homeGreetingEvening => 'Good evening';
+
+  @override
+  String get homeGreetingQuestion => 'What would you like to listen to?';
+
+  @override
+  String homeGreetingWithName(String greeting, String name) {
+    return '$greeting, $name';
+  }
+
+  @override
   String get searchRecentTitle => 'Recent searches';
 
   @override

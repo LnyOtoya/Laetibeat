@@ -566,6 +566,23 @@ class AppLocalizationsZh extends AppLocalizations {
   String get searchFailed => '搜索失败';
 
   @override
+  String get homeGreetingMorning => '早上好';
+
+  @override
+  String get homeGreetingAfternoon => '下午好';
+
+  @override
+  String get homeGreetingEvening => '晚上好';
+
+  @override
+  String get homeGreetingQuestion => '今天想听点什么？';
+
+  @override
+  String homeGreetingWithName(String greeting, String name) {
+    return '$greeting，$name';
+  }
+
+  @override
   String get searchRecentTitle => '最近搜索';
 
   @override

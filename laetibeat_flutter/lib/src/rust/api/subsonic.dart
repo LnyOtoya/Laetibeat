@@ -130,6 +130,15 @@ Future<String?> subsonicGetLyricsCached({
 Future<List<UiRemoteArtist>> subsonicGetArtists({required String sourceId}) =>
     RustLib.instance.api.crateApiSubsonicSubsonicGetArtists(sourceId: sourceId);
 
+/// 获取当前登录用户的用户名(OpenSubsonic getUser)。
+Future<String> subsonicGetUserName({
+  required String sourceId,
+  required String username,
+}) => RustLib.instance.api.crateApiSubsonicSubsonicGetUserName(
+  sourceId: sourceId,
+  username: username,
+);
+
 /// 获取当前用户可见的全部歌单
 Future<List<UiRemotePlaylist>> subsonicGetPlaylists({
   required String sourceId,

@@ -261,6 +261,21 @@
   "searchLocalLoading": "Loading local library…",
   "searchRemoteLoading": "Searching…",
   "searchFailed": "Search failed",
+  "homeGreetingMorning": "Good morning",
+  "homeGreetingAfternoon": "Good afternoon",
+  "homeGreetingEvening": "Good evening",
+  "homeGreetingQuestion": "What would you like to listen to?",
+  "homeGreetingWithName": "{greeting}, {name}",
+  "@homeGreetingWithName": {
+    "placeholders": {
+      "greeting": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "searchRecentTitle": "Recent searches",
   "searchRecentEmpty": "No recent searches",
   "searchRecentClear": "Clear",

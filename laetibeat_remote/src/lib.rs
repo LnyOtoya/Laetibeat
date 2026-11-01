@@ -351,6 +351,15 @@ pub fn get_artists(source_id: &str) -> Result<Vec<RemoteArtist>, String> {
     Ok(result)
 }
 
+/// 获取当前登录用户的信息(OpenSubsonic getUser)。
+pub fn get_user_name(source_id: &str, username: &str) -> Result<String, String> {
+    let client = client(source_id)?;
+    let user = runtime()?
+        .block_on(client.get_user(username))
+        .map_err(map_err)?;
+    Ok(user.username)
+}
+
 /// 获取当前用户可见的全部歌单。
 pub fn get_playlists(source_id: &str) -> Result<Vec<RemotePlaylist>, String> {
     let client = client(source_id)?;

@@ -1166,6 +1166,36 @@ abstract class AppLocalizations {
   /// **'Search failed'**
   String get searchFailed;
 
+  /// No description provided for @homeGreetingMorning.
+  ///
+  /// In en, this message translates to:
+  /// **'Good morning'**
+  String get homeGreetingMorning;
+
+  /// No description provided for @homeGreetingAfternoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Good afternoon'**
+  String get homeGreetingAfternoon;
+
+  /// No description provided for @homeGreetingEvening.
+  ///
+  /// In en, this message translates to:
+  /// **'Good evening'**
+  String get homeGreetingEvening;
+
+  /// No description provided for @homeGreetingQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'What would you like to listen to?'**
+  String get homeGreetingQuestion;
+
+  /// No description provided for @homeGreetingWithName.
+  ///
+  /// In en, this message translates to:
+  /// **'{greeting}, {name}'**
+  String homeGreetingWithName(String greeting, String name);
+
   /// No description provided for @searchRecentTitle.
   ///
   /// In en, this message translates to:

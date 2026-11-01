@@ -5,6 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:laetibeat/src/rust/api/simple.dart' as rust;
 
+import '../../../../l10n/generated/app_localizations.dart';
+import '../../../../widgets/remote_browser_provider.dart';
+import '../../../../widgets/settings/subsonic_provider.dart';
+
 import 'mobile_home_constants.dart';
 import '../../../../widgets/player/cover_provider.dart';
 import '../../../../widgets/player/player_provider.dart';
@@ -70,6 +74,7 @@ class _MobileWelcomeSectionState extends ConsumerState<MobileWelcomeSection> {
         return s.queue[(s.currentIndex + 1) % s.queue.length];
       }),
     );
+    final username = _displayUsername(ref);
 
     return AnimatedContainer(
       height: 140,
@@ -77,7 +82,7 @@ class _MobileWelcomeSectionState extends ConsumerState<MobileWelcomeSection> {
       curve: kMobileHomeAnimCurve,
       clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: theme.colorScheme.surfaceContainer,
         borderRadius: M3EDimensions.borderRadiusMedium,
       ),
       child: PageView.builder(
@@ -87,17 +92,38 @@ class _MobileWelcomeSectionState extends ConsumerState<MobileWelcomeSection> {
         itemCount: _itemCount,
         itemBuilder: (context, index) {
           final phase = _PlaybackPhase.values[index % _pageCount];
-          return _buildPage(theme, phase, current, next);
+          return _buildPage(context, theme, phase, current, next, username);
         },
       ),
     );
   }
 
+  String? _displayUsername(WidgetRef ref) {
+    final servers =
+        ref.watch(subsonicServersProvider).value ??
+        const <SubsonicServerConfig>[];
+    final server = servers.isEmpty ? null : servers.first;
+    final configured = server?.username?.trim();
+    if (server == null || configured == null || configured.isEmpty) {
+      return null;
+    }
+
+    final fetched = ref
+        .watch(
+          remoteUserNameProvider((sourceId: server.id, username: configured)),
+        )
+        .value
+        ?.trim();
+    return fetched == null || fetched.isEmpty ? configured : fetched;
+  }
+
   Widget _buildPage(
+    BuildContext context,
     M3EThemeData theme,
     _PlaybackPhase phase,
     rust.UiTrack? current,
     rust.UiTrack? next,
+    String? username,
   ) {
     final scheme = theme.colorScheme;
     final type = theme.typeScale;
@@ -110,10 +136,18 @@ class _MobileWelcomeSectionState extends ConsumerState<MobileWelcomeSection> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(_greetingFor(DateTime.now()), style: type.headlineMedium),
+            Text(
+              username == null || username.isEmpty
+                  ? _greetingFor(context, DateTime.now())
+                  : AppLocalizations.of(context).homeGreetingWithName(
+                      _greetingFor(context, DateTime.now()),
+                      username,
+                    ),
+              style: type.headlineMedium,
+            ),
             SizedBox(height: theme.spacing.xs),
             Text(
-              '今天想听点什么？',
+              AppLocalizations.of(context).homeGreetingQuestion,
               style: type.bodyLarge.copyWith(color: scheme.onSurfaceVariant),
             ),
           ],
@@ -219,11 +253,12 @@ class _MobileWelcomeSectionState extends ConsumerState<MobileWelcomeSection> {
   }
 }
 
-String _greetingFor(DateTime now) {
+String _greetingFor(BuildContext context, DateTime now) {
+  final l10n = AppLocalizations.of(context);
   final hour = now.hour;
-  if (hour >= 5 && hour < 12) return 'Good morning';
-  if (hour >= 12 && hour < 18) return 'Good afternoon';
-  return 'Good evening';
+  if (hour >= 5 && hour < 12) return l10n.homeGreetingMorning;
+  if (hour >= 12 && hour < 18) return l10n.homeGreetingAfternoon;
+  return l10n.homeGreetingEvening;
 }
 
 //轮播封面:有内嵌封面显示真实封面,否则保留渐变占位

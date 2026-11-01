@@ -262,6 +262,14 @@ pub fn subsonic_get_artists(source_id: String) -> Result<Vec<UiRemoteArtist>, St
     Ok(artists.into_iter().map(map_artist).collect())
 }
 
+/// 获取当前登录用户的用户名(OpenSubsonic getUser)。
+pub fn subsonic_get_user_name(
+    source_id: String,
+    username: String,
+) -> Result<String, String> {
+    remote::get_user_name(&source_id, &username)
+}
+
 /// 获取当前用户可见的全部歌单
 pub fn subsonic_get_playlists(source_id: String) -> Result<Vec<UiRemotePlaylist>, String> {
     let playlists = remote::get_playlists(&source_id)?;

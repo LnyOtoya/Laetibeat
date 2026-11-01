@@ -12,6 +12,23 @@ final remoteArtistsProvider =
       return rust_library.queryRemoteArtists(sourceId: sourceId);
     });
 
+typedef RemoteUserNameKey = ({String sourceId, String username});
+
+/// 当前登录用户的服务器用户名(OpenSubsonic getUser)。
+///
+/// 失败时返回配置里的 username，避免首页欢迎语因为临时网络错误消失。
+final remoteUserNameProvider =
+    FutureProvider.family<String?, RemoteUserNameKey>((ref, key) async {
+      try {
+        return await rust_subsonic.subsonicGetUserName(
+          sourceId: key.sourceId,
+          username: key.username,
+        );
+      } catch (_) {
+        return key.username;
+      }
+    });
+
 typedef RemoteArtistBiographyKey = ({String sourceId, String artistId});
 
 /// 艺术家简介(OpenSubsonic getArtistInfo2)
