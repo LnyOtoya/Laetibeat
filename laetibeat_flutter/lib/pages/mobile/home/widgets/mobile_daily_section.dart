@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'dart:math' as math;
-import 'dart:typed_data';
 
+import 'package:flutter/services.dart';
+
+import '../../../../shared/feedback/app_haptics.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
@@ -151,9 +154,24 @@ class _SplitShapeCompositionsState extends State<_SplitShapeCompositions>
     super.dispose();
   }
 
+  void _handleRandom() {
+    unawaited(HapticFeedback.mediumImpact());
+    widget.onRandom();
+  }
+
   void _handleRefresh() {
     _rotationController.forward(from: 0);
+    unawaited(_pulseRefreshHaptics());
     widget.onRefresh();
+  }
+
+  // 刷新时连续 12 次轻微触感，持续时间与轮盘旋转动画大致同步。
+  Future<void> _pulseRefreshHaptics() async {
+    for (var i = 0; i < 12; i++) {
+      if (!mounted) return;
+      unawaited(HapticFeedback.selectionClick());
+      await Future<void>.delayed(const Duration(milliseconds: 55));
+    }
   }
 
   @override
@@ -220,7 +238,7 @@ class _SplitShapeCompositionsState extends State<_SplitShapeCompositions>
                     label: AppLocalizations.of(context).shuffleRecommendations,
                     background: scheme.secondaryContainer,
                     foreground: scheme.onSecondaryContainer,
-                    onTap: widget.onRandom,
+                    onTap: _handleRandom,
                   ),
                 ),
                 Positioned(
@@ -300,6 +318,7 @@ class _CenterShapeButtonState extends State<_CenterShapeButton>
       label: widget.label,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
+        onTapDown: (_) => AppHaptics.suppressNextTap(),
         onTap: _handleTap,
         child: RotationTransition(
           turns: _turns,

@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../app/app_destination.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../shared/feedback/app_haptics.dart';
 import '../../shared/layout/app_bottom_inset.dart';
 import '../../widgets/player/player_provider.dart';
 import 'home/mobile_home_page.dart';
@@ -120,39 +121,41 @@ class MobileShell extends ConsumerWidget {
         final bool showNavigationBar = _showNavigationBar(routeName);
         final bool showMiniPlayer = hasTrack && showNavigationBar;
 
-        return Scaffold(
-          backgroundColor: theme.colorScheme.surfaceContainer,
-          body: Stack(
-            children: [
-              Positioned.fill(
-                child: AppBottomInsetScope(
-                  bottomInset: showMiniPlayer ? kMiniPlayerReservedHeight : 0,
-                  child: child,
+        return TapHapticDetector(
+          child: Scaffold(
+            backgroundColor: theme.colorScheme.surfaceContainer,
+            body: Stack(
+              children: [
+                Positioned.fill(
+                  child: AppBottomInsetScope(
+                    bottomInset: showMiniPlayer ? kMiniPlayerReservedHeight : 0,
+                    child: child,
+                  ),
                 ),
-              ),
-              if (showMiniPlayer)
-                const Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: MiniPlayer(),
-                ),
-            ],
+                if (showMiniPlayer)
+                  const Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: MiniPlayer(),
+                  ),
+              ],
+            ),
+            bottomNavigationBar: showNavigationBar
+                ? M3ENavigationBar(
+                    destinations: _destinations(l10n),
+                    selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
+                    onDestinationSelected: (int index) {
+                      if (index < 0 || index >= _tabs.length) return;
+                      _selectTab(_tabs[index]);
+                    },
+                    size: M3ENavBarSize.medium,
+                    density: M3ENavBarDensity.compact,
+                    shapeFamily: M3ENavBarShapeFamily.square,
+                    labelBehavior: M3ENavBarLabelBehavior.alwaysShow,
+                  )
+                : null,
           ),
-          bottomNavigationBar: showNavigationBar
-              ? M3ENavigationBar(
-                  destinations: _destinations(l10n),
-                  selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
-                  onDestinationSelected: (int index) {
-                    if (index < 0 || index >= _tabs.length) return;
-                    _selectTab(_tabs[index]);
-                  },
-                  size: M3ENavBarSize.medium,
-                  density: M3ENavBarDensity.compact,
-                  shapeFamily: M3ENavBarShapeFamily.square,
-                  labelBehavior: M3ENavBarLabelBehavior.alwaysShow,
-                )
-              : null,
         );
       },
     );
