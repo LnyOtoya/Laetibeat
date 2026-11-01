@@ -2,6 +2,7 @@ import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../l10n/generated/app_localizations.dart';
+import 'widgets/mobile_history_section.dart';
 
 /// 移动端统计页面。
 ///
@@ -30,7 +31,10 @@ class MobileStatsPage extends StatelessWidget {
         shapeFamily: M3EAppBarShapeFamily.square,
         safeArea: true,
       ),
-      body: const SizedBox.expand(),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+        children: const [MobileHistorySection()],
+      ),
     );
   }
 }

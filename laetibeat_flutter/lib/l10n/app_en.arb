@@ -264,6 +264,8 @@
   "homeGreetingMorning": "Good morning",
   "homeGreetingAfternoon": "Good afternoon",
   "homeGreetingEvening": "Good evening",
+  "shuffleRecommendations": "Shuffle recommendations",
+  "refreshRecommendations": "Refresh recommendations",
   "recommendedQueueSource": "Recommended for you",
   "homeRecommendationSubtitle": "Today's recommendation for you",
   "homeGreetingQuestion": "What would you like to listen to?",

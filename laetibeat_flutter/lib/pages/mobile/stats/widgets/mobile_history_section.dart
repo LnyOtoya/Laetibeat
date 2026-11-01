@@ -2,7 +2,6 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 
-import 'mobile_home_constants.dart';
 import '../../../../widgets/player/playback_stats.dart';
 
 //首页播放记录摘要:今天/本周/本月的累计播放与收听时长
@@ -27,9 +26,7 @@ class _MobileHistorySectionState extends ConsumerState<MobileHistorySection> {
     final topArtistPlays = summary?.topArtistPlays ?? 0;
     final topAlbumArtist = summary?.topAlbumArtist;
 
-    return AnimatedContainer(
-      duration: kMobileHomeAnimDuration,
-      curve: kMobileHomeAnimCurve,
+    return Container(
       clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
         color: scheme.surface,

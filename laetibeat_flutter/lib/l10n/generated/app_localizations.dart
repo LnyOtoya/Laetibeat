@@ -1184,6 +1184,18 @@ abstract class AppLocalizations {
   /// **'Good evening'**
   String get homeGreetingEvening;
 
+  /// No description provided for @shuffleRecommendations.
+  ///
+  /// In en, this message translates to:
+  /// **'Shuffle recommendations'**
+  String get shuffleRecommendations;
+
+  /// No description provided for @refreshRecommendations.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh recommendations'**
+  String get refreshRecommendations;
+
   /// No description provided for @recommendedQueueSource.
   ///
   /// In en, this message translates to:

@@ -575,6 +575,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeGreetingEvening => '晚上好';
 
   @override
+  String get shuffleRecommendations => '随机播放推荐';
+
+  @override
+  String get refreshRecommendations => '换一批推荐';
+
+  @override
   String get recommendedQueueSource => '今天为你推荐';
 
   @override

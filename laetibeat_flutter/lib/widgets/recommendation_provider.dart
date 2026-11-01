@@ -42,6 +42,19 @@ class RecommendedAlbum {
   bool get isRemote => remoteSourceId != null;
 }
 
+/// 用户手动刷新推荐的轮次。增加该值会让推荐重新计算并轮换候选。
+class RecommendationRefreshNotifier extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void refresh() => state++;
+}
+
+final recommendationRefreshProvider =
+    NotifierProvider<RecommendationRefreshNotifier, int>(
+      RecommendationRefreshNotifier.new,
+    );
+
 /// 专辑级推荐:把本地与远端曲目统计聚合到专辑,再按模式排序。
 /// 统计加载中/无历史时回退到最近添加,保证首页不空。
 final albumRecommendationsProvider =
@@ -59,6 +72,7 @@ final albumRecommendationsProvider =
       final config = servers.isEmpty ? null : servers.first;
 
       final nowMs = DateTime.now().millisecondsSinceEpoch;
+      final refreshToken = ref.watch(recommendationRefreshProvider);
       final scored = <_AlbumScore>[];
 
       // 本地专辑
@@ -159,10 +173,11 @@ final albumRecommendationsProvider =
 
       if (scored.isEmpty) return const <RecommendedAlbum>[];
 
-      final candidates = _candidatesFor(mode, scored, nowMs);
+      final candidates = _candidatesFor(mode, scored, nowMs, refreshToken);
+      final rotated = _rotateCandidates(candidates, refreshToken, 22);
       return _pickWithArtistDiversity(
-        candidates,
-        10,
+        rotated,
+        22,
       ).map((entry) => entry.album).toList();
     });
 
@@ -170,6 +185,7 @@ List<_AlbumScore> _candidatesFor(
   RecommendMode mode,
   List<_AlbumScore> scored,
   int nowMs,
+  int refreshToken,
 ) {
   List<_AlbumScore> candidates;
   switch (mode) {
@@ -179,7 +195,7 @@ List<_AlbumScore> _candidatesFor(
       // 同一天保持稳定,但在最近添加的前 12 张里做轮换
       if (candidates.length > 1) {
         final window = candidates.take(12).toList()
-          ..shuffle(Random(_dailySeed() + 1));
+          ..shuffle(Random(_dailySeed() + 1 + refreshToken));
         candidates = [...window, ...candidates.skip(12)];
       }
       break;
@@ -210,6 +226,17 @@ List<_AlbumScore> _candidatesFor(
       ..sort((a, b) => b.latestMtime.compareTo(a.latestMtime));
   }
   return candidates;
+}
+
+/// 刷新时在候选足够多的情况下轮换起点，让用户真正看到另一批专辑。
+List<_AlbumScore> _rotateCandidates(
+  List<_AlbumScore> candidates,
+  int refreshToken,
+  int limit,
+) {
+  if (refreshToken <= 0 || candidates.length <= limit) return candidates;
+  final offset = (refreshToken * limit) % candidates.length;
+  return [...candidates.skip(offset), ...candidates.take(offset)];
 }
 
 /// 先保证艺术家多样性:第一轮每个艺术家最多 1 张,数量不足再放宽到 2 张。
