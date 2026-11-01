@@ -20,23 +20,30 @@ class MobileNavigatorObserver extends NavigatorObserver {
     mobileCurrentRouteName.value = name ?? MobileRoutes.home;
   }
 
+  // Dialog / ModalBottomSheet / PopupMenu 等覆盖层不应改变当前页面。
+  bool _isPopup(Route<dynamic>? route) => route is PopupRoute;
+
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (_isPopup(route)) return;
     _setRoute(route);
   }
 
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (_isPopup(route)) return;
     _setRoute(previousRoute);
   }
 
   @override
   void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (_isPopup(route)) return;
     _setRoute(previousRoute);
   }
 
   @override
   void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    if (_isPopup(newRoute)) return;
     _setRoute(newRoute ?? oldRoute);
   }
 }
