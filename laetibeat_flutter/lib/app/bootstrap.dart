@@ -98,8 +98,10 @@ Future<void> bootstrap() async {
           androidNotificationChannelId: 'com.otimeum.laetibeat.playback',
           androidNotificationChannelName: '播放',
           androidNotificationChannelDescription: 'Laetibeat 播放控制',
-          androidNotificationOngoing: true,
-          androidStopForegroundOnPause: true,
+          // 暂停时保留前台服务：否则其他应用结束后自动恢复播放，
+          // 会在后台触发 startForegroundService 并可能被 Android 12+ 拒绝。
+          androidNotificationOngoing: false,
+          androidStopForegroundOnPause: false,
           androidNotificationIcon: 'drawable/ic_stat_playback',
           artDownscaleWidth: 512,
           artDownscaleHeight: 512,
