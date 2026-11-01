@@ -34,6 +34,7 @@ class _MobileOpensubsonicConfigPageState
 
   bool _testing = false;
   bool _saving = false;
+  bool _obscurePassword = true;
   bool _testPassed = false;
   String? _testedFingerprint;
   String? _error;
@@ -256,6 +257,34 @@ class _MobileOpensubsonicConfigPageState
     }
   }
 
+  InputDecoration _credentialDecoration(
+    BuildContext context, {
+    required String label,
+    required String helper,
+    Widget? prefixIcon,
+    Widget? suffixIcon,
+  }) {
+    final scheme = M3ETheme.of(context).colorScheme;
+    OutlineInputBorder border(Color color, {double width = 1}) =>
+        OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: color, width: width),
+        );
+
+    return InputDecoration(
+      labelText: label,
+      helperText: helper,
+      filled: true,
+      fillColor: scheme.surfaceContainerHighest,
+      prefixIcon: prefixIcon,
+      suffixIcon: suffixIcon,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      border: border(scheme.outlineVariant),
+      enabledBorder: border(scheme.outlineVariant),
+      focusedBorder: border(scheme.primary, width: 2),
+    );
+  }
+
   String? _syncStatusText(RemoteSyncState? sync) {
     if (sync == null) return null;
     final l10n = AppLocalizations.of(context);
@@ -376,36 +405,55 @@ class _MobileOpensubsonicConfigPageState
               ],
             ),
             const SizedBox(height: 16),
-            M3ETextField(
-              controller: _usernameController,
-              variant: M3ETextFieldVariant.filled,
-              maxLines: 1,
-              keyboardType: TextInputType.text,
-              textInputAction: TextInputAction.next,
-              label: l10n.usernameLabel,
-              supportingText: l10n.usernameLabel,
-              supportingTextOnFocusOnly: false,
-              isRequired: true,
-              leading: const Icon(M3EIcons.person),
-              onChanged: _onFieldChanged,
-            ),
-            const SizedBox(height: 16),
-            M3ETextField(
-              controller: _passwordController,
-              variant: M3ETextFieldVariant.filled,
-              maxLines: 1,
-              keyboardType: TextInputType.visiblePassword,
-              textInputAction: TextInputAction.done,
-              label: l10n.passwordLabel,
-              supportingText: l10n.passwordLabel,
-              supportingTextOnFocusOnly: false,
-              isRequired: true,
-              leading: const Icon(M3EIcons.lock),
-              obscureText: true,
-              showPasswordToggle: true,
-              showPasswordSemanticsLabel: l10n.showPassword,
-              hidePasswordSemanticsLabel: l10n.hidePassword,
-              onChanged: _onFieldChanged,
+            AutofillGroup(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextFormField(
+                    controller: _usernameController,
+                    autofillHints: const <String>[AutofillHints.username],
+                    keyboardType: TextInputType.text,
+                    textInputAction: TextInputAction.next,
+                    decoration: _credentialDecoration(
+                      context,
+                      label: l10n.usernameLabel,
+                      helper: l10n.usernameLabel,
+                      prefixIcon: const Icon(M3EIcons.person),
+                    ),
+                    onChanged: _onFieldChanged,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _passwordController,
+                    autofillHints: const <String>[AutofillHints.password],
+                    keyboardType: TextInputType.visiblePassword,
+                    textInputAction: TextInputAction.done,
+                    obscureText: _obscurePassword,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    decoration: _credentialDecoration(
+                      context,
+                      label: l10n.passwordLabel,
+                      helper: l10n.passwordLabel,
+                      prefixIcon: const Icon(M3EIcons.lock),
+                      suffixIcon: IconButton(
+                        tooltip: _obscurePassword
+                            ? l10n.showPassword
+                            : l10n.hidePassword,
+                        icon: Icon(
+                          _obscurePassword
+                              ? M3EIcons.visibility
+                              : M3EIcons.visibility_off,
+                        ),
+                        onPressed: () => setState(
+                          () => _obscurePassword = !_obscurePassword,
+                        ),
+                      ),
+                    ),
+                    onChanged: _onFieldChanged,
+                  ),
+                ],
+              ),
             ),
             if (_saving || syncing) ...[
               const SizedBox(height: 16),
