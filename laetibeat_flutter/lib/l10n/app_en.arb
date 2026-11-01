@@ -247,5 +247,15 @@
   "lyricsEmptyTitle": "No lyrics",
   "lyricsEmptySubtitle": "No lyrics are available for this track",
   "notificationChannelName": "Playback",
-  "notificationChannelDescription": "Laetibeat playback controls"
+  "notificationChannelDescription": "Laetibeat playback controls",
+  "searchSource": "Search source",
+  "searchSourceLocal": "Local music",
+  "searchSourceSubsonic": "Subsonic",
+  "searchPrompt": "Search songs, artists, and albums",
+  "searchNoResults": "No results found",
+  "searchConfigureSubsonic": "Configure a Subsonic source first",
+  "searchLocalLoading": "Loading local library…",
+  "searchRemoteLoading": "Searching…",
+  "searchFailed": "Search failed",
+  "searchRemoteNotSynced": "Remote library is not synced yet"
 }

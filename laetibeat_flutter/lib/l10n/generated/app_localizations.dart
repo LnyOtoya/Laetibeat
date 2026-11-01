@@ -1087,6 +1087,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Laetibeat playback controls'**
   String get notificationChannelDescription;
+
+  /// No description provided for @searchSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Search source'**
+  String get searchSource;
+
+  /// No description provided for @searchSourceLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Local music'**
+  String get searchSourceLocal;
+
+  /// No description provided for @searchSourceSubsonic.
+  ///
+  /// In en, this message translates to:
+  /// **'Subsonic'**
+  String get searchSourceSubsonic;
+
+  /// No description provided for @searchPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Search songs, artists, and albums'**
+  String get searchPrompt;
+
+  /// No description provided for @searchNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No results found'**
+  String get searchNoResults;
+
+  /// No description provided for @searchConfigureSubsonic.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure a Subsonic source first'**
+  String get searchConfigureSubsonic;
+
+  /// No description provided for @searchLocalLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading local library…'**
+  String get searchLocalLoading;
+
+  /// No description provided for @searchRemoteLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Searching…'**
+  String get searchRemoteLoading;
+
+  /// No description provided for @searchFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Search failed'**
+  String get searchFailed;
+
+  /// No description provided for @searchRemoteNotSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote library is not synced yet'**
+  String get searchRemoteNotSynced;
 }
 
 class _AppLocalizationsDelegate

@@ -97,11 +97,19 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
     return const <rust.UiTrack>[];
   }
 
+  String get _playbackSourceName {
+    if (_selectedSource != _subsonicSource) return _selectedSource;
+    final servers =
+        ref.read(subsonicServersProvider).value ??
+        const <SubsonicServerConfig>[];
+    return servers.isEmpty ? _selectedSource : servers.first.name;
+  }
+
   void _playTracks(List<rust.UiTrack> tracks, int index) {
     if (tracks.isEmpty) return;
     ref
         .read(playerProvider.notifier)
-        .load(tracks, index, source: _selectedSource);
+        .load(tracks, index, source: _playbackSourceName);
   }
 
   void _playRandom() {
@@ -109,7 +117,7 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
     if (tracks.isEmpty) return;
     ref
         .read(playerProvider.notifier)
-        .playShuffled(tracks, source: _selectedSource);
+        .playShuffled(tracks, source: _playbackSourceName);
   }
 
   List<rust.UiTrack> _selectedTracksInOrder() {
@@ -124,7 +132,7 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
     if (tracks.isEmpty) return;
     ref
         .read(playerProvider.notifier)
-        .load(tracks, 0, source: _selectedSource, shuffle: false);
+        .load(tracks, 0, source: _playbackSourceName, shuffle: false);
     _clearSelection();
   }
 

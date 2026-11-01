@@ -247,5 +247,15 @@
   "lyricsEmptyTitle": "暂无歌词",
   "lyricsEmptySubtitle": "当前曲目没有可显示的歌词",
   "notificationChannelName": "播放",
-  "notificationChannelDescription": "Laetibeat 播放控制"
+  "notificationChannelDescription": "Laetibeat 播放控制",
+  "searchSource": "搜索源",
+  "searchSourceLocal": "本地音乐",
+  "searchSourceSubsonic": "Subsonic",
+  "searchPrompt": "搜索歌曲、艺术家和专辑",
+  "searchNoResults": "未找到相关内容",
+  "searchConfigureSubsonic": "请先配置 Subsonic 音源",
+  "searchLocalLoading": "本地音乐库加载中…",
+  "searchRemoteLoading": "正在搜索…",
+  "searchFailed": "搜索失败",
+  "searchRemoteNotSynced": "远端音乐尚未同步"
 }

@@ -525,4 +525,34 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get notificationChannelDescription => 'Laetibeat 播放控制';
+
+  @override
+  String get searchSource => '搜索源';
+
+  @override
+  String get searchSourceLocal => '本地音乐';
+
+  @override
+  String get searchSourceSubsonic => 'Subsonic';
+
+  @override
+  String get searchPrompt => '搜索歌曲、艺术家和专辑';
+
+  @override
+  String get searchNoResults => '未找到相关内容';
+
+  @override
+  String get searchConfigureSubsonic => '请先配置 Subsonic 音源';
+
+  @override
+  String get searchLocalLoading => '本地音乐库加载中…';
+
+  @override
+  String get searchRemoteLoading => '正在搜索…';
+
+  @override
+  String get searchFailed => '搜索失败';
+
+  @override
+  String get searchRemoteNotSynced => '远端音乐尚未同步';
 }

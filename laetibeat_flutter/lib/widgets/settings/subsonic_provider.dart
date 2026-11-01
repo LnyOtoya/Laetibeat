@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -44,12 +45,12 @@ class SubsonicServerConfig {
   final String? username;
 
   Map<String, Object?> toJson() => <String, Object?>{
-        'id': id,
-        'name': name,
-        'baseUrl': baseUrl,
-        'authMode': authMode.name,
-        'username': username,
-      };
+    'id': id,
+    'name': name,
+    'baseUrl': baseUrl,
+    'authMode': authMode.name,
+    'username': username,
+  };
 
   static SubsonicServerConfig? fromJson(Object? value) {
     if (value is! Map<String, dynamic>) return null;
@@ -170,8 +171,8 @@ final subsonicServerStoreProvider = Provider<SubsonicServerStore>((ref) {
 /// 已配置服务器列表
 final subsonicServersProvider =
     AsyncNotifierProvider<SubsonicServersNotifier, List<SubsonicServerConfig>>(
-  SubsonicServersNotifier.new,
-);
+      SubsonicServersNotifier.new,
+    );
 
 class SubsonicServersNotifier
     extends AsyncNotifier<List<SubsonicServerConfig>> {
@@ -180,7 +181,56 @@ class SubsonicServersNotifier
     final store = ref.read(subsonicServerStoreProvider);
     // 旧版多服务器配置在首次读取时迁移为单服务器配置
     await store.migrateLegacyIfNeeded();
-    return store.loadConfigs();
+    final configs = store.loadConfigs();
+
+    // 旧配置在保存时可能用 host/IP 作为显示名。后台 ping 一次，
+    // 成功则把 name 迁移为服务端 type（navidrome/airsonic 等）。
+    if (configs.isNotEmpty && _needsServerType(configs.first)) {
+      unawaited(_refreshServerType(configs.first));
+    }
+    return configs;
+  }
+
+  bool _needsServerType(SubsonicServerConfig config) {
+    final name = config.name.trim().toLowerCase();
+    final host = Uri.tryParse(config.baseUrl)?.host.toLowerCase();
+    if (host != null && host.isNotEmpty && name == host) return true;
+    return name == 'subsonic' || name == 'opensubsonic';
+  }
+
+  Future<void> _refreshServerType(SubsonicServerConfig config) async {
+    try {
+      final store = ref.read(subsonicServerStoreProvider);
+      final secret = await store.readSecret(config.id);
+      if (secret == null || secret.isEmpty) return;
+
+      final info = await rust_subsonic.testSubsonicConnection(
+        baseUrl: config.baseUrl,
+        authMode: config.authMode.wireName,
+        username: config.authMode == SubsonicAuthMode.token
+            ? config.username
+            : null,
+        secret: secret,
+        clientName: 'laetibeat',
+      );
+      final type = info.serverType?.trim();
+      if (type == null || type.isEmpty || type == config.name) return;
+
+      final updated = SubsonicServerConfig(
+        id: config.id,
+        name: type,
+        baseUrl: config.baseUrl,
+        authMode: config.authMode,
+        username: config.username,
+      );
+      await store.saveConfigs(<SubsonicServerConfig>[updated]);
+      final current = state.value;
+      if (current != null && current.first.id == config.id) {
+        state = AsyncData(<SubsonicServerConfig>[updated]);
+      }
+    } catch (e) {
+      debugPrint('自动探测服务器类型失败: $e');
+    }
   }
 
   static String newId() => const Uuid().v4();
@@ -306,8 +356,9 @@ Future<void> ensureSubsonicConfiguredWithPrefs(
     sourceId: config.id,
     baseUrl: config.baseUrl,
     authMode: config.authMode.wireName,
-    username:
-        config.authMode == SubsonicAuthMode.token ? config.username : null,
+    username: config.authMode == SubsonicAuthMode.token
+        ? config.username
+        : null,
     secret: secret,
     clientName: 'laetibeat',
   );

@@ -30,6 +30,7 @@ class _MobileOpensubsonicConfigPageState
   late String _id;
   _ServerScheme _scheme = _ServerScheme.http;
   String? _existingName;
+  String? _detectedServerType;
 
   bool _testing = false;
   bool _saving = false;
@@ -101,6 +102,7 @@ class _MobileOpensubsonicConfigPageState
   void _resetTestState() {
     _testPassed = false;
     _testedFingerprint = null;
+    _detectedServerType = null;
     _info = null;
     _error = null;
   }
@@ -167,9 +169,14 @@ class _MobileOpensubsonicConfigPageState
       path: uri.path,
     ).toString();
 
+    final detectedType = _detectedServerType?.trim();
+    final name = detectedType == null || detectedType.isEmpty
+        ? (_existingName ?? uri.host)
+        : detectedType;
+
     return SubsonicServerConfig(
       id: _id,
-      name: _existingName ?? uri.host,
+      name: name,
       baseUrl: baseUrl,
       authMode: SubsonicAuthMode.token,
       username: username,
@@ -198,12 +205,16 @@ class _MobileOpensubsonicConfigPageState
           .read(subsonicServersProvider.notifier)
           .test(config: config, secret: _passwordController.text);
       if (!mounted) return;
+      final serverType = info.serverType?.trim();
       setState(() {
         _testPassed = true;
         _testedFingerprint = fingerprint;
+        _detectedServerType = serverType == null || serverType.isEmpty
+            ? null
+            : serverType;
         _info =
             '${l10n.connectionSuccess}'
-            '${info.serverType ?? 'Subsonic'} '
+            '${serverType == null || serverType.isEmpty ? 'Subsonic' : serverType} '
             '${info.serverVersion ?? ''}'
             '${info.openSubsonic ? ' · OpenSubsonic' : ''}';
       });

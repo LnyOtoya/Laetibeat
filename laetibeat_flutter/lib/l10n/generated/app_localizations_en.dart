@@ -535,4 +535,34 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notificationChannelDescription => 'Laetibeat playback controls';
+
+  @override
+  String get searchSource => 'Search source';
+
+  @override
+  String get searchSourceLocal => 'Local music';
+
+  @override
+  String get searchSourceSubsonic => 'Subsonic';
+
+  @override
+  String get searchPrompt => 'Search songs, artists, and albums';
+
+  @override
+  String get searchNoResults => 'No results found';
+
+  @override
+  String get searchConfigureSubsonic => 'Configure a Subsonic source first';
+
+  @override
+  String get searchLocalLoading => 'Loading local library…';
+
+  @override
+  String get searchRemoteLoading => 'Searching…';
+
+  @override
+  String get searchFailed => 'Search failed';
+
+  @override
+  String get searchRemoteNotSynced => 'Remote library is not synced yet';
 }
