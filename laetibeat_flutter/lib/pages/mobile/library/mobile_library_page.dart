@@ -2,6 +2,8 @@ import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../widgets/mobile_app_bar.dart';
+import 'views/albums_library_view.dart';
+import 'views/artists_library_view.dart';
 import 'views/playlists_library_view.dart';
 import 'views/songs_library_view.dart';
 
@@ -82,8 +84,8 @@ class _MobileLibraryPageState extends State<MobileLibraryPage> {
     return switch (_selectedIndex) {
       0 => const SongsLibraryView(),
       1 => const PlaylistsLibraryView(),
-      2 => const _LibraryPlaceholder('艺术家'),
-      3 => const _LibraryPlaceholder('专辑'),
+      2 => const ArtistsLibraryView(),
+      3 => const AlbumsLibraryView(),
       _ => const _LibraryPlaceholder('播客'),
     };
   }

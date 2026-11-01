@@ -7,6 +7,8 @@ import 'package:laetibeat/widgets/settings/subsonic_provider.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../widgets/library_layout_control_bar.dart';
+
 /// 歌单分类内容。
 ///
 /// 歌单数据来自已配置的 OpenSubsonic 服务器。
@@ -29,28 +31,9 @@ class _PlaylistsLibraryViewState extends ConsumerState<PlaylistsLibraryView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          child: Row(
-            children: [
-              M3EButton.icon(
-                icon: const Icon(M3EIcons.swap_vert),
-                label: const Text('排序'),
-                style: M3EButtonStyle.tonal,
-                size: M3EButtonSize.sm,
-                shape: M3EButtonShape.round,
-                onPressed: () {},
-              ),
-              const Spacer(),
-              M3EIconButton(
-                variant: M3EIconButtonVariant.filled,
-                shape: M3EIconButtonShapeVariant.round,
-                icon: Icon(_isGrid ? M3EIcons.view_list : M3EIcons.grid_view),
-                tooltip: _isGrid ? '切换为列表布局' : '切换为宫格布局',
-                onPressed: () => setState(() => _isGrid = !_isGrid),
-              ),
-            ],
-          ),
+        LibraryLayoutControlBar(
+          isGrid: _isGrid,
+          onToggleLayout: () => setState(() => _isGrid = !_isGrid),
         ),
         Expanded(child: _buildContent(theme, bottomInset)),
       ],
