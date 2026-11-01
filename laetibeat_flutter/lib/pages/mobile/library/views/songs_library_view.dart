@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:laetibeat/shared/layout/app_bottom_inset.dart';
 import 'package:laetibeat/src/rust/api/simple.dart' as rust;
 import 'package:laetibeat/widgets/player/cover_provider.dart';
+import 'package:laetibeat/widgets/player/player_provider.dart';
 import 'package:laetibeat/widgets/remote_browser_provider.dart';
 import 'package:laetibeat/widgets/settings/music_library_provider.dart';
 import 'package:laetibeat/widgets/settings/subsonic_provider.dart';
@@ -64,6 +66,67 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
     });
   }
 
+  List<rust.UiTrack> _currentTracks() {
+    if (_selectedSource == _localSource) {
+      return (ref.read(musicLibraryProvider).value?.tracks ??
+              const <rust.UiTrack>[])
+          .where((track) => !_dismissedTrackIds.contains(track.id))
+          .toList(growable: false);
+    }
+    if (_selectedSource == _subsonicSource) {
+      final servers =
+          ref.read(subsonicServersProvider).value ??
+          const <SubsonicServerConfig>[];
+      if (servers.isEmpty) return const <rust.UiTrack>[];
+      final server = servers.first;
+      final remote =
+          ref.read(remoteAllTracksProvider(server.id)).value ?? const [];
+      return remote
+          .map((track) => remoteTrackToUiTrack(track, server.id))
+          .where((track) => !_dismissedTrackIds.contains(track.id))
+          .toList(growable: false);
+    }
+    return const <rust.UiTrack>[];
+  }
+
+  void _playTracks(List<rust.UiTrack> tracks, int index) {
+    if (tracks.isEmpty) return;
+    ref
+        .read(playerProvider.notifier)
+        .load(tracks, index, source: _selectedSource);
+  }
+
+  void _playRandom() {
+    final tracks = _currentTracks();
+    if (tracks.isEmpty) return;
+    ref
+        .read(playerProvider.notifier)
+        .playShuffled(tracks, source: _selectedSource);
+  }
+
+  List<rust.UiTrack> _selectedTracksInOrder() {
+    final selected = _currentTracks()
+        .where((track) => _selectedTrackIds.contains(track.id))
+        .toList(growable: false);
+    return selected;
+  }
+
+  void _playSelectedNow() {
+    final tracks = _selectedTracksInOrder();
+    if (tracks.isEmpty) return;
+    ref
+        .read(playerProvider.notifier)
+        .load(tracks, 0, source: _selectedSource, shuffle: false);
+    _clearSelection();
+  }
+
+  void _playSelectedNext() {
+    final tracks = _selectedTracksInOrder();
+    if (tracks.isEmpty) return;
+    ref.read(playerProvider.notifier).insertNext(tracks);
+    _clearSelection();
+  }
+
   void _selectSource(String source) {
     if (source == _selectedSource) return;
     setState(() {
@@ -98,7 +161,7 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
                     style: M3EButtonStyle.filled,
                     size: M3EButtonSize.sm,
                     shape: M3EButtonShape.round,
-                    onPressed: () {},
+                    onPressed: _playRandom,
                   ),
                   const Spacer(),
                   M3ESplitButton<String>(
@@ -180,12 +243,12 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
                   M3EToolbarAction(
                     icon: M3EIcons.play_arrow,
                     tooltip: '立即播放',
-                    onPressed: () {},
+                    onPressed: _playSelectedNow,
                   ),
                   M3EToolbarAction(
                     icon: M3EIcons.queue_play_next,
                     tooltip: '下一首播放',
-                    onPressed: () {},
+                    onPressed: _playSelectedNext,
                   ),
                   M3EToolbarAction(
                     icon: M3EIcons.playlist_add,
@@ -266,6 +329,7 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
   ) {
     final selectionActive = _selectedTrackIds.isNotEmpty;
     final scheme = theme.colorScheme;
+    final bottomInset = AppBottomInsetScope.bottomInsetOf(context);
 
     return M3EToolbarScrollWrapper(
       behavior: _toolbarScrollBehavior,
@@ -273,7 +337,7 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
         color: scheme.surface,
         variant: M3ECardVariant.filled,
         itemCount: tracks.length,
-        listPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        listPadding: EdgeInsets.fromLTRB(16, 0, 16, 16 + bottomInset),
         emptyBuilder: Center(child: Text(emptyText)),
         colorBuilder: (int index) {
           return _selectedTrackIds.contains(tracks[index].id)
@@ -296,7 +360,7 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
                 onLongPress: () => _toggleSelection(track.id),
                 onTap: selectionActive
                     ? () => _toggleSelection(track.id)
-                    : null,
+                    : () => _playTracks(tracks, index),
                 child: M3EListItem(
                   selected: selected,
                   headline: track.title,

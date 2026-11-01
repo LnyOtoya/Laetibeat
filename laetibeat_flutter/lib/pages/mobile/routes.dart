@@ -3,6 +3,7 @@ abstract final class MobileRoutes {
   static const String home = '/';
   static const String library = '/library';
   static const String search = '/search';
+  static const String playback = '/player';
   static const String stats = '/stats';
   static const String settings = '/settings';
   static const String contentSettings = '/settings/content';

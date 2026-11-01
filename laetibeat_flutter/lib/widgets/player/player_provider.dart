@@ -413,6 +413,21 @@ class PlayerNotifier extends Notifier<PlayerState> {
     unawaited(_saveState());
   }
 
+  /// 将曲目插入到当前曲目之后，作为下一首播放。
+  void insertNext(List<rust.UiTrack> tracks) {
+    if (tracks.isEmpty) return;
+    if (state.queue.isEmpty) {
+      load(tracks, 0, source: state.source);
+      return;
+    }
+
+    final queue = List<rust.UiTrack>.of(state.queue);
+    final insertAt = (state.currentIndex + 1).clamp(0, queue.length);
+    queue.insertAll(insertAt, tracks);
+    state = state.copyWith(queue: queue);
+    unawaited(_saveQueue());
+  }
+
   //以给定曲目为队列顺序播放(重置随机模式)
   void playSequential(List<rust.UiTrack> tracks, {String? source}) {
     if (tracks.isEmpty) return;

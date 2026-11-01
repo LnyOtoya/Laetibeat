@@ -1,9 +1,13 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../app/app_destination.dart';
+import '../../shared/layout/app_bottom_inset.dart';
+import '../../widgets/player/player_provider.dart';
 import 'home/mobile_home_page.dart';
 import 'library/mobile_library_page.dart';
+import 'player/mini_player.dart';
 import 'routes.dart';
 import 'search/mobile_search_page.dart';
 import 'settings/content/mobile_content_settings_page.dart';
@@ -18,14 +22,14 @@ import 'stats/mobile_stats_page.dart';
 /// - 打开 Library / Search 会 push 新 route；
 /// - 返回时 pop 回 Home；
 /// - Android 预测性返回手势可以正常播放路由动画。
-class MobileApp extends StatefulWidget {
+class MobileApp extends ConsumerStatefulWidget {
   const MobileApp({super.key});
 
   @override
-  State<MobileApp> createState() => _MobileAppState();
+  ConsumerState<MobileApp> createState() => _MobileAppState();
 }
 
-class _MobileAppState extends State<MobileApp> {
+class _MobileAppState extends ConsumerState<MobileApp> {
   static const List<AppDestination> _tabs = [
     AppDestination.home,
     AppDestination.library,
@@ -33,18 +37,12 @@ class _MobileAppState extends State<MobileApp> {
   ];
 
   static const List<M3ENavigationBarDestination> _destinations = [
-    M3ENavigationBarDestination(
-      icon: Icon(M3EIcons.home),
-      label: 'Home',
-    ),
+    M3ENavigationBarDestination(icon: Icon(M3EIcons.home), label: 'Home'),
     M3ENavigationBarDestination(
       icon: Icon(M3EIcons.music_note),
       label: 'Library',
     ),
-    M3ENavigationBarDestination(
-      icon: Icon(M3EIcons.search),
-      label: 'Search',
-    ),
+    M3ENavigationBarDestination(icon: Icon(M3EIcons.search), label: 'Search'),
   ];
 
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
@@ -72,9 +70,7 @@ class _MobileAppState extends State<MobileApp> {
       _ => null,
     };
     final bool? showNavigationBar = switch (name) {
-      MobileRoutes.home ||
-      MobileRoutes.library ||
-      MobileRoutes.search => true,
+      MobileRoutes.home || MobileRoutes.library || MobileRoutes.search => true,
       MobileRoutes.stats ||
       MobileRoutes.settings ||
       MobileRoutes.contentSettings => false,
@@ -88,8 +84,7 @@ class _MobileAppState extends State<MobileApp> {
     }
     // 统计 / 设置是独立页面，不显示底部导航。
     // 未知 route（例如详情页）保持当前导航栏状态。
-    if (showNavigationBar != null &&
-        showNavigationBar != _showNavigationBar) {
+    if (showNavigationBar != null && showNavigationBar != _showNavigationBar) {
       _showNavigationBar = showNavigationBar;
       changed = true;
     }
@@ -141,26 +136,37 @@ class _MobileAppState extends State<MobileApp> {
       _ => const MobileHomePage(),
     };
 
-    return MaterialPageRoute<void>(
-      settings: settings,
-      builder: (_) => page,
-    );
+    return MaterialPageRoute<void>(settings: settings, builder: (_) => page);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = M3ETheme.of(context);
     final int selectedIndex = _tabs.indexOf(_currentTab);
+    final bool hasTrack = ref.watch(
+      playerProvider.select((state) => state.current != null),
+    );
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surfaceContainer,
-      body: NavigatorPopHandler<void>(
-        onPopWithResult: (_) => _navigatorKey.currentState?.pop(),
-        child: Navigator(
-          key: _navigatorKey,
-          observers: [_navigatorObserver],
-          onGenerateRoute: _onGenerateRoute,
-        ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: AppBottomInsetScope(
+              bottomInset: hasTrack ? kMiniPlayerReservedHeight : 0,
+              child: NavigatorPopHandler<void>(
+                onPopWithResult: (_) => _navigatorKey.currentState?.pop(),
+                child: Navigator(
+                  key: _navigatorKey,
+                  observers: [_navigatorObserver],
+                  onGenerateRoute: _onGenerateRoute,
+                ),
+              ),
+            ),
+          ),
+          if (hasTrack)
+            const Positioned(left: 0, right: 0, bottom: 0, child: MiniPlayer()),
+        ],
       ),
       bottomNavigationBar: _showNavigationBar
           ? M3ENavigationBar(
