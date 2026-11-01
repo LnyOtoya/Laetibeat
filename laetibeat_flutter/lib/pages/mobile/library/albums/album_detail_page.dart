@@ -36,6 +36,14 @@ class AlbumDetailPage extends ConsumerWidget {
       appBar: mobileLargeSubpageAppBar(
         context,
         backgroundColor: Colors.transparent,
+        actions: [
+          M3EIconButton(
+            variant: M3EIconButtonVariant.tonal,
+            icon: const Icon(M3EIcons.favorite_border),
+            tooltip: '喜欢',
+            onPressed: () {},
+          ),
+        ],
       ),
       body: ListView(
         padding: EdgeInsets.zero,

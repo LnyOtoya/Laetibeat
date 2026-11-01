@@ -5,6 +5,7 @@ abstract final class MobileRoutes {
   static const String search = '/search';
   static const String playback = '/player';
   static const String albumDetail = '/library/albums/detail';
+  static const String artistDetail = '/library/artists/detail';
   static const String stats = '/stats';
   static const String settings = '/settings';
   static const String appearanceSettings = '/settings/appearance';

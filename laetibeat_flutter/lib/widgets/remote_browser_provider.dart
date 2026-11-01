@@ -12,6 +12,17 @@ final remoteArtistsProvider =
       return rust_library.queryRemoteArtists(sourceId: sourceId);
     });
 
+typedef RemoteArtistBiographyKey = ({String sourceId, String artistId});
+
+/// 艺术家简介(OpenSubsonic getArtistInfo2)
+final remoteArtistBiographyProvider =
+    FutureProvider.family<String?, RemoteArtistBiographyKey>((ref, key) {
+      return rust_subsonic.subsonicGetArtistBiography(
+        sourceId: key.sourceId,
+        artistId: key.artistId,
+      );
+    });
+
 typedef RemoteAlbumsKey = ({String sourceId, String artistId});
 
 /// 某艺术家的专辑列表(读取本地 SQLite 快照)

@@ -7,12 +7,14 @@ M3EAppBar mobileLargeSubpageAppBar(
   String? title,
   bool centerTitle = false,
   Color? backgroundColor,
+  List<Widget> actions = const <Widget>[],
+  M3EAppBarVariant variant = M3EAppBarVariant.large,
 }) {
   final theme = M3ETheme.of(context);
 
   return M3EAppBar.top(
     backgroundColor: backgroundColor ?? theme.colorScheme.surfaceContainer,
-    variant: M3EAppBarVariant.large,
+    variant: variant,
     hideMode: M3EAppBarHideMode.none,
     shapeFamily: M3EAppBarShapeFamily.square,
     safeArea: true,
@@ -38,6 +40,14 @@ M3EAppBar mobileLargeSubpageAppBar(
         onPressed: () => Navigator.of(context).maybePop(),
       ),
     ),
+    actions: actions.isEmpty
+        ? const <Widget>[]
+        : [
+            Padding(
+              padding: const EdgeInsetsDirectional.only(end: 24),
+              child: Row(mainAxisSize: MainAxisSize.min, children: actions),
+            ),
+          ],
   );
 }
 

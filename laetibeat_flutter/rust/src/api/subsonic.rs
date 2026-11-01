@@ -280,6 +280,14 @@ pub fn subsonic_get_artist(
     })
 }
 
+/// 获取艺术家简介
+pub fn subsonic_get_artist_biography(
+    source_id: String,
+    artist_id: String,
+) -> Result<Option<String>, String> {
+    remote::get_artist_biography(&source_id, &artist_id)
+}
+
 /// 获取专辑详情与曲目列表
 pub fn subsonic_get_album(
     source_id: String,

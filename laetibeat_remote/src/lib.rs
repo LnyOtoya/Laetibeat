@@ -385,6 +385,18 @@ pub fn get_artist(source_id: &str, artist_id: &str) -> Result<RemoteArtistDetail
     Ok(map_artist_detail(artist))
 }
 
+/// 获取艺术家简介(ID3 getArtistInfo2)。
+pub fn get_artist_biography(
+    source_id: &str,
+    artist_id: &str,
+) -> Result<Option<String>, String> {
+    let client = client(source_id)?;
+    let info = runtime()?
+        .block_on(client.get_artist_info2(artist_id, None, None))
+        .map_err(map_err)?;
+    Ok(info.biography)
+}
+
 /// 获取专辑详情与曲目列表
 pub fn get_album(source_id: &str, album_id: &str) -> Result<RemoteAlbumDetail, String> {
     let client = client(source_id)?;

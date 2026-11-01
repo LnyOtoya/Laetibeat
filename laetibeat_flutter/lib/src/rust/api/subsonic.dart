@@ -146,6 +146,15 @@ Future<UiRemoteArtistDetail> subsonicGetArtist({
   artistId: artistId,
 );
 
+/// 获取艺术家简介
+Future<String?> subsonicGetArtistBiography({
+  required String sourceId,
+  required String artistId,
+}) => RustLib.instance.api.crateApiSubsonicSubsonicGetArtistBiography(
+  sourceId: sourceId,
+  artistId: artistId,
+);
+
 /// 获取专辑详情与曲目列表
 Future<UiRemoteAlbumDetail> subsonicGetAlbum({
   required String sourceId,

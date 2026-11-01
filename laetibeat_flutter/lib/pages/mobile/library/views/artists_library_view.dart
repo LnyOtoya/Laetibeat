@@ -7,6 +7,9 @@ import 'package:laetibeat/widgets/settings/subsonic_provider.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../mobile_navigation.dart';
+import '../../routes.dart';
+import '../artists/artist_detail_page.dart';
 import '../widgets/library_layout_control_bar.dart';
 
 /// 艺术家分类内容。数据来自 OpenSubsonic。
@@ -19,6 +22,14 @@ class ArtistsLibraryView extends ConsumerStatefulWidget {
 
 class _ArtistsLibraryViewState extends ConsumerState<ArtistsLibraryView> {
   bool _isGrid = true;
+
+  void _openArtist(String sourceId, rust_subsonic.UiRemoteArtist artist) {
+    pushMobileRootPage(
+      context,
+      ArtistDetailPage(sourceId: sourceId, artist: artist),
+      name: MobileRoutes.artistDetail,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -96,7 +107,7 @@ class _ArtistsLibraryViewState extends ConsumerState<ArtistsLibraryView> {
         final artist = artists[index];
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: () {},
+          onTap: () => _openArtist(sourceId, artist),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -140,6 +151,7 @@ class _ArtistsLibraryViewState extends ConsumerState<ArtistsLibraryView> {
       color: theme.colorScheme.surface,
       variant: M3ECardVariant.filled,
       itemCount: artists.length,
+      onTap: (int index) => _openArtist(sourceId, artists[index]),
       listPadding: EdgeInsets.fromLTRB(16, 0, 16, 16 + bottomInset),
       itemBuilder: (BuildContext context, int index) {
         final artist = artists[index];
