@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:laetibeat/widgets/settings/song_sort_settings.dart';
 import 'package:laetibeat/widgets/settings/song_source_settings.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
@@ -22,6 +23,19 @@ class MobileAppearanceSettingsPage extends ConsumerWidget {
     ref.read(defaultSongSourceProvider.notifier).setSource(picked.first);
   }
 
+  Future<void> _pickSongSort(BuildContext context, WidgetRef ref) async {
+    final current = ref.read(defaultSongSortProvider);
+    final picked = await M3EDialog.showSelectionScreen(
+      context,
+      title: '歌曲排序',
+      options: SongSortModes.all,
+      initialSelection: <String>[current],
+      icon: const Icon(M3EIcons.sort),
+    );
+    if (!context.mounted || picked == null || picked.isEmpty) return;
+    ref.read(defaultSongSortProvider.notifier).setMode(picked.first);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = M3ETheme.of(context);
@@ -39,13 +53,24 @@ class MobileAppearanceSettingsPage extends ConsumerWidget {
             M3EList(
               color: theme.colorScheme.surface,
               variant: M3ECardVariant.filled,
-              onTap: (_) => _pickSongSource(context, ref),
-              itemCount: 1,
+              onTap: (int index) {
+                if (index == 0) {
+                  _pickSongSource(context, ref);
+                } else {
+                  _pickSongSort(context, ref);
+                }
+              },
+              itemCount: 2,
               itemBuilder: (BuildContext context, int index) {
-                return const M3EListItem(
-                  headline: '歌曲来源',
-                  supportingText: '选择在歌曲列表默认显示的歌曲来源',
-                );
+                return index == 0
+                    ? const M3EListItem(
+                        headline: '歌曲来源',
+                        supportingText: '选择在歌曲列表默认显示的歌曲来源',
+                      )
+                    : const M3EListItem(
+                        headline: '歌曲排序',
+                        supportingText: '选择默认的歌曲排序方式',
+                      );
               },
             ),
           ],

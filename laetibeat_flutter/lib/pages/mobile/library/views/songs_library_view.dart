@@ -5,6 +5,7 @@ import 'package:laetibeat/widgets/player/cover_provider.dart';
 import 'package:laetibeat/widgets/player/player_provider.dart';
 import 'package:laetibeat/widgets/remote_browser_provider.dart';
 import 'package:laetibeat/widgets/settings/music_library_provider.dart';
+import 'package:laetibeat/widgets/settings/song_sort_settings.dart';
 import 'package:laetibeat/widgets/settings/song_source_settings.dart';
 import 'package:laetibeat/widgets/settings/subsonic_provider.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
@@ -70,10 +71,12 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
 
   List<rust.UiTrack> _currentTracks() {
     if (_selectedSource == _localSource) {
-      return (ref.read(musicLibraryProvider).value?.tracks ??
-              const <rust.UiTrack>[])
-          .where((track) => !_dismissedTrackIds.contains(track.id))
-          .toList(growable: false);
+      final tracks =
+          (ref.read(musicLibraryProvider).value?.tracks ??
+                  const <rust.UiTrack>[])
+              .where((track) => !_dismissedTrackIds.contains(track.id))
+              .toList(growable: false);
+      return sortTracksByMode(tracks, ref.read(defaultSongSortProvider));
     }
     if (_selectedSource == _subsonicSource) {
       final servers =
@@ -83,10 +86,11 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
       final server = servers.first;
       final remote =
           ref.read(remoteAllTracksProvider(server.id)).value ?? const [];
-      return remote
+      final tracks = remote
           .map((track) => remoteTrackToUiTrack(track, server.id))
           .where((track) => !_dismissedTrackIds.contains(track.id))
           .toList(growable: false);
+      return sortTracksByMode(tracks, ref.read(defaultSongSortProvider));
     }
     return const <rust.UiTrack>[];
   }
@@ -153,6 +157,7 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
     });
 
     final theme = M3ETheme.of(context);
+    ref.watch(defaultSongSortProvider);
     final localState = ref.watch(musicLibraryProvider).value;
     final servers =
         ref.watch(subsonicServersProvider).value ??
@@ -190,7 +195,7 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
                     decoration: const M3ESplitButtonDecoration(
                       menuStyle: M3ESplitButtonMenuStyle.popup,
                     ),
-                    onPressed: () {},
+                    onPressed: _showSortSheet,
                     m3eMenuBuilder: (BuildContext context) {
                       return [
                         M3EMenuSelectable(
@@ -286,6 +291,79 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
     );
   }
 
+  Future<void> _showSortSheet() async {
+    final current = ref.read(defaultSongSortProvider);
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext sheetContext) {
+        final theme = M3ETheme.of(sheetContext);
+        final scheme = theme.colorScheme;
+        return SafeArea(
+          top: false,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHigh,
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(theme.spacing.lg),
+              ),
+            ),
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                theme.spacing.lg,
+                theme.spacing.md,
+                theme.spacing.md,
+                theme.spacing.sm,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text('排序方式', style: theme.typeScale.titleLarge),
+                      ),
+                      M3EIconButton(
+                        size: M3EIconButtonSize.xs,
+                        icon: const Icon(M3EIcons.close),
+                        tooltip: '关闭排序方式',
+                        onPressed: () => Navigator.of(sheetContext).pop(),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: theme.spacing.sm),
+                  M3EList.scrollable(
+                    shrinkWrap: true,
+                    itemCount: SongSortModes.all.length,
+                    onTap: (int index) => Navigator.of(
+                      sheetContext,
+                    ).pop(SongSortModes.all[index]),
+                    itemBuilder: (BuildContext context, int index) {
+                      final mode = SongSortModes.all[index];
+                      final selected = mode == current;
+                      return M3EListItem(
+                        selected: selected,
+                        headline: mode,
+                        trailing: selected
+                            ? Icon(M3EIcons.check, color: scheme.primary)
+                            : null,
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+    if (picked == null) return;
+    ref.read(defaultSongSortProvider.notifier).setMode(picked);
+  }
+
   Widget _buildSongContent(
     M3EThemeData theme,
     MusicLibraryState? localState,
@@ -338,9 +416,13 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
 
   Widget _buildTrackList(
     M3EThemeData theme,
-    List<rust.UiTrack> tracks,
+    List<rust.UiTrack> inputTracks,
     String emptyText,
   ) {
+    final tracks = sortTracksByMode(
+      inputTracks,
+      ref.read(defaultSongSortProvider),
+    );
     final selectionActive = _selectedTrackIds.isNotEmpty;
     final scheme = theme.colorScheme;
     final bottomInset = AppBottomInsetScope.bottomInsetOf(context);
