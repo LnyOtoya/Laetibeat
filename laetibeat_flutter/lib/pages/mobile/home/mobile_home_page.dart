@@ -17,6 +17,7 @@ class MobileHomePage extends StatelessWidget {
       backgroundColor: theme.colorScheme.surfaceContainer,
       appBar: mobileTopAppBar(
         context,
+        title: mobileTopAppBarTitle(context, '首页'),
         actions: mobileHomeAppBarActions(context),
       ),
       body: const SizedBox.expand(),

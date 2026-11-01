@@ -27,6 +27,23 @@ M3EAppBar mobileTopAppBar(
   );
 }
 
+/// 移动端顶部 AppBar 的左侧标题。
+Widget mobileTopAppBarTitle(BuildContext context, String text) {
+  final theme = M3ETheme.of(context);
+  return Padding(
+    padding: const EdgeInsetsDirectional.only(start: 8),
+    child: Text(
+      text,
+      maxLines: 1,
+      softWrap: false,
+      overflow: TextOverflow.ellipsis,
+      style: theme.typeScale.titleLarge.copyWith(
+        color: theme.colorScheme.onSurface,
+      ),
+    ),
+  );
+}
+
 /// Home / Library 共用的右侧操作：音乐源配置 + 统计 + 设置。
 List<Widget> mobileHomeAppBarActions(BuildContext context) {
   return <Widget>[

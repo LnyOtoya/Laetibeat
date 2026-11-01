@@ -41,6 +41,7 @@ class _MobileLibraryPageState extends State<MobileLibraryPage> {
       backgroundColor: theme.colorScheme.surfaceContainer,
       appBar: mobileTopAppBar(
         context,
+        title: mobileTopAppBarTitle(context, '媒体库'),
         actions: mobileHomeAppBarActions(context),
       ),
       body: SafeArea(
