@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../mobile_navigation.dart';
 import '../routes.dart';
+import 'appearance/mobile_appearance_settings_page.dart';
 import 'content/mobile_content_settings_page.dart';
 import '../widgets/mobile_search_bar.dart';
 
@@ -35,13 +36,20 @@ class MobileSettingsPage extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                 children: [
                   _SettingsGroup(
+                    onTap: (int index) {
+                      if (index == 0) {
+                        pushMobileRootPage(
+                          context,
+                          const MobileAppearanceSettingsPage(),
+                          name: MobileRoutes.appearanceSettings,
+                        );
+                      }
+                    },
                     items: [
                       M3EListItem(
                         headline: '外观',
                         supportingText: '主题与明暗切换',
-                        leading: _SettingsLeadingAvatar(
-                          icon: M3EIcons.palette,
-                        ),
+                        leading: _SettingsLeadingAvatar(icon: M3EIcons.palette),
                       ),
                     ],
                   ),
@@ -79,9 +87,7 @@ class MobileSettingsPage extends StatelessWidget {
                       M3EListItem(
                         headline: '储存',
                         supportingText: '缓存管理',
-                        leading: _SettingsLeadingAvatar(
-                          icon: M3EIcons.storage,
-                        ),
+                        leading: _SettingsLeadingAvatar(icon: M3EIcons.storage),
                       ),
                       M3EListItem(
                         headline: '备份与还原',
@@ -98,9 +104,7 @@ class MobileSettingsPage extends StatelessWidget {
                       M3EListItem(
                         headline: '关于',
                         supportingText: '当前版本',
-                        leading: _SettingsLeadingAvatar(
-                          icon: M3EIcons.info,
-                        ),
+                        leading: _SettingsLeadingAvatar(icon: M3EIcons.info),
                       ),
                     ],
                   ),

@@ -5,6 +5,7 @@ import 'package:laetibeat/widgets/player/cover_provider.dart';
 import 'package:laetibeat/widgets/player/player_provider.dart';
 import 'package:laetibeat/widgets/remote_browser_provider.dart';
 import 'package:laetibeat/widgets/settings/music_library_provider.dart';
+import 'package:laetibeat/widgets/settings/song_source_settings.dart';
 import 'package:laetibeat/widgets/settings/subsonic_provider.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
@@ -18,10 +19,10 @@ class SongsLibraryView extends ConsumerStatefulWidget {
 }
 
 class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
-  static const String _localSource = '本地音乐';
-  static const String _subsonicSource = 'Subsonic';
+  static const String _localSource = SongSources.local;
+  static const String _subsonicSource = SongSources.subsonic;
 
-  String _selectedSource = _localSource;
+  late String _selectedSource;
   final Set<String> _selectedTrackIds = <String>{};
   final Set<String> _dismissedTrackIds = <String>{};
   late final M3EToolbarVisibilityController _toolbarVisibilityController;
@@ -30,6 +31,7 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
   @override
   void initState() {
     super.initState();
+    _selectedSource = ref.read(defaultSongSourceProvider);
     _toolbarVisibilityController = M3EToolbarVisibilityController();
     _toolbarScrollBehavior = M3EToolbarScrollBehavior.exitAlways(
       exitDirection: M3EToolbarExitDirection.top,
@@ -138,6 +140,18 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<String>(defaultSongSourceProvider, (
+      String? previous,
+      String next,
+    ) {
+      if (next == _selectedSource) return;
+      setState(() {
+        _selectedSource = next;
+        _selectedTrackIds.clear();
+        _dismissedTrackIds.clear();
+      });
+    });
+
     final theme = M3ETheme.of(context);
     final localState = ref.watch(musicLibraryProvider).value;
     final servers =
@@ -192,11 +206,11 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
                           supportingText: server?.baseUrl ?? '未配置',
                         ),
                         for (final source in const [
-                          'Jellyfin',
-                          'Emby音乐',
-                          '洛雪音源',
-                          'QQ音乐',
-                          '网易云音乐',
+                          SongSources.jellyfin,
+                          SongSources.emby,
+                          SongSources.lx,
+                          SongSources.qq,
+                          SongSources.netease,
                         ])
                           M3EMenuSelectable(
                             label: source,

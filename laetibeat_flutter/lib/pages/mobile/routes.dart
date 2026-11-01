@@ -6,6 +6,7 @@ abstract final class MobileRoutes {
   static const String playback = '/player';
   static const String stats = '/stats';
   static const String settings = '/settings';
+  static const String appearanceSettings = '/settings/appearance';
   static const String contentSettings = '/settings/content';
   static const String musicSources = '/settings/music-sources';
   static const String opensubsonicConfig =

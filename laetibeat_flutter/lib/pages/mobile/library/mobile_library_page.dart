@@ -62,10 +62,10 @@ class _MobileLibraryPageState extends State<MobileLibraryPage> {
                   setState(() => _selectedIndex = index);
                 },
                 actions: [
+                  action(M3EIcons.music_note, '歌曲'),
                   action(M3EIcons.queue_music, '歌单'),
                   action(M3EIcons.person, '艺术家'),
                   action(M3EIcons.album, '专辑'),
-                  action(M3EIcons.music_note, '歌曲'),
                   action(M3EIcons.podcasts, '播客'),
                 ],
               ),
@@ -79,10 +79,10 @@ class _MobileLibraryPageState extends State<MobileLibraryPage> {
 
   Widget _buildContent() {
     return switch (_selectedIndex) {
-      0 => const _LibraryPlaceholder('歌单'),
-      1 => const _LibraryPlaceholder('艺术家'),
-      2 => const _LibraryPlaceholder('专辑'),
-      3 => const SongsLibraryView(),
+      0 => const SongsLibraryView(),
+      1 => const _LibraryPlaceholder('歌单'),
+      2 => const _LibraryPlaceholder('艺术家'),
+      3 => const _LibraryPlaceholder('专辑'),
       _ => const _LibraryPlaceholder('播客'),
     };
   }
@@ -97,8 +97,6 @@ class _LibraryPlaceholder extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = M3ETheme.of(context);
 
-    return Center(
-      child: Text(label, style: theme.typeScale.headlineSmall),
-    );
+    return Center(child: Text(label, style: theme.typeScale.headlineSmall));
   }
 }
