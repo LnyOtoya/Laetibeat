@@ -59,6 +59,24 @@ class RemoteLyricProvider implements LyricProvider {
   }
 }
 
+/// LiriQo 网络歌词来源。请求、正/负缓存都由 Rust 层负责。
+class LiriqoLyricProvider implements LyricProvider {
+  LiriqoLyricProvider();
+
+  @override
+  Future<Lyrics?> lyrics(rust.UiTrack track) async {
+    if (track.title.trim().isEmpty || track.artist.trim().isEmpty) {
+      return null;
+    }
+    final text = await rust_lyrics.liriqoGetLyrics(
+      title: track.title,
+      artist: track.artist,
+      durationSeconds: track.durationSeconds.toInt(),
+    );
+    return _toLyrics(text);
+  }
+}
+
 /// LRCLIB 网络歌词来源。请求、正/负缓存都由 Rust 层负责。
 class LrclibLyricProvider implements LyricProvider {
   LrclibLyricProvider();
@@ -90,12 +108,14 @@ class LyricsRepository {
     required this.fileProvider,
     required this.remoteProvider,
     required this.lrclibProvider,
+    required this.liriqoProvider,
     required this.settings,
   });
 
   final FileLyricProvider fileProvider;
   final RemoteLyricProvider remoteProvider;
   final LrclibLyricProvider lrclibProvider;
+  final LiriqoLyricProvider liriqoProvider;
   final LyricsSettings settings;
 
   Future<Lyrics?> lyrics(rust.UiTrack track) async {
@@ -104,6 +124,7 @@ class LyricsRepository {
       final lyrics = await switch (source) {
         LyricsSourceId.tags => _loadOwnLyrics(track),
         LyricsSourceId.lrclib => lrclibProvider.lyrics(track),
+        LyricsSourceId.liriqo => liriqoProvider.lyrics(track),
       };
       if (lyrics != null) return lyrics;
     }
@@ -123,6 +144,33 @@ class LyricsRepository {
   }
 }
 
+/// 用户在“搜索歌词”中手动选择的歌词覆盖。
+class LyricsOverrideNotifier extends Notifier<Map<String, Lyrics>> {
+  @override
+  Map<String, Lyrics> build() => const <String, Lyrics>{};
+
+  void apply(rust.UiTrack track, String rawText) {
+    final text = rawText.trim();
+    if (text.isEmpty) return;
+    state = <String, Lyrics>{...state, trackLyricsKey(track): Lyrics(text)};
+  }
+
+  void clear(rust.UiTrack track) {
+    if (!state.containsKey(trackLyricsKey(track))) return;
+    final next = Map<String, Lyrics>.of(state)..remove(trackLyricsKey(track));
+    state = next;
+  }
+}
+
+final lyricsOverridesProvider =
+    NotifierProvider<LyricsOverrideNotifier, Map<String, Lyrics>>(
+      LyricsOverrideNotifier.new,
+    );
+
+String trackLyricsKey(rust.UiTrack track) {
+  return '${track.source}|${track.sourceId}|${track.id}';
+}
+
 // ---------------------------------------------------------------------------
 // Riverpod 接线
 // ---------------------------------------------------------------------------
@@ -139,11 +187,16 @@ final lrclibLyricProvider = Provider<LrclibLyricProvider>((ref) {
   return LrclibLyricProvider();
 });
 
+final liriqoLyricProvider = Provider<LiriqoLyricProvider>((ref) {
+  return LiriqoLyricProvider();
+});
+
 final lyricsRepositoryProvider = Provider<LyricsRepository>((ref) {
   return LyricsRepository(
     fileProvider: ref.watch(fileLyricProvider),
     remoteProvider: ref.watch(remoteLyricProvider),
     lrclibProvider: ref.watch(lrclibLyricProvider),
+    liriqoProvider: ref.watch(liriqoLyricProvider),
     settings: ref.watch(lyricsSettingsProvider),
   );
 });
@@ -154,6 +207,14 @@ final lyricsRepositoryProvider = Provider<LyricsRepository>((ref) {
 final lyricsProvider = FutureProvider<Lyrics?>((ref) async {
   final track = ref.watch(playerProvider.select((s) => s.current));
   if (track == null) return null;
+
+  final override = ref.watch(
+    lyricsOverridesProvider.select(
+      (overrides) => overrides[trackLyricsKey(track)],
+    ),
+  );
+  if (override != null) return override;
+
   return ref.watch(lyricsRepositoryProvider).lyrics(track);
 });
 
@@ -162,5 +223,12 @@ final trackLyricsProvider = FutureProvider.family<Lyrics?, rust.UiTrack>((
   ref,
   track,
 ) async {
+  final override = ref.watch(
+    lyricsOverridesProvider.select(
+      (overrides) => overrides[trackLyricsKey(track)],
+    ),
+  );
+  if (override != null) return override;
+
   return ref.watch(lyricsRepositoryProvider).lyrics(track);
 });

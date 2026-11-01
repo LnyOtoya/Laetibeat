@@ -350,6 +350,60 @@ abstract class AppLocalizations {
   /// **'Current version'**
   String get settingsAboutSupporting;
 
+  /// No description provided for @searchLyrics.
+  ///
+  /// In en, this message translates to:
+  /// **'Search lyrics'**
+  String get searchLyrics;
+
+  /// No description provided for @lyricsSearchTitleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Song title'**
+  String get lyricsSearchTitleLabel;
+
+  /// No description provided for @lyricsSearchArtistLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Artist'**
+  String get lyricsSearchArtistLabel;
+
+  /// No description provided for @lyricsSearchCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get lyricsSearchCancel;
+
+  /// No description provided for @lyricsSearchConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get lyricsSearchConfirm;
+
+  /// No description provided for @lyricsSearchNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No lyrics found'**
+  String get lyricsSearchNoResults;
+
+  /// No description provided for @lyricsSearchFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to search lyrics'**
+  String get lyricsSearchFailed;
+
+  /// No description provided for @lyricsSearchShowMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Show more'**
+  String get lyricsSearchShowMore;
+
+  /// No description provided for @lyricsSearchCollapse.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse'**
+  String get lyricsSearchCollapse;
+
   /// No description provided for @lyricsGroup.
   ///
   /// In en, this message translates to:
@@ -385,6 +439,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'LRCLIB'**
   String get lyricsSourceLrclib;
+
+  /// No description provided for @lyricsSourceLiriqo.
+  ///
+  /// In en, this message translates to:
+  /// **'LiriQo'**
+  String get lyricsSourceLiriqo;
 
   /// No description provided for @closeLyricsPriority.
   ///

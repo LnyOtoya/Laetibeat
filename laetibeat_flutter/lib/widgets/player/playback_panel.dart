@@ -9,6 +9,7 @@ import '../settings/music_library_provider.dart';
 import 'cover_provider.dart';
 import 'player_provider.dart';
 import 'squish_button_row.dart';
+import 'lyrics_search_dialog.dart';
 import 'lyrics_view.dart';
 
 //共享播放面板:三个区域(来源区/播放显示区/控制区)
@@ -923,6 +924,15 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
       position: M3EMenuAnchorPosition.bottomEnd,
       entries: [
         M3EMenuEntry(label: l10n.addToQueue),
+        M3EMenuEntry(
+          label: l10n.searchLyrics,
+          onPressed: () {
+            final track = ref.read(playerProvider).current;
+            if (track != null) {
+              showLyricsSearchDialog(context, ref, track);
+            }
+          },
+        ),
         M3EMenuEntry(
           label: _showLyrics ? l10n.hideLyrics : l10n.showLyrics,
           onPressed: () => setState(() {

@@ -9,14 +9,23 @@ enum LyricsSourceId {
 
   /// LRCLIB 网络歌词。
   lrclib,
+
+  /// LiriQo 聚合歌词服务。
+  liriqo,
 }
 
 const String kLyricsEnabledSourcesKey = 'lyrics.enabled_sources';
 const String kLyricsSourceOrderKey = 'lyrics.source_order';
 
+const Set<LyricsSourceId> _defaultEnabledLyricsSources = <LyricsSourceId>{
+  LyricsSourceId.tags,
+  LyricsSourceId.lrclib,
+};
+
 const List<LyricsSourceId> _defaultLyricsSourceOrder = <LyricsSourceId>[
   LyricsSourceId.tags,
   LyricsSourceId.lrclib,
+  LyricsSourceId.liriqo,
 ];
 
 class LyricsSettings {
@@ -60,8 +69,9 @@ class LyricsSettingsNotifier extends Notifier<LyricsSettings> {
       final source = _sourceFromName(value);
       if (source != null) enabled.add(source);
     }
+    // LiriQo 作为可选源默认关闭；只有用户明确开启才参与回退链。
     if (enabled.isEmpty) {
-      enabled.addAll(_defaultLyricsSourceOrder);
+      enabled.addAll(_defaultEnabledLyricsSources);
     }
 
     return LyricsSettings(

@@ -83,6 +83,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<UiArtist> dco_decode_list_ui_artist(dynamic raw);
 
   @protected
+  List<UiLyricsSearchResult> dco_decode_list_ui_lyrics_search_result(
+    dynamic raw,
+  );
+
+  @protected
   List<UiPlayEvent> dco_decode_list_ui_play_event(dynamic raw);
 
   @protected
@@ -150,6 +155,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   UiLibrary dco_decode_ui_library(dynamic raw);
+
+  @protected
+  UiLyricsSearchResult dco_decode_ui_lyrics_search_result(dynamic raw);
 
   @protected
   UiPlayEvent dco_decode_ui_play_event(dynamic raw);
@@ -264,6 +272,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<UiArtist> sse_decode_list_ui_artist(SseDeserializer deserializer);
 
   @protected
+  List<UiLyricsSearchResult> sse_decode_list_ui_lyrics_search_result(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   List<UiPlayEvent> sse_decode_list_ui_play_event(SseDeserializer deserializer);
 
   @protected
@@ -341,6 +354,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   UiLibrary sse_decode_ui_library(SseDeserializer deserializer);
+
+  @protected
+  UiLyricsSearchResult sse_decode_ui_lyrics_search_result(
+    SseDeserializer deserializer,
+  );
 
   @protected
   UiPlayEvent sse_decode_ui_play_event(SseDeserializer deserializer);
@@ -476,6 +494,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_list_ui_artist(List<UiArtist> self, SseSerializer serializer);
 
   @protected
+  void sse_encode_list_ui_lyrics_search_result(
+    List<UiLyricsSearchResult> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_ui_play_event(
     List<UiPlayEvent> self,
     SseSerializer serializer,
@@ -573,6 +597,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_ui_library(UiLibrary self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_ui_lyrics_search_result(
+    UiLyricsSearchResult self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_ui_play_event(UiPlayEvent self, SseSerializer serializer);

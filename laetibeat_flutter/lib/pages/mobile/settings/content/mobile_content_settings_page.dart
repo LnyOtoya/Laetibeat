@@ -90,10 +90,13 @@ class MobileContentSettingsPage extends ConsumerWidget {
   Future<void> _showLyricsSources(BuildContext context, WidgetRef ref) async {
     final l10n = AppLocalizations.of(context);
     final settings = ref.read(lyricsSettingsProvider);
-    final options = <String>[
-      _sourceLabel(l10n, LyricsSourceId.tags, includingServer: true),
-      _sourceLabel(l10n, LyricsSourceId.lrclib),
-    ];
+    final optionSources = <String, LyricsSourceId>{
+      _sourceLabel(l10n, LyricsSourceId.tags, includingServer: true):
+          LyricsSourceId.tags,
+      _sourceLabel(l10n, LyricsSourceId.lrclib): LyricsSourceId.lrclib,
+      _sourceLabel(l10n, LyricsSourceId.liriqo): LyricsSourceId.liriqo,
+    };
+    final options = optionSources.keys.toList(growable: false);
     final initialSelection = <String>[
       for (final source in settings.order)
         if (settings.isEnabled(source))
@@ -116,10 +119,7 @@ class MobileContentSettingsPage extends ConsumerWidget {
 
     final enabled = <LyricsSourceId>{
       for (final value in picked)
-        if (value == options[0])
-          LyricsSourceId.tags
-        else if (value == options[1])
-          LyricsSourceId.lrclib,
+        if (optionSources[value] != null) optionSources[value]!,
     };
     await ref.read(lyricsSettingsProvider.notifier).setEnabled(enabled);
   }
@@ -152,6 +152,7 @@ String _sourceLabel(
           ? l10n.lyricsSourceTagsIncludingServer
           : l10n.lyricsSourceTags,
     LyricsSourceId.lrclib => l10n.lyricsSourceLrclib,
+    LyricsSourceId.liriqo => l10n.lyricsSourceLiriqo,
   };
 }
 

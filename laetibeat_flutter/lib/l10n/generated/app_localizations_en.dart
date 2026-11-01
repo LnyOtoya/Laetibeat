@@ -137,6 +137,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAboutSupporting => 'Current version';
 
   @override
+  String get searchLyrics => 'Search lyrics';
+
+  @override
+  String get lyricsSearchTitleLabel => 'Song title';
+
+  @override
+  String get lyricsSearchArtistLabel => 'Artist';
+
+  @override
+  String get lyricsSearchCancel => 'Cancel';
+
+  @override
+  String get lyricsSearchConfirm => 'Confirm';
+
+  @override
+  String get lyricsSearchNoResults => 'No lyrics found';
+
+  @override
+  String get lyricsSearchFailed => 'Failed to search lyrics';
+
+  @override
+  String get lyricsSearchShowMore => 'Show more';
+
+  @override
+  String get lyricsSearchCollapse => 'Collapse';
+
+  @override
   String get lyricsGroup => 'Lyrics';
 
   @override
@@ -155,6 +182,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get lyricsSourceLrclib => 'LRCLIB';
+
+  @override
+  String get lyricsSourceLiriqo => 'LiriQo';
 
   @override
   String get closeLyricsPriority => 'Close lyrics source priority';

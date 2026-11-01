@@ -135,6 +135,33 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAboutSupporting => '当前版本';
 
   @override
+  String get searchLyrics => '搜索歌词';
+
+  @override
+  String get lyricsSearchTitleLabel => '歌名';
+
+  @override
+  String get lyricsSearchArtistLabel => '艺术家';
+
+  @override
+  String get lyricsSearchCancel => '取消';
+
+  @override
+  String get lyricsSearchConfirm => '确定';
+
+  @override
+  String get lyricsSearchNoResults => '没有找到歌词';
+
+  @override
+  String get lyricsSearchFailed => '搜索歌词失败';
+
+  @override
+  String get lyricsSearchShowMore => '查看更多';
+
+  @override
+  String get lyricsSearchCollapse => '收起';
+
+  @override
   String get lyricsGroup => '歌词';
 
   @override
@@ -151,6 +178,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get lyricsSourceLrclib => 'LRCLIB';
+
+  @override
+  String get lyricsSourceLiriqo => 'LiriQo';
 
   @override
   String get closeLyricsPriority => '关闭歌词来源优先级';

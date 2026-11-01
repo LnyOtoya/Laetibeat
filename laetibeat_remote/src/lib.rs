@@ -595,6 +595,14 @@ static LRCLIB_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
 #[derive(Debug, Clone, serde::Deserialize)]
 struct LrclibLyrics {
     #[serde(default)]
+    id: Option<i64>,
+    #[serde(rename = "trackName", default)]
+    track_name: Option<String>,
+    #[serde(rename = "artistName", default)]
+    artist_name: Option<String>,
+    #[serde(rename = "albumName", default)]
+    album_name: Option<String>,
+    #[serde(default)]
     duration: Option<f64>,
     #[serde(rename = "plainLyrics", default)]
     plain_lyrics: Option<String>,
@@ -723,4 +731,348 @@ fn lrclib_text(item: LrclibLyrics) -> Option<String> {
         .filter(|text| !text.trim().is_empty())
         .or_else(|| item.plain_lyrics.filter(|text| !text.trim().is_empty()))
         .map(|text| text.trim().to_string())
+}
+
+
+/// 一条可供用户选择的歌词搜索结果。
+#[derive(Debug, Clone)]
+pub struct LyricsSearchResult {
+    pub id: String,
+    pub source: String,
+    pub provider: String,
+    pub title: String,
+    pub artist: String,
+    pub album: String,
+    pub duration_seconds: i64,
+    pub synced: bool,
+    pub text: String,
+}
+
+// ---------------------------------------------------------------------------
+// LiriQo
+// ---------------------------------------------------------------------------
+
+static LIRIQO_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+
+fn liriqo_client() -> Result<&'static reqwest::Client, String> {
+    if let Some(client) = LIRIQO_CLIENT.get() {
+        return Ok(client);
+    }
+    let client = reqwest::Client::builder()
+        .user_agent("Laetibeat/0.1 (lyrics client)")
+        .timeout(Duration::from_secs(20))
+        .build()
+        .map_err(map_err)?;
+    let _ = LIRIQO_CLIENT.set(client);
+    LIRIQO_CLIENT
+        .get()
+        .ok_or_else(|| "LiriQo 客户端初始化失败".to_string())
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct LiriqoResponse {
+    #[serde(default)]
+    tracks: Vec<LiriqoTrack>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct LiriqoTrack {
+    #[serde(default)]
+    provider: Option<String>,
+    #[serde(default)]
+    title: Option<String>,
+    #[serde(default)]
+    artist: Option<String>,
+    #[serde(default)]
+    album: Option<String>,
+    #[serde(default)]
+    duration: Option<f64>,
+    #[serde(default)]
+    lrc: Option<String>,
+    #[serde(default)]
+    plain: Option<String>,
+    #[serde(default)]
+    timed: Vec<LiriqoLine>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct LiriqoLine {
+    #[serde(default)]
+    start: i64,
+    #[serde(default)]
+    end: Option<i64>,
+    #[serde(default)]
+    words: Vec<LiriqoWord>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct LiriqoWord {
+    #[serde(default)]
+    text: String,
+    #[serde(default)]
+    start: i64,
+    #[serde(default)]
+    end: i64,
+}
+
+/// 从 LiriQo 聚合 API 获取歌词。
+///
+/// 优先使用 timed 词级数据生成 QRC，其次使用服务端返回的逐行 LRC，
+/// 最后回退到纯文本。
+pub fn get_liriqo_lyrics(
+    artist: &str,
+    title: &str,
+    duration_seconds: i64,
+) -> Result<Option<String>, String> {
+    let query = format!("{} {}", artist.trim(), title.trim());
+    if query.trim().is_empty() {
+        return Ok(None);
+    }
+
+    let client = liriqo_client()?;
+    let runtime = runtime()?;
+    runtime.block_on(async {
+        let response = client
+            .get("https://api.liriqo-alfarrizi.my.id/v1/lyrics")
+            .query(&[("Q", query.as_str())])
+            .send()
+            .await
+            .map_err(map_err)?;
+        if !response.status().is_success() {
+            return Err(format!("LiriQo 请求失败: {}", response.status()));
+        }
+
+        let payload = response.json::<LiriqoResponse>().await.map_err(map_err)?;
+
+        // 1. 词级/音节级 timed -> QRC。
+        for track in &payload.tracks {
+            if let Some(text) = liriqo_qrc(track) {
+                if !text.trim().is_empty() {
+                    return Ok(Some(text));
+                }
+            }
+        }
+        // 2. 逐行 LRC。
+        for track in &payload.tracks {
+            if let Some(text) = track
+                .lrc
+                .as_deref()
+                .map(str::trim)
+                .filter(|text| !text.is_empty())
+            {
+                return Ok(Some(text.to_string()));
+            }
+        }
+        // 3. 纯文本。
+        for track in &payload.tracks {
+            if let Some(text) = track
+                .plain
+                .as_deref()
+                .map(str::trim)
+                .filter(|text| !text.is_empty())
+            {
+                return Ok(Some(text.to_string()));
+            }
+        }
+        let _ = duration_seconds;
+        Ok(None)
+    })
+}
+
+fn liriqo_qrc(track: &LiriqoTrack) -> Option<String> {
+    let has_words = track
+        .timed
+        .iter()
+        .any(|line| line.words.iter().any(|word| !word.text.is_empty()));
+    if !has_words {
+        return None;
+    }
+
+    let mut output = String::new();
+    for line in &track.timed {
+        if line.words.is_empty() {
+            continue;
+        }
+        let line_end = line
+            .end
+            .unwrap_or_else(|| {
+                line.words
+                    .iter()
+                    .map(|word| word.end)
+                    .max()
+                    .unwrap_or(line.start)
+            });
+        let line_duration = (line_end - line.start).max(0);
+        output.push_str(&format!("[{},{}]", line.start, line_duration));
+        for word in &line.words {
+            if word.text.is_empty() {
+                continue;
+            }
+            let duration = (word.end - word.start).max(0);
+            output.push_str(&word.text);
+            output.push_str(&format!("({},{})", word.start, duration));
+        }
+        output.push('\n');
+    }
+
+    if output.trim().is_empty() {
+        None
+    } else {
+        Some(output)
+    }
+}
+
+
+/// 搜索 LRCLIB 的多条候选歌词。
+pub fn search_lrclib_lyrics(
+    artist: &str,
+    title: &str,
+    duration_seconds: i64,
+) -> Result<Vec<LyricsSearchResult>, String> {
+    if artist.trim().is_empty() && title.trim().is_empty() {
+        return Ok(Vec::new());
+    }
+    let client = lrclib_client()?;
+    let runtime = runtime()?;
+    runtime.block_on(async {
+        let response = client
+            .get("https://lrclib.net/api/search")
+            .query(&[
+                ("artist_name", artist.to_string()),
+                ("track_name", title.to_string()),
+            ])
+            .send()
+            .await
+            .map_err(map_err)?;
+        if !response.status().is_success() {
+            return Ok(Vec::new());
+        }
+        let items = response
+            .json::<Vec<LrclibLyrics>>()
+            .await
+            .map_err(map_err)?;
+        let mut results = Vec::new();
+        for item in items {
+            if item.instrumental {
+                continue;
+            }
+            let Some((text, synced)) = lrclib_search_text(&item) else {
+                continue;
+            };
+            results.push(LyricsSearchResult {
+                id: item
+                    .id
+                    .map(|id| id.to_string())
+                    .unwrap_or_else(|| format!("lrclib:{}:{}", item.artist_name.clone().unwrap_or_default(), item.track_name.clone().unwrap_or_default())),
+                source: "lrclib".to_string(),
+                provider: "LRCLIB".to_string(),
+                title: item.track_name.clone().unwrap_or_else(|| title.to_string()),
+                artist: item.artist_name.clone().unwrap_or_else(|| artist.to_string()),
+                album: item.album_name.clone().unwrap_or_default(),
+                duration_seconds: item.duration.map(|value| value as i64).unwrap_or(0),
+                synced,
+                text,
+            });
+        }
+        results.sort_by_key(|item| {
+            if duration_seconds <= 0 {
+                0
+            } else {
+                (item.duration_seconds - duration_seconds).abs()
+            }
+        });
+        results.truncate(8);
+        Ok(results)
+    })
+}
+
+fn lrclib_search_text(item: &LrclibLyrics) -> Option<(String, bool)> {
+    if let Some(text) = item
+        .synced_lyrics
+        .as_deref()
+        .map(str::trim)
+        .filter(|text| !text.is_empty())
+    {
+        return Some((text.to_string(), true));
+    }
+    item.plain_lyrics
+        .as_deref()
+        .map(str::trim)
+        .filter(|text| !text.is_empty())
+        .map(|text| (text.to_string(), false))
+}
+
+/// 搜索 LiriQo 的多个 provider 候选歌词。
+pub fn search_liriqo_lyrics(
+    artist: &str,
+    title: &str,
+    duration_seconds: i64,
+) -> Result<Vec<LyricsSearchResult>, String> {
+    let query = format!("{} {}", artist.trim(), title.trim());
+    if query.trim().is_empty() {
+        return Ok(Vec::new());
+    }
+    let client = liriqo_client()?;
+    let runtime = runtime()?;
+    runtime.block_on(async {
+        let response = client
+            .get("https://api.liriqo-alfarrizi.my.id/v1/lyrics")
+            .query(&[("Q", query.as_str())])
+            .send()
+            .await
+            .map_err(map_err)?;
+        if !response.status().is_success() {
+            return Ok(Vec::new());
+        }
+        let payload = response.json::<LiriqoResponse>().await.map_err(map_err)?;
+        let mut results = Vec::new();
+        for track in payload.tracks {
+            let Some((text, synced)) = liriqo_track_text(&track) else {
+                continue;
+            };
+            let provider = track.provider.unwrap_or_else(|| "LiriQo".to_string());
+            results.push(LyricsSearchResult {
+                id: format!("liriqo:{}:{}", provider, results.len()),
+                source: "liriqo".to_string(),
+                provider,
+                title: track.title.unwrap_or_else(|| title.to_string()),
+                artist: track.artist.unwrap_or_else(|| artist.to_string()),
+                album: track.album.unwrap_or_default(),
+                duration_seconds: track.duration.map(|value| value as i64).unwrap_or(0),
+                synced,
+                text,
+            });
+        }
+        results.sort_by_key(|item| {
+            if duration_seconds <= 0 {
+                0
+            } else {
+                (item.duration_seconds - duration_seconds).abs()
+            }
+        });
+        results.truncate(12);
+        Ok(results)
+    })
+}
+
+fn liriqo_track_text(track: &LiriqoTrack) -> Option<(String, bool)> {
+    if let Some(text) = liriqo_qrc(track) {
+        if !text.trim().is_empty() {
+            return Some((text, true));
+        }
+    }
+    if let Some(text) = track
+        .lrc
+        .as_deref()
+        .map(str::trim)
+        .filter(|text| !text.is_empty())
+    {
+        return Some((text.to_string(), true));
+    }
+    track
+        .plain
+        .as_deref()
+        .map(str::trim)
+        .filter(|text| !text.is_empty())
+        .map(|text| (text.to_string(), false))
 }

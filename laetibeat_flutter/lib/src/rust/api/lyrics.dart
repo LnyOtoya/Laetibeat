@@ -6,7 +6,7 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `cache_key`, `now_ms`
+// These functions are ignored because they are not marked as `pub`: `cache_key`, `liriqo_cache_key`, `map_search_result`, `now_ms`
 
 /// 从 LRCLIB 获取歌词，带 SQLite 正/负缓存。
 ///
@@ -22,3 +22,77 @@ Future<String?> lrclibGetLyrics({
   album: album,
   durationSeconds: durationSeconds,
 );
+
+/// 从 LiriQo 聚合 API 获取歌词，带 SQLite 正/负缓存。
+Future<String?> liriqoGetLyrics({
+  required String title,
+  required String artist,
+  required PlatformInt64 durationSeconds,
+}) => RustLib.instance.api.crateApiLyricsLiriqoGetLyrics(
+  title: title,
+  artist: artist,
+  durationSeconds: durationSeconds,
+);
+
+/// 同时搜索 LRCLIB 与 LiriQo，返回多个候选来源。
+Future<List<UiLyricsSearchResult>> searchLyrics({
+  required String title,
+  required String artist,
+  required PlatformInt64 durationSeconds,
+}) => RustLib.instance.api.crateApiLyricsSearchLyrics(
+  title: title,
+  artist: artist,
+  durationSeconds: durationSeconds,
+);
+
+/// 歌词搜索结果，供“搜索歌词”对话框展示。
+class UiLyricsSearchResult {
+  final String id;
+  final String source;
+  final String provider;
+  final String title;
+  final String artist;
+  final String album;
+  final PlatformInt64 durationSeconds;
+  final bool synced;
+  final String text;
+
+  const UiLyricsSearchResult({
+    required this.id,
+    required this.source,
+    required this.provider,
+    required this.title,
+    required this.artist,
+    required this.album,
+    required this.durationSeconds,
+    required this.synced,
+    required this.text,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      source.hashCode ^
+      provider.hashCode ^
+      title.hashCode ^
+      artist.hashCode ^
+      album.hashCode ^
+      durationSeconds.hashCode ^
+      synced.hashCode ^
+      text.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is UiLyricsSearchResult &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          source == other.source &&
+          provider == other.provider &&
+          title == other.title &&
+          artist == other.artist &&
+          album == other.album &&
+          durationSeconds == other.durationSeconds &&
+          synced == other.synced &&
+          text == other.text;
+}
