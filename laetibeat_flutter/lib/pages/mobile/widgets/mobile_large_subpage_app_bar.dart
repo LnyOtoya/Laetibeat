@@ -4,31 +4,34 @@ import 'package:material_ui/material_ui.dart';
 /// 移动端二级页面共用的 large baseline AppBar。
 M3EAppBar mobileLargeSubpageAppBar(
   BuildContext context, {
-  required String title,
+  String? title,
   bool centerTitle = false,
+  Color? backgroundColor,
 }) {
   final theme = M3ETheme.of(context);
 
   return M3EAppBar.top(
-    backgroundColor: theme.colorScheme.surfaceContainer,
+    backgroundColor: backgroundColor ?? theme.colorScheme.surfaceContainer,
     variant: M3EAppBarVariant.large,
     hideMode: M3EAppBarHideMode.none,
     shapeFamily: M3EAppBarShapeFamily.square,
     safeArea: true,
     centerTitle: centerTitle,
-    title: Padding(
-      padding: EdgeInsetsDirectional.only(start: centerTitle ? 0 : 12),
-      child: Text(
-        title,
-        maxLines: 1,
-        softWrap: false,
-        overflow: TextOverflow.ellipsis,
-        textAlign: centerTitle ? TextAlign.center : TextAlign.start,
-        style: theme.typeScale.displaySmall.copyWith(
-          color: theme.colorScheme.onSurface,
-        ),
-      ),
-    ),
+    title: title == null
+        ? null
+        : Padding(
+            padding: EdgeInsetsDirectional.only(start: centerTitle ? 0 : 12),
+            child: Text(
+              title,
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.ellipsis,
+              textAlign: centerTitle ? TextAlign.center : TextAlign.start,
+              style: theme.typeScale.displaySmall.copyWith(
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+          ),
     leading: Padding(
       padding: const EdgeInsetsDirectional.only(start: 24),
       child: _SubpageBackButton(

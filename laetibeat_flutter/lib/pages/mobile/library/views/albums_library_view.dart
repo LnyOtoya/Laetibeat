@@ -7,6 +7,9 @@ import 'package:laetibeat/widgets/settings/subsonic_provider.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../mobile_navigation.dart';
+import '../../routes.dart';
+import '../albums/album_detail_page.dart';
 import '../widgets/library_layout_control_bar.dart';
 
 /// 专辑分类内容。数据来自 OpenSubsonic。
@@ -19,6 +22,14 @@ class AlbumsLibraryView extends ConsumerStatefulWidget {
 
 class _AlbumsLibraryViewState extends ConsumerState<AlbumsLibraryView> {
   bool _isGrid = true;
+
+  void _openAlbum(String sourceId, rust_subsonic.UiRemoteAlbum album) {
+    pushMobileRootPage(
+      context,
+      AlbumDetailPage(sourceId: sourceId, album: album),
+      name: MobileRoutes.albumDetail,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -96,7 +107,7 @@ class _AlbumsLibraryViewState extends ConsumerState<AlbumsLibraryView> {
         final album = albums[index];
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: () {},
+          onTap: () => _openAlbum(sourceId, album),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -137,6 +148,7 @@ class _AlbumsLibraryViewState extends ConsumerState<AlbumsLibraryView> {
       color: theme.colorScheme.surface,
       variant: M3ECardVariant.filled,
       itemCount: albums.length,
+      onTap: (int index) => _openAlbum(sourceId, albums[index]),
       listPadding: EdgeInsets.fromLTRB(16, 0, 16, 16 + bottomInset),
       itemBuilder: (BuildContext context, int index) {
         final album = albums[index];
