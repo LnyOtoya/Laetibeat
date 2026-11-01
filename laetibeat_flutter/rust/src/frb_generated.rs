@@ -2004,6 +2004,7 @@ impl SseDecode for crate::api::subsonic::UiRemoteAlbum {
         let mut var_songCount = <Option<i64>>::sse_decode(deserializer);
         let mut var_durationSeconds = <Option<i64>>::sse_decode(deserializer);
         let mut var_year = <Option<i32>>::sse_decode(deserializer);
+        let mut var_created = <Option<String>>::sse_decode(deserializer);
         return crate::api::subsonic::UiRemoteAlbum {
             id: var_id,
             title: var_title,
@@ -2013,6 +2014,7 @@ impl SseDecode for crate::api::subsonic::UiRemoteAlbum {
             song_count: var_songCount,
             duration_seconds: var_durationSeconds,
             year: var_year,
+            created: var_created,
         };
     }
 }
@@ -2606,6 +2608,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::subsonic::UiRemoteAlbum {
             self.song_count.into_into_dart().into_dart(),
             self.duration_seconds.into_into_dart().into_dart(),
             self.year.into_into_dart().into_dart(),
+            self.created.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -3309,6 +3312,7 @@ impl SseEncode for crate::api::subsonic::UiRemoteAlbum {
         <Option<i64>>::sse_encode(self.song_count, serializer);
         <Option<i64>>::sse_encode(self.duration_seconds, serializer);
         <Option<i32>>::sse_encode(self.year, serializer);
+        <Option<String>>::sse_encode(self.created, serializer);
     }
 }
 

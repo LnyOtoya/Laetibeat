@@ -2067,8 +2067,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   UiRemoteAlbum dco_decode_ui_remote_album(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 8)
-      throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
+    if (arr.length != 9)
+      throw Exception('unexpected arr length: expect 9 but see ${arr.length}');
     return UiRemoteAlbum(
       id: dco_decode_String(arr[0]),
       title: dco_decode_String(arr[1]),
@@ -2078,6 +2078,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       songCount: dco_decode_opt_box_autoadd_i_64(arr[5]),
       durationSeconds: dco_decode_opt_box_autoadd_i_64(arr[6]),
       year: dco_decode_opt_box_autoadd_i_32(arr[7]),
+      created: dco_decode_opt_String(arr[8]),
     );
   }
 
@@ -2779,6 +2780,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_songCount = sse_decode_opt_box_autoadd_i_64(deserializer);
     var var_durationSeconds = sse_decode_opt_box_autoadd_i_64(deserializer);
     var var_year = sse_decode_opt_box_autoadd_i_32(deserializer);
+    var var_created = sse_decode_opt_String(deserializer);
     return UiRemoteAlbum(
       id: var_id,
       title: var_title,
@@ -2788,6 +2790,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       songCount: var_songCount,
       durationSeconds: var_durationSeconds,
       year: var_year,
+      created: var_created,
     );
   }
 
@@ -3505,6 +3508,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_opt_box_autoadd_i_64(self.songCount, serializer);
     sse_encode_opt_box_autoadd_i_64(self.durationSeconds, serializer);
     sse_encode_opt_box_autoadd_i_32(self.year, serializer);
+    sse_encode_opt_String(self.created, serializer);
   }
 
   @protected

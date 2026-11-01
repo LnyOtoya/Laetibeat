@@ -198,6 +198,7 @@ class UiRemoteAlbum {
   final PlatformInt64? songCount;
   final PlatformInt64? durationSeconds;
   final int? year;
+  final String? created;
 
   const UiRemoteAlbum({
     required this.id,
@@ -208,6 +209,7 @@ class UiRemoteAlbum {
     this.songCount,
     this.durationSeconds,
     this.year,
+    this.created,
   });
 
   @override
@@ -219,7 +221,8 @@ class UiRemoteAlbum {
       coverId.hashCode ^
       songCount.hashCode ^
       durationSeconds.hashCode ^
-      year.hashCode;
+      year.hashCode ^
+      created.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -233,7 +236,8 @@ class UiRemoteAlbum {
           coverId == other.coverId &&
           songCount == other.songCount &&
           durationSeconds == other.durationSeconds &&
-          year == other.year;
+          year == other.year &&
+          created == other.created;
 }
 
 class UiRemoteAlbumDetail {

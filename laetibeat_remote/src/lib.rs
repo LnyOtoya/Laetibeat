@@ -61,6 +61,8 @@ pub struct RemoteAlbum {
     pub song_count: Option<i64>,
     pub duration_seconds: Option<i64>,
     pub year: Option<i32>,
+    /// 服务器记录的添加时间(ISO 8601)。
+    pub created: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -474,6 +476,7 @@ fn map_album(album: AlbumId3) -> RemoteAlbum {
         song_count: album.song_count,
         duration_seconds: album.duration,
         year: album.year,
+        created: album.created,
     }
 }
 
@@ -534,6 +537,7 @@ fn map_album_detail(detail: AlbumWithSongsId3) -> RemoteAlbumDetail {
         song_count: detail.song_count,
         duration_seconds: detail.duration,
         year: detail.year,
+        created: detail.created,
     };
     let mut tracks: Vec<RemoteTrack> = detail.song.into_iter().map(map_track).collect();
     tracks.sort_by(|a, b| {

@@ -4,7 +4,6 @@ import 'package:material_3_expressive/material_3_expressive.dart';
 import '../../../shared/layout/app_bottom_inset.dart';
 import 'widgets/mobile_daily_section.dart';
 import 'widgets/mobile_history_section.dart';
-import 'widgets/mobile_recent_section.dart';
 import 'widgets/mobile_welcome_section.dart';
 
 /// 移动端首页内容。
@@ -24,8 +23,6 @@ class MobileHomeContent extends StatelessWidget {
           child: Column(
             children: [
               const MobileWelcomeSection(),
-              SizedBox(height: theme.spacing.md),
-              const MobileRecentSection(),
               SizedBox(height: theme.spacing.md),
               const MobileDailySection(),
               SizedBox(height: theme.spacing.md),

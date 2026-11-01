@@ -31,6 +31,7 @@ pub struct UiRemoteAlbum {
     pub song_count: Option<i64>,
     pub duration_seconds: Option<i64>,
     pub year: Option<i32>,
+    pub created: Option<String>,
 }
 
 /// 远端曲目
@@ -373,6 +374,7 @@ fn map_album(album: remote::RemoteAlbum) -> UiRemoteAlbum {
         song_count: album.song_count,
         duration_seconds: album.duration_seconds,
         year: album.year,
+        created: album.created,
     }
 }
 

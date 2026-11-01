@@ -126,6 +126,7 @@ fn map_album(album: core_lib::RemoteAlbumRow) -> UiRemoteAlbum {
         song_count: album.song_count,
         duration_seconds: album.duration_seconds,
         year: album.year,
+        created: None,
     }
 }
 
