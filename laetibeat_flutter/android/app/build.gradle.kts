@@ -34,6 +34,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            // 通知图标通过资源名字符串在运行时查找，资源名混淆后
+            // audio_service 会找不到 drawable/ic_stat_playback。
+            isShrinkResources = false
         }
     }
 }
