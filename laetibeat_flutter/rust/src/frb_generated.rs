@@ -39,7 +39,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 338998110;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 159843988;
 
 // Section: executor
 
@@ -1183,6 +1183,39 @@ fn wire__crate__api__subsonic__subsonic_get_lyrics_cached_impl(
         },
     )
 }
+fn wire__crate__api__subsonic__subsonic_get_playlists_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "subsonic_get_playlists",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_source_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::subsonic::subsonic_get_playlists(api_source_id)?;
+                    std::result::Result::Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__subsonic__subsonic_scrobble_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -1569,6 +1602,20 @@ impl SseDecode for Vec<crate::api::subsonic::UiRemoteArtist> {
     }
 }
 
+impl SseDecode for Vec<crate::api::subsonic::UiRemotePlaylist> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = Vec::with_capacity(len_ as usize);
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::subsonic::UiRemotePlaylist>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for Vec<crate::api::subsonic::UiRemoteTrack> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1612,6 +1659,17 @@ impl SseDecode for Option<String> {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         if (<bool>::sse_decode(deserializer)) {
             return Some(<String>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<bool> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<bool>::sse_decode(deserializer));
         } else {
             return None;
         }
@@ -1882,6 +1940,34 @@ impl SseDecode for crate::api::subsonic::UiRemoteArtistDetail {
         return crate::api::subsonic::UiRemoteArtistDetail {
             artist: var_artist,
             albums: var_albums,
+        };
+    }
+}
+
+impl SseDecode for crate::api::subsonic::UiRemotePlaylist {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <String>::sse_decode(deserializer);
+        let mut var_name = <String>::sse_decode(deserializer);
+        let mut var_comment = <Option<String>>::sse_decode(deserializer);
+        let mut var_owner = <Option<String>>::sse_decode(deserializer);
+        let mut var_public = <Option<bool>>::sse_decode(deserializer);
+        let mut var_songCount = <Option<i64>>::sse_decode(deserializer);
+        let mut var_durationSeconds = <Option<i64>>::sse_decode(deserializer);
+        let mut var_coverId = <Option<String>>::sse_decode(deserializer);
+        let mut var_created = <Option<String>>::sse_decode(deserializer);
+        let mut var_changed = <Option<String>>::sse_decode(deserializer);
+        return crate::api::subsonic::UiRemotePlaylist {
+            id: var_id,
+            name: var_name,
+            comment: var_comment,
+            owner: var_owner,
+            public: var_public,
+            song_count: var_songCount,
+            duration_seconds: var_durationSeconds,
+            cover_id: var_coverId,
+            created: var_created,
+            changed: var_changed,
         };
     }
 }
@@ -2222,19 +2308,25 @@ fn pde_ffi_dispatcher_primary_impl(
             rust_vec_len,
             data_len,
         ),
-        33 => wire__crate__api__subsonic__subsonic_scrobble_impl(port, ptr, rust_vec_len, data_len),
-        34 => wire__crate__api__subsonic__subsonic_search3_impl(port, ptr, rust_vec_len, data_len),
-        35 => {
-            wire__crate__api__subsonic__subsonic_stream_url_impl(port, ptr, rust_vec_len, data_len)
-        }
-        36 => wire__crate__api__sync__sync_subsonic_library_impl(port, ptr, rust_vec_len, data_len),
-        37 => wire__crate__api__subsonic__test_subsonic_connection_impl(
+        33 => wire__crate__api__subsonic__subsonic_get_playlists_impl(
             port,
             ptr,
             rust_vec_len,
             data_len,
         ),
-        38 => wire__crate__api__sync__ui_remote_sync_progress_default_impl(
+        34 => wire__crate__api__subsonic__subsonic_scrobble_impl(port, ptr, rust_vec_len, data_len),
+        35 => wire__crate__api__subsonic__subsonic_search3_impl(port, ptr, rust_vec_len, data_len),
+        36 => {
+            wire__crate__api__subsonic__subsonic_stream_url_impl(port, ptr, rust_vec_len, data_len)
+        }
+        37 => wire__crate__api__sync__sync_subsonic_library_impl(port, ptr, rust_vec_len, data_len),
+        38 => wire__crate__api__subsonic__test_subsonic_connection_impl(
+            port,
+            ptr,
+            rust_vec_len,
+            data_len,
+        ),
+        39 => wire__crate__api__sync__ui_remote_sync_progress_default_impl(
             port,
             ptr,
             rust_vec_len,
@@ -2465,6 +2557,35 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::subsonic::UiRemoteArtistDetai
     for crate::api::subsonic::UiRemoteArtistDetail
 {
     fn into_into_dart(self) -> crate::api::subsonic::UiRemoteArtistDetail {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::subsonic::UiRemotePlaylist {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.id.into_into_dart().into_dart(),
+            self.name.into_into_dart().into_dart(),
+            self.comment.into_into_dart().into_dart(),
+            self.owner.into_into_dart().into_dart(),
+            self.public.into_into_dart().into_dart(),
+            self.song_count.into_into_dart().into_dart(),
+            self.duration_seconds.into_into_dart().into_dart(),
+            self.cover_id.into_into_dart().into_dart(),
+            self.created.into_into_dart().into_dart(),
+            self.changed.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::subsonic::UiRemotePlaylist
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::subsonic::UiRemotePlaylist>
+    for crate::api::subsonic::UiRemotePlaylist
+{
+    fn into_into_dart(self) -> crate::api::subsonic::UiRemotePlaylist {
         self
     }
 }
@@ -2838,6 +2959,16 @@ impl SseEncode for Vec<crate::api::subsonic::UiRemoteArtist> {
     }
 }
 
+impl SseEncode for Vec<crate::api::subsonic::UiRemotePlaylist> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::subsonic::UiRemotePlaylist>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Vec<crate::api::subsonic::UiRemoteTrack> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2874,6 +3005,16 @@ impl SseEncode for Option<String> {
         <bool>::sse_encode(self.is_some(), serializer);
         if let Some(value) = self {
             <String>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<bool> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <bool>::sse_encode(value, serializer);
         }
     }
 }
@@ -3068,6 +3209,22 @@ impl SseEncode for crate::api::subsonic::UiRemoteArtistDetail {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <crate::api::subsonic::UiRemoteArtist>::sse_encode(self.artist, serializer);
         <Vec<crate::api::subsonic::UiRemoteAlbum>>::sse_encode(self.albums, serializer);
+    }
+}
+
+impl SseEncode for crate::api::subsonic::UiRemotePlaylist {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.id, serializer);
+        <String>::sse_encode(self.name, serializer);
+        <Option<String>>::sse_encode(self.comment, serializer);
+        <Option<String>>::sse_encode(self.owner, serializer);
+        <Option<bool>>::sse_encode(self.public, serializer);
+        <Option<i64>>::sse_encode(self.song_count, serializer);
+        <Option<i64>>::sse_encode(self.duration_seconds, serializer);
+        <Option<String>>::sse_encode(self.cover_id, serializer);
+        <Option<String>>::sse_encode(self.created, serializer);
+        <Option<String>>::sse_encode(self.changed, serializer);
     }
 }
 

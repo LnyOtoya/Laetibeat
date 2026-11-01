@@ -6,7 +6,7 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `map_album`, `map_artist`, `map_server_info`, `map_track`, `now_ms`, `parse_auth_mode`
+// These functions are ignored because they are not marked as `pub`: `map_album`, `map_artist`, `map_playlist`, `map_server_info`, `map_track`, `now_ms`, `parse_auth_mode`
 
 /// 测试连接,只返回服务器信息,不注册客户端。
 Future<UiSubsonicServerInfo> testSubsonicConnection({
@@ -129,6 +129,13 @@ Future<String?> subsonicGetLyricsCached({
 /// 获取艺术家列表
 Future<List<UiRemoteArtist>> subsonicGetArtists({required String sourceId}) =>
     RustLib.instance.api.crateApiSubsonicSubsonicGetArtists(sourceId: sourceId);
+
+/// 获取当前用户可见的全部歌单
+Future<List<UiRemotePlaylist>> subsonicGetPlaylists({
+  required String sourceId,
+}) => RustLib.instance.api.crateApiSubsonicSubsonicGetPlaylists(
+  sourceId: sourceId,
+);
 
 /// 获取艺术家详情与专辑列表
 Future<UiRemoteArtistDetail> subsonicGetArtist({
@@ -274,6 +281,62 @@ class UiRemoteArtistDetail {
           runtimeType == other.runtimeType &&
           artist == other.artist &&
           albums == other.albums;
+}
+
+/// 远端歌单
+class UiRemotePlaylist {
+  final String id;
+  final String name;
+  final String? comment;
+  final String? owner;
+  final bool? public;
+  final PlatformInt64? songCount;
+  final PlatformInt64? durationSeconds;
+  final String? coverId;
+  final String? created;
+  final String? changed;
+
+  const UiRemotePlaylist({
+    required this.id,
+    required this.name,
+    this.comment,
+    this.owner,
+    this.public,
+    this.songCount,
+    this.durationSeconds,
+    this.coverId,
+    this.created,
+    this.changed,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      name.hashCode ^
+      comment.hashCode ^
+      owner.hashCode ^
+      public.hashCode ^
+      songCount.hashCode ^
+      durationSeconds.hashCode ^
+      coverId.hashCode ^
+      created.hashCode ^
+      changed.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is UiRemotePlaylist &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name &&
+          comment == other.comment &&
+          owner == other.owner &&
+          public == other.public &&
+          songCount == other.songCount &&
+          durationSeconds == other.durationSeconds &&
+          coverId == other.coverId &&
+          created == other.created &&
+          changed == other.changed;
 }
 
 /// 远端搜索结果(艺术家/专辑/曲目三类)

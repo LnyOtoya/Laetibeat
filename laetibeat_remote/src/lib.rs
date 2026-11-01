@@ -2,7 +2,7 @@
 
 use opensubsonic::data::{
     AlbumId3, AlbumWithSongsId3, ArtistId3, ArtistWithAlbumsId3, Child, LyricsList,
-    ServerInfo as OsServerInfo, StructuredLyrics,
+    Playlist as OsPlaylist, ServerInfo as OsServerInfo, StructuredLyrics,
 };
 use opensubsonic::{
     AlbumListOptions, AlbumListType, Auth, Client, Search3Options, StreamOptions,
@@ -79,6 +79,20 @@ pub struct RemoteTrack {
     pub bit_rate: Option<i32>,
     pub suffix: Option<String>,
     pub size: Option<i64>,
+}
+
+#[derive(Debug, Clone)]
+pub struct RemotePlaylist {
+    pub id: String,
+    pub name: String,
+    pub comment: Option<String>,
+    pub owner: Option<String>,
+    pub public: Option<bool>,
+    pub song_count: Option<i64>,
+    pub duration_seconds: Option<i64>,
+    pub cover_id: Option<String>,
+    pub created: Option<String>,
+    pub changed: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -336,6 +350,15 @@ pub fn get_artists(source_id: &str) -> Result<Vec<RemoteArtist>, String> {
     Ok(result)
 }
 
+/// 获取当前用户可见的全部歌单。
+pub fn get_playlists(source_id: &str) -> Result<Vec<RemotePlaylist>, String> {
+    let client = client(source_id)?;
+    let playlists = runtime()?
+        .block_on(client.get_playlists(None))
+        .map_err(map_err)?;
+    Ok(playlists.into_iter().map(map_playlist).collect())
+}
+
 /// 分页获取专辑列表(ID3)。offset 从 0 开始,limit 为每页数量。
 pub fn get_album_list2(
     source_id: &str,
@@ -449,6 +472,21 @@ fn map_track(track: Child) -> RemoteTrack {
         bit_rate: track.bit_rate,
         suffix: track.suffix,
         size: track.size,
+    }
+}
+
+fn map_playlist(playlist: OsPlaylist) -> RemotePlaylist {
+    RemotePlaylist {
+        id: playlist.id,
+        name: playlist.name,
+        comment: playlist.comment,
+        owner: playlist.owner,
+        public: playlist.public,
+        song_count: playlist.song_count,
+        duration_seconds: playlist.duration,
+        cover_id: playlist.cover_art,
+        created: playlist.created,
+        changed: playlist.changed,
     }
 }
 

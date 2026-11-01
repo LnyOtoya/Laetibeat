@@ -53,6 +53,21 @@ pub struct UiRemoteTrack {
     pub size: Option<i64>,
 }
 
+/// 远端歌单
+#[frb(non_opaque)]
+pub struct UiRemotePlaylist {
+    pub id: String,
+    pub name: String,
+    pub comment: Option<String>,
+    pub owner: Option<String>,
+    pub public: Option<bool>,
+    pub song_count: Option<i64>,
+    pub duration_seconds: Option<i64>,
+    pub cover_id: Option<String>,
+    pub created: Option<String>,
+    pub changed: Option<String>,
+}
+
 #[frb(non_opaque)]
 pub struct UiRemoteArtistDetail {
     pub artist: UiRemoteArtist,
@@ -247,6 +262,12 @@ pub fn subsonic_get_artists(source_id: String) -> Result<Vec<UiRemoteArtist>, St
     Ok(artists.into_iter().map(map_artist).collect())
 }
 
+/// 获取当前用户可见的全部歌单
+pub fn subsonic_get_playlists(source_id: String) -> Result<Vec<UiRemotePlaylist>, String> {
+    let playlists = remote::get_playlists(&source_id)?;
+    Ok(playlists.into_iter().map(map_playlist).collect())
+}
+
 /// 获取艺术家详情与专辑列表
 pub fn subsonic_get_artist(
     source_id: String,
@@ -291,6 +312,21 @@ pub fn subsonic_search3(
         albums: result.albums.into_iter().map(map_album).collect(),
         tracks: result.tracks.into_iter().map(map_track).collect(),
     })
+}
+
+fn map_playlist(playlist: remote::RemotePlaylist) -> UiRemotePlaylist {
+    UiRemotePlaylist {
+        id: playlist.id,
+        name: playlist.name,
+        comment: playlist.comment,
+        owner: playlist.owner,
+        public: playlist.public,
+        song_count: playlist.song_count,
+        duration_seconds: playlist.duration_seconds,
+        cover_id: playlist.cover_id,
+        created: playlist.created,
+        changed: playlist.changed,
+    }
 }
 
 fn map_server_info(info: remote::RemoteServerInfo) -> UiSubsonicServerInfo {

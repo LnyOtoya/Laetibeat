@@ -2,6 +2,7 @@ import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../widgets/mobile_app_bar.dart';
+import 'views/playlists_library_view.dart';
 import 'views/songs_library_view.dart';
 
 /// 移动端音乐库页面。
@@ -80,7 +81,7 @@ class _MobileLibraryPageState extends State<MobileLibraryPage> {
   Widget _buildContent() {
     return switch (_selectedIndex) {
       0 => const SongsLibraryView(),
-      1 => const _LibraryPlaceholder('歌单'),
+      1 => const PlaylistsLibraryView(),
       2 => const _LibraryPlaceholder('艺术家'),
       3 => const _LibraryPlaceholder('专辑'),
       _ => const _LibraryPlaceholder('播客'),

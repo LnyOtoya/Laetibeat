@@ -49,6 +49,15 @@ final remoteAllAlbumsProvider =
       return rust_library.queryRemoteAlbums(sourceId: sourceId);
     });
 
+/// 远端歌单列表(OpenSubsonic getPlaylists,实时读取服务器)
+final remotePlaylistsProvider =
+    FutureProvider.family<List<rust_subsonic.UiRemotePlaylist>, String>((
+      ref,
+      sourceId,
+    ) {
+      return rust_subsonic.subsonicGetPlaylists(sourceId: sourceId);
+    });
+
 /// 已同步的全部远端曲目(首页推荐聚合使用)
 final remoteAllTracksProvider =
     FutureProvider.family<List<rust_subsonic.UiRemoteTrack>, String>((
