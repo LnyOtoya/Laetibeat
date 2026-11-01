@@ -1,7 +1,7 @@
 # Laetibeat 项目蓝图
 
 > 最后更新：2026-11-01
-> 当前阶段：移动端 UI 完善 + Android 音频服务迁移准备
+> 当前阶段：Android audio_service + just_audio 已接入，待真机验证
 
 ## 当前状态速览
 
@@ -10,9 +10,9 @@
 - 缓存：本地封面按需读取；远端封面内存 + 磁盘 LRU；歌词 SQLite 正负缓存
 - 移动端：首页/音乐库/搜索/设置/播放页/迷你播放器已完成；音乐库按歌曲、歌单、艺术家、专辑分组
 - 移动端 OpenSubsonic：连接、测试、扫描、歌单、艺术家简介、专辑/曲目浏览已接入真实数据
-- 跨平台：Linux 桌面可用；Android UI 已解耦，后台播放与媒体会话待迁移；Windows/macOS 打包未开始
-- 主要缺口：收藏/歌单编辑/队列编辑/下载、播放设置、Android 音频服务、移动端 SAF、MPRIS 迁移
-- 音频后端：目前所有平台统一使用 media_kit；Android 计划迁移到 audio_service + just_audio
+- 跨平台：Linux 桌面可用；Android UI 已解耦，audio_service 已接入待真机验证；Windows/macOS 打包未开始
+- 主要缺口：收藏/歌单编辑/队列编辑/下载、播放设置、Android 音频服务真机验证、移动端 SAF、MPRIS 迁移
+- 音频后端：桌面 media_kit；Android 已切换 just_audio + audio_service，等待真机验证
 
 ## 阶段1：数据模型与基础扫描
 
@@ -111,45 +111,45 @@
 
 ### 8.1 播放后端拆分
 
-- [ ] 新增 `JustAudioBackend`（Android/iOS）
-- [ ] bootstrap 按平台注入：Android/iOS → JustAudio，桌面 → MediaKit
-- [ ] 保持 `PlaybackBackend` 接口不向 UI 泄漏具体引擎
+- [x] 新增 `JustAudioBackend`（Android/iOS）
+- [x] bootstrap 按平台注入：Android/iOS → JustAudio，桌面 → MediaKit
+- [x] 保持 `PlaybackBackend` 接口不向 UI 泄漏具体引擎
 - [ ] 补齐 buffering / error / processing state 抽象
 - [ ] 验证 OpenSubsonic stream URL、本地 file URI、恢复播放
 
 ### 8.2 audio_service 与状态归属
 
-- [ ] 初始化 `audio_service`，配置通知渠道与 ongoing 行为
-- [ ] 新增 `LaetibeatAudioHandler`，映射 play/pause/stop/seek/next/previous
-- [ ] 明确播放状态源：AudioHandler 持有播放器，还是现有 PlayerNotifier 持有播放器
-- [ ] 若 AudioHandler 在后台 isolate 运行，评估统计/scrobble/队列持久化迁移
-- [ ] 用 `MediaItem` 同步标题、艺术家、专辑、时长、封面 `artUri`
-- [ ] 同步队列、随机模式、重复模式
-- [ ] 通知栏、锁屏、耳机键、媒体按钮
-- [ ] 通知点击回到播放页/当前页面
+- [x] 初始化 `audio_service`，配置通知渠道与 ongoing 行为
+- [x] 新增 `LaetibeatAudioHandler`，映射 play/pause/stop/seek/next/previous
+- [x] 明确播放状态源：现有 PlayerNotifier 继续持有播放器与队列
+- [x] AudioHandler 与 UI 同 isolate，统计/scrobble/队列持久化保持原路径
+- [x] 用 `MediaItem` 同步标题、艺术家、专辑、时长、封面 `artUri`
+- [x] 同步队列、随机模式、重复模式
+- [ ] 通知栏、锁屏、耳机键、媒体按钮真机验证
+- [ ] 通知点击回到播放页/当前页面验证
 - [ ] 替换/收缩 `MediaSessionService.sync()` 拉取式桥接
 
 ### 8.3 Android 配置
 
-- [ ] Manifest 增加 `WAKE_LOCK`
-- [ ] Manifest 增加 `FOREGROUND_SERVICE`
-- [ ] Manifest 增加 `FOREGROUND_SERVICE_MEDIA_PLAYBACK`
-- [ ] 声明 `AudioService`，`foregroundServiceType="mediaPlayback"`
-- [ ] 声明 `MediaButtonReceiver`
-- [ ] MainActivity 切换到 `AudioServiceActivity` 或 `AudioServiceFragmentActivity`
-- [ ] Android 13+ 请求 `POST_NOTIFICATIONS`
-- [ ] 通知频道、单色小图标、专辑封面大图标
-- [ ] 处理 Android 14+ 前台服务类型启动限制
+- [x] Manifest 增加 `WAKE_LOCK`
+- [x] Manifest 增加 `FOREGROUND_SERVICE`
+- [x] Manifest 增加 `FOREGROUND_SERVICE_MEDIA_PLAYBACK`
+- [x] 声明 `AudioService`，`foregroundServiceType="mediaPlayback"`
+- [x] 声明 `MediaButtonReceiver`
+- [x] MainActivity 切换到 `AudioServiceActivity`
+- [x] Android 13+ 请求 `POST_NOTIFICATIONS`（MainActivity 原生请求）
+- [x] 通知频道、单色小图标、专辑封面大图标
+- [x] 处理 Android 14+ 前台服务类型声明
 
 ### 8.4 音频焦点与生命周期
 
-- [ ] 配置 `audio_session` 为音乐用途
-- [ ] 来电/其他应用播放时暂停或 duck
-- [ ] 耳机拔出 becoming noisy 处理
-- [ ] 蓝牙/有线/扬声器切换
-- [ ] 暂停后通知保留策略
+- [x] 配置 `audio_session` 为音乐用途
+- [x] 来电/其他应用播放时暂停或 duck
+- [x] 耳机拔出 becoming noisy 处理
+- [ ] 蓝牙/有线/扬声器切换真机验证
+- [x] 暂停后通知保留策略（暂停时停止前台服务）
 - [ ] App 退到后台、锁屏、划掉后的行为验证
-- [ ] 后台播放时统计和 scrobble 继续工作
+- [ ] 后台播放时统计和 scrobble 继续工作验证
 
 ### 8.5 验证
 
@@ -233,10 +233,11 @@
 ## 已知问题 / 技术债
 
 - 自研 MPRIS 会卡死 waybar，已停用；后续统一迁移 audio_service
-- Android 当前仍使用 media_kit；后台播放、媒体会话、常驻通知尚未接入
-- `MediaSessionService` 当前是 Noop，`MediaIntegrationHost` 仅做简单状态同步
-- 播放后端目前所有平台统一注入 `MediaKitBackend`，尚未按平台拆分
-- media_kit 在 Android 上出现过原生 SIGSEGV，后台场景需要重点验证
+- Android 已接入 just_audio + audio_service，但尚未真机验证后台、锁屏、媒体键和划掉 App
+- `MediaSessionService` 当前仍是 Noop，`MediaIntegrationHost` 仅做简单状态同步
+- Android 播放后端已按平台拆分，桌面仍使用 MediaKitBackend
+- media_kit 在 Android 上出现过原生 SIGSEGV；Android 已改用 just_audio，桌面风险另论
+- `audio_service` 的 `AudioHandler` 与 UI 同 isolate，当前仍由 `PlayerNotifier` 持有播放状态
 - 远端同步仅支持全量，暂无取消与增量；大库同步时间较长
 - Scrobble 为 best-effort，服务器离线时不会补报
 - 推荐聚合会把全部远端曲目缓存到内存，超大曲库需要改为聚合查询

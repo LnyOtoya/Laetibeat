@@ -301,6 +301,15 @@ class PlayerNotifier extends Notifier<PlayerState> {
     await _backend.pause();
   }
 
+  /// 供系统媒体服务停止播放；队列保留，下次播放重新装载。
+  Future<void> stop() async {
+    if (state.queue.isEmpty) return;
+    await _backend.stop();
+    _mediaLoaded = false;
+    _pendingPosition = Duration.zero;
+    state = state.copyWith(isPlaying: false, position: Duration.zero);
+  }
+
   //切换音频输出设备
   Future<void> setAudioDevice(String id) => _backend.setAudioDevice(id);
 

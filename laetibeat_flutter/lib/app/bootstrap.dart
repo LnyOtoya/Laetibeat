@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:audio_service/audio_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:laetibeat/src/rust/api/library.dart' as rust_library;
@@ -8,6 +10,8 @@ import 'package:laetibeat/src/rust/frb_generated.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../core/playback/just_audio_backend.dart';
+import '../core/playback/laetibeat_audio_handler.dart';
 import '../core/providers/playback_backend_provider.dart';
 import '../core/services/directory_picker.dart';
 import '../core/services/window_service.dart';
@@ -39,9 +43,7 @@ Future<void> bootstrap() async {
   try {
     final supportDir = await getApplicationSupportDirectory();
     await supportDir.create(recursive: true);
-    await rust_stats.initStatsDb(
-      path: '${supportDir.path}/laetibeat_stats.db',
-    );
+    await rust_stats.initStatsDb(path: '${supportDir.path}/laetibeat_stats.db');
   } catch (e) {
     debugPrint('初始化播放统计库失败: $e');
   }
@@ -70,17 +72,47 @@ Future<void> bootstrap() async {
     AppFormFactor.mobile => const MobileDirectoryPicker(),
   };
 
+  final playbackBackend = switch (formFactor) {
+    AppFormFactor.desktop => MediaKitBackend(),
+    AppFormFactor.mobile => JustAudioBackend(),
+  };
+
+  final container = ProviderContainer(
+    overrides: [
+      appFormFactorProvider.overrideWithValue(formFactor),
+      windowServiceProvider.overrideWithValue(windowService),
+      directoryPickerProvider.overrideWithValue(directoryPicker),
+      playbackBackendProvider.overrideWithValue(playbackBackend),
+      sharedPreferencesProvider.overrideWithValue(prefs),
+      playbackSnapshotStoreProvider.overrideWithValue(playbackStore),
+      initialPlaybackSnapshotProvider.overrideWithValue(playbackSnapshot),
+    ],
+  );
+
+  // 仅在 Android 初始化系统媒体服务；桌面继续使用 media_kit 的现有路径。
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+    try {
+      await AudioService.init(
+        builder: () => LaetibeatAudioHandler(container),
+        config: const AudioServiceConfig(
+          androidNotificationChannelId: 'com.otimeum.laetibeat.playback',
+          androidNotificationChannelName: '播放',
+          androidNotificationChannelDescription: 'Laetibeat 播放控制',
+          androidNotificationOngoing: true,
+          androidStopForegroundOnPause: true,
+          androidNotificationIcon: 'drawable/ic_stat_playback',
+          artDownscaleWidth: 512,
+          artDownscaleHeight: 512,
+        ),
+      );
+    } catch (e) {
+      debugPrint('初始化 Android 音频服务失败: $e');
+    }
+  }
+
   runApp(
-    ProviderScope(
-      overrides: [
-        appFormFactorProvider.overrideWithValue(formFactor),
-        windowServiceProvider.overrideWithValue(windowService),
-        directoryPickerProvider.overrideWithValue(directoryPicker),
-        playbackBackendProvider.overrideWithValue(MediaKitBackend()),
-        sharedPreferencesProvider.overrideWithValue(prefs),
-        playbackSnapshotStoreProvider.overrideWithValue(playbackStore),
-        initialPlaybackSnapshotProvider.overrideWithValue(playbackSnapshot),
-      ],
+    UncontrolledProviderScope(
+      container: container,
       child: const LaetibeatApp(),
     ),
   );
