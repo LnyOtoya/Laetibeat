@@ -33,7 +33,9 @@ Future<void> showLyricsSearchDialog(
   );
   if (result == null) return;
 
-  ref.read(lyricsOverridesProvider.notifier).apply(track, result.text);
+  ref
+      .read(lyricsOverridesProvider.notifier)
+      .apply(track, result.text, translation: result.translation);
 }
 
 class _LyricsQuery {
@@ -294,22 +296,18 @@ class _LyricsResultCard extends StatelessWidget {
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: onApply,
-            child: Row(
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 6,
               children: [
-                Expanded(
-                  child: Text(
-                    result.provider.isEmpty ? result.source : result.provider,
-                    style: theme.typeScale.labelMedium.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
+                _SourceChip(
+                  source: result.provider.isEmpty
+                      ? result.source
+                      : result.provider,
                 ),
-                if (result.synced)
-                  Icon(
-                    M3EIcons.music_note,
-                    size: 14,
-                    color: scheme.onSurfaceVariant,
-                  ),
+                _ResultChip(label: _syncLabel(l10n, result.syncLevel)),
+                if (result.hasTranslation)
+                  _ResultChip(label: l10n.lyricsHasTranslation),
               ],
             ),
           ),
@@ -317,6 +315,75 @@ class _LyricsResultCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 来源 chip：按歌词提供方显示品牌色。
+class _SourceChip extends StatelessWidget {
+  const _SourceChip({required this.source});
+
+  final String source;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = M3ETheme.of(context);
+    final color = _sourceColor(source);
+    final foreground = color.computeLuminance() > 0.55
+        ? const Color(0xFF201A1A)
+        : const Color(0xFFFFFFFF);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: Text(
+          source,
+          style: theme.typeScale.labelMedium.copyWith(color: foreground),
+        ),
+      ),
+    );
+  }
+}
+
+Color _sourceColor(String source) {
+  final key = source.toLowerCase();
+  if (key.contains('netease')) return const Color(0xFFE60026);
+  if (key.contains('qq')) return const Color(0xFFFFC400);
+  if (key.contains('apple')) return const Color(0xFFFF2D55);
+  if (key.contains('kugou')) return const Color(0xFF2196F3);
+  if (key.contains('musixmatch') || key.contains('ytm')) {
+    return const Color(0xFFFF6D00);
+  }
+  if (key.contains('unison')) return const Color(0xFFFF1744);
+  // LRCLIB 以及未知/聚合来源统一使用深紫色。
+  return const Color(0xFF4A148C);
+}
+
+/// 搜索结果的信息 chip，使用主题取色的 filled 背景。
+class _ResultChip extends StatelessWidget {
+  const _ResultChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return M3EChip(
+      label: label,
+      type: M3EChipType.filter,
+      selected: true,
+      onPressed: () {},
+    );
+  }
+}
+
+String _syncLabel(AppLocalizations l10n, String syncLevel) {
+  return switch (syncLevel.toLowerCase()) {
+    'syllable' || 'word' => l10n.lyricsSyncWord,
+    'line' => l10n.lyricsSyncLine,
+    _ => l10n.lyricsSyncStatic,
+  };
 }
 
 List<String> _lyricsLines(String text) {

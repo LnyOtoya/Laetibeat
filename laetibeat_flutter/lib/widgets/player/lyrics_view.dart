@@ -25,12 +25,14 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
   late final LyricController _controller;
   late final _PlayerProgressSource _progress;
 
-  /// 最近一次解析的原始文本与结果(结果为空表示按纯文本展示)。
+  /// 最近一次解析的原始文本/翻译与结果(结果为空表示按纯文本展示)。
   String? _parsedRaw;
+  String? _parsedTranslation;
   LyricDocument? _parsedDoc;
 
-  /// 已同步进 controller 的原始文本。
+  /// 已同步进 controller 的原始文本与翻译。
   String? _loadedRaw;
+  String? _loadedTranslation;
 
   @override
   void initState() {
@@ -46,22 +48,60 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
     super.dispose();
   }
 
-  /// 同一份文本只解析一次;解析异常按纯文本处理。
-  LyricDocument? _documentFor(String raw) {
-    if (_parsedRaw == raw) return _parsedDoc;
+  /// 同一份文本/翻译只解析一次;解析异常按纯文本处理。
+  LyricDocument? _documentFor(String raw, String? translation) {
+    if (_parsedRaw == raw && _parsedTranslation == translation) {
+      return _parsedDoc;
+    }
     _parsedRaw = raw;
+    _parsedTranslation = translation;
     try {
-      return _parsedDoc = LyricDocument.parse(raw);
+      final translationLrc = _translationLrc(raw, translation);
+      return _parsedDoc = LyricDocument.parse(raw, translation: translationLrc);
     } catch (_) {
       return _parsedDoc = null;
     }
   }
 
+  /// LiriQo 等来源的翻译通常是无时间戳文本，按主歌词行时间生成翻译 LRC。
+  String? _translationLrc(String raw, String? translation) {
+    final translated = translation?.trim();
+    if (translated == null || translated.isEmpty) return null;
+
+    // 已经是带时间戳的翻译 LRC，直接使用。
+    if (RegExp(r'^\[\d{1,}:\d{2}', multiLine: true).hasMatch(translated)) {
+      return translated;
+    }
+
+    final main = LyricDocument.parse(raw);
+    final lines = translated
+        .split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList(growable: false);
+    if (lines.isEmpty) return null;
+
+    final buffer = StringBuffer();
+    for (var i = 0; i < main.lines.length && i < lines.length; i++) {
+      final start = main.lines[i].start;
+      final minutes = start.inMinutes;
+      final seconds = start.inSeconds.remainder(60).toString().padLeft(2, '0');
+      final millis = start.inMilliseconds
+          .remainder(1000)
+          .toString()
+          .padLeft(3, '0');
+      buffer.writeln('[$minutes:$seconds.$millis]${lines[i]}');
+    }
+    final result = buffer.toString().trim();
+    return result.isEmpty ? null : result;
+  }
+
   /// 把文档同步进 controller。放在帧后调用,避免 build 期间触发视图通知。
-  void _syncDocument(String? raw) {
-    if (raw == _loadedRaw) return;
+  void _syncDocument(String? raw, String? translation) {
+    if (raw == _loadedRaw && translation == _loadedTranslation) return;
     _loadedRaw = raw;
-    final doc = raw == null ? null : _documentFor(raw);
+    _loadedTranslation = translation;
+    final doc = raw == null ? null : _documentFor(raw, translation);
     if (doc == null || doc.lines.isEmpty) {
       _controller.clear();
     } else {
@@ -82,23 +122,30 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
       );
     }
 
-    // 播放/暂停/seek 等状态变化时通知控制器重新采样;
-    // 播放中的位置推进由 progressSource 逐帧读取。
-    ref.listen(playerProvider, (_, _) => _progress.notify());
+    // 只在播放位置/播放状态变化时通知控制器，避免队列、设备等
+    // 无关状态更新也触歌词采样。
+    ref.listen(
+      playerProvider.select((state) => (state.position, state.isPlaying)),
+      (_, _) => _progress.notify(),
+    );
 
     final lyricsAsync = ref.watch(lyricsProvider);
     final raw = lyricsAsync.value?.rawText;
+    final translation = lyricsAsync.value?.translation;
 
     // 文档同步放到帧后:loadDocument/clear 会通知各视图,不能发生在 build 中。
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _syncDocument(raw);
+      _syncDocument(raw, translation);
     });
 
     return lyricsAsync.when(
       loading: () => Center(
-        child: M3EProgressIndicator.circular(
-          semanticsLabel: l10n.lyricsLoading,
+        child: M3ELoadingIndicator(
+          variant: M3ELoadingIndicatorVariant.contained,
+          color: theme.colorScheme.tertiary,
+          containerColor: theme.colorScheme.tertiaryContainer,
+          semanticLabel: l10n.lyricsLoading,
         ),
       ),
       error: (e, _) => _empty(theme, l10n.lyricsLoadFailed, e.toString()),
@@ -107,7 +154,7 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
         if (text.trim().isEmpty) {
           return _empty(theme, l10n.lyricsEmptyTitle, l10n.lyricsEmptySubtitle);
         }
-        final doc = _documentFor(text);
+        final doc = _documentFor(text, lyrics?.translation);
         if (doc == null || doc.lines.isEmpty) {
           return _plainLyrics(theme, text.trim());
         }
@@ -135,7 +182,18 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
     final scheme = theme.colorScheme;
     final base = LyricPresets.appleMusic;
     final onBg = scheme.onSecondaryContainer;
-    return base.copyWith(
+
+    // fixed 布局会强制走 LyricWordPainter，对逐字 QRC 的每个字符做
+    // 字形裁切和浮动绘制，容易掉帧。逐字歌词改用 dualStyle + 无
+    // word effects，仍由 solid highlight 按词推进高亮。
+    final timedBase = hasWordTiming
+        ? base.copyWith(
+            layoutMode: LyricLayoutMode.dualStyle,
+            wordEffects: const LyricWordEffects(),
+          )
+        : base;
+
+    return timedBase.copyWith(
       textStyle: TextStyle(
         fontSize: 32,
         height: 1.45,

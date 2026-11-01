@@ -55,6 +55,9 @@ class UiLyricsSearchResult {
   final String album;
   final PlatformInt64 durationSeconds;
   final bool synced;
+  final String syncLevel;
+  final bool hasTranslation;
+  final String? translation;
   final String text;
 
   const UiLyricsSearchResult({
@@ -66,6 +69,9 @@ class UiLyricsSearchResult {
     required this.album,
     required this.durationSeconds,
     required this.synced,
+    required this.syncLevel,
+    required this.hasTranslation,
+    this.translation,
     required this.text,
   });
 
@@ -79,6 +85,9 @@ class UiLyricsSearchResult {
       album.hashCode ^
       durationSeconds.hashCode ^
       synced.hashCode ^
+      syncLevel.hashCode ^
+      hasTranslation.hashCode ^
+      translation.hashCode ^
       text.hashCode;
 
   @override
@@ -94,5 +103,8 @@ class UiLyricsSearchResult {
           album == other.album &&
           durationSeconds == other.durationSeconds &&
           synced == other.synced &&
+          syncLevel == other.syncLevel &&
+          hasTranslation == other.hasTranslation &&
+          translation == other.translation &&
           text == other.text;
 }

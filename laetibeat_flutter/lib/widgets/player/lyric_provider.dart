@@ -21,7 +21,10 @@ class Lyrics {
   /// 原始歌词内容(可能带时间戳,也可能是纯文本)
   final String rawText;
 
-  const Lyrics(this.rawText);
+  /// 可选的翻译文本。可以是逐行 LRC，也可以是纯文本。
+  final String? translation;
+
+  const Lyrics(this.rawText, {this.translation});
 }
 
 /// 歌词来源抽象:按曲目返回歌词;无歌词返回 null。
@@ -96,10 +99,15 @@ class LrclibLyricProvider implements LyricProvider {
   }
 }
 
-Lyrics? _toLyrics(String? text) {
+Lyrics? _toLyrics(String? text, {String? translation}) {
   if (text == null) return null;
   final trimmed = text.trim();
-  return trimmed.isEmpty ? null : Lyrics(trimmed);
+  if (trimmed.isEmpty) return null;
+  final translated = translation?.trim();
+  return Lyrics(
+    trimmed,
+    translation: translated == null || translated.isEmpty ? null : translated,
+  );
 }
 
 /// 按当前设置，把“标签/服务器歌词”和 LRCLIB 串成一条回退链。
@@ -149,10 +157,19 @@ class LyricsOverrideNotifier extends Notifier<Map<String, Lyrics>> {
   @override
   Map<String, Lyrics> build() => const <String, Lyrics>{};
 
-  void apply(rust.UiTrack track, String rawText) {
+  void apply(rust.UiTrack track, String rawText, {String? translation}) {
     final text = rawText.trim();
     if (text.isEmpty) return;
-    state = <String, Lyrics>{...state, trackLyricsKey(track): Lyrics(text)};
+    final translated = translation?.trim();
+    state = <String, Lyrics>{
+      ...state,
+      trackLyricsKey(track): Lyrics(
+        text,
+        translation: translated == null || translated.isEmpty
+            ? null
+            : translated,
+      ),
+    };
   }
 
   void clear(rust.UiTrack track) {

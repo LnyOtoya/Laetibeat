@@ -2068,6 +2068,9 @@ impl SseDecode for crate::api::lyrics::UiLyricsSearchResult {
         let mut var_album = <String>::sse_decode(deserializer);
         let mut var_durationSeconds = <i64>::sse_decode(deserializer);
         let mut var_synced = <bool>::sse_decode(deserializer);
+        let mut var_syncLevel = <String>::sse_decode(deserializer);
+        let mut var_hasTranslation = <bool>::sse_decode(deserializer);
+        let mut var_translation = <Option<String>>::sse_decode(deserializer);
         let mut var_text = <String>::sse_decode(deserializer);
         return crate::api::lyrics::UiLyricsSearchResult {
             id: var_id,
@@ -2078,6 +2081,9 @@ impl SseDecode for crate::api::lyrics::UiLyricsSearchResult {
             album: var_album,
             duration_seconds: var_durationSeconds,
             synced: var_synced,
+            sync_level: var_syncLevel,
+            has_translation: var_hasTranslation,
+            translation: var_translation,
             text: var_text,
         };
     }
@@ -2699,6 +2705,9 @@ impl flutter_rust_bridge::IntoDart for crate::api::lyrics::UiLyricsSearchResult 
             self.album.into_into_dart().into_dart(),
             self.duration_seconds.into_into_dart().into_dart(),
             self.synced.into_into_dart().into_dart(),
+            self.sync_level.into_into_dart().into_dart(),
+            self.has_translation.into_into_dart().into_dart(),
+            self.translation.into_into_dart().into_dart(),
             self.text.into_into_dart().into_dart(),
         ]
         .into_dart()
@@ -3454,6 +3463,9 @@ impl SseEncode for crate::api::lyrics::UiLyricsSearchResult {
         <String>::sse_encode(self.album, serializer);
         <i64>::sse_encode(self.duration_seconds, serializer);
         <bool>::sse_encode(self.synced, serializer);
+        <String>::sse_encode(self.sync_level, serializer);
+        <bool>::sse_encode(self.has_translation, serializer);
+        <Option<String>>::sse_encode(self.translation, serializer);
         <String>::sse_encode(self.text, serializer);
     }
 }

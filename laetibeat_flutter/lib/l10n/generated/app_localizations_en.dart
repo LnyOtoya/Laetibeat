@@ -88,6 +88,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get languageDialogTitle => 'Language';
 
   @override
+  String get appThemeTitle => 'App theme';
+
+  @override
+  String get appThemeSupporting =>
+      'Switch between light and dark, or follow the system default';
+
+  @override
+  String get themeLight => 'Light';
+
+  @override
+  String get themeDark => 'Dark';
+
+  @override
+  String get themeSystem => 'Follow system';
+
+  @override
   String get languageSystem => 'Follow system';
 
   @override
@@ -162,6 +178,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get lyricsSearchCollapse => 'Collapse';
+
+  @override
+  String get lyricsHasTranslation => 'Translation';
+
+  @override
+  String get lyricsSyncWord => 'Word';
+
+  @override
+  String get lyricsSyncLine => 'Line';
+
+  @override
+  String get lyricsSyncStatic => 'Static';
 
   @override
   String get lyricsGroup => 'Lyrics';

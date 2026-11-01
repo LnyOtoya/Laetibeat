@@ -2142,8 +2142,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   UiLyricsSearchResult dco_decode_ui_lyrics_search_result(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 9)
-      throw Exception('unexpected arr length: expect 9 but see ${arr.length}');
+    if (arr.length != 12)
+      throw Exception('unexpected arr length: expect 12 but see ${arr.length}');
     return UiLyricsSearchResult(
       id: dco_decode_String(arr[0]),
       source: dco_decode_String(arr[1]),
@@ -2153,7 +2153,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       album: dco_decode_String(arr[5]),
       durationSeconds: dco_decode_i_64(arr[6]),
       synced: dco_decode_bool(arr[7]),
-      text: dco_decode_String(arr[8]),
+      syncLevel: dco_decode_String(arr[8]),
+      hasTranslation: dco_decode_bool(arr[9]),
+      translation: dco_decode_opt_String(arr[10]),
+      text: dco_decode_String(arr[11]),
     );
   }
 
@@ -2883,6 +2886,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_album = sse_decode_String(deserializer);
     var var_durationSeconds = sse_decode_i_64(deserializer);
     var var_synced = sse_decode_bool(deserializer);
+    var var_syncLevel = sse_decode_String(deserializer);
+    var var_hasTranslation = sse_decode_bool(deserializer);
+    var var_translation = sse_decode_opt_String(deserializer);
     var var_text = sse_decode_String(deserializer);
     return UiLyricsSearchResult(
       id: var_id,
@@ -2893,6 +2899,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       album: var_album,
       durationSeconds: var_durationSeconds,
       synced: var_synced,
+      syncLevel: var_syncLevel,
+      hasTranslation: var_hasTranslation,
+      translation: var_translation,
       text: var_text,
     );
   }
@@ -3660,6 +3669,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.album, serializer);
     sse_encode_i_64(self.durationSeconds, serializer);
     sse_encode_bool(self.synced, serializer);
+    sse_encode_String(self.syncLevel, serializer);
+    sse_encode_bool(self.hasTranslation, serializer);
+    sse_encode_opt_String(self.translation, serializer);
     sse_encode_String(self.text, serializer);
   }
 

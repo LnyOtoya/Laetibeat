@@ -142,6 +142,9 @@ pub struct UiLyricsSearchResult {
     pub album: String,
     pub duration_seconds: i64,
     pub synced: bool,
+    pub sync_level: String,
+    pub has_translation: bool,
+    pub translation: Option<String>,
     pub text: String,
 }
 
@@ -180,6 +183,9 @@ fn map_search_result(item: remote::LyricsSearchResult) -> UiLyricsSearchResult {
         album: item.album,
         duration_seconds: item.duration_seconds,
         synced: item.synced,
+        sync_level: item.sync_level,
+        has_translation: item.has_translation,
+        translation: item.translation,
         text: item.text,
     }
 }

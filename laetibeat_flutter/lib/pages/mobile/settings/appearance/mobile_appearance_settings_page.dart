@@ -5,6 +5,7 @@ import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../../app/app_locale.dart';
+import '../../../../widgets/settings/settings_provider.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../widgets/mobile_large_subpage_app_bar.dart';
 
@@ -68,6 +69,28 @@ class MobileAppearanceSettingsPage extends ConsumerWidget {
         .select(AppLanguage.values[index]);
   }
 
+  Future<void> _pickTheme(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
+    final current = ref.read(appThemeModeProvider);
+    final labels = <String>[l10n.themeLight, l10n.themeDark, l10n.themeSystem];
+    final currentLabel = switch (current) {
+      AppThemeMode.light => l10n.themeLight,
+      AppThemeMode.dark => l10n.themeDark,
+      AppThemeMode.system => l10n.themeSystem,
+    };
+    final picked = await M3EDialog.showSelectionScreen(
+      context,
+      title: l10n.appThemeTitle,
+      options: labels,
+      initialSelection: <String>[currentLabel],
+      icon: const Icon(M3EIcons.brightness_6),
+    );
+    if (!context.mounted || picked == null || picked.isEmpty) return;
+    final index = labels.indexOf(picked.first);
+    if (index < 0) return;
+    ref.read(appThemeModeProvider.notifier).select(AppThemeMode.values[index]);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = M3ETheme.of(context);
@@ -89,21 +112,27 @@ class MobileAppearanceSettingsPage extends ConsumerWidget {
               onTap: (int index) {
                 switch (index) {
                   case 0:
-                    _pickSongSource(context, ref);
+                    _pickTheme(context, ref);
                   case 1:
-                    _pickSongSort(context, ref);
+                    _pickSongSource(context, ref);
                   case 2:
+                    _pickSongSort(context, ref);
+                  case 3:
                     _pickLanguage(context, ref);
                 }
               },
-              itemCount: 3,
+              itemCount: 4,
               itemBuilder: (BuildContext context, int index) {
                 return switch (index) {
                   0 => M3EListItem(
+                    headline: l10n.appThemeTitle,
+                    supportingText: l10n.appThemeSupporting,
+                  ),
+                  1 => M3EListItem(
                     headline: l10n.songSource,
                     supportingText: l10n.songSourceSupporting,
                   ),
-                  1 => M3EListItem(
+                  2 => M3EListItem(
                     headline: l10n.songSort,
                     supportingText: l10n.songSortSupporting,
                   ),

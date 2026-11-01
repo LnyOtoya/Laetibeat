@@ -745,6 +745,9 @@ pub struct LyricsSearchResult {
     pub album: String,
     pub duration_seconds: i64,
     pub synced: bool,
+    pub sync_level: String,
+    pub has_translation: bool,
+    pub translation: Option<String>,
     pub text: String,
 }
 
@@ -779,6 +782,8 @@ struct LiriqoResponse {
 struct LiriqoTrack {
     #[serde(default)]
     provider: Option<String>,
+    #[serde(rename = "syncLevel", default)]
+    sync_level: Option<String>,
     #[serde(default)]
     title: Option<String>,
     #[serde(default)]
@@ -791,6 +796,10 @@ struct LiriqoTrack {
     lrc: Option<String>,
     #[serde(default)]
     plain: Option<String>,
+    #[serde(default)]
+    translation: Option<String>,
+    #[serde(default)]
+    translations: Option<serde_json::Value>,
     #[serde(default)]
     timed: Vec<LiriqoLine>,
 }
@@ -971,6 +980,9 @@ pub fn search_lrclib_lyrics(
                 album: item.album_name.clone().unwrap_or_default(),
                 duration_seconds: item.duration.map(|value| value as i64).unwrap_or(0),
                 synced,
+                sync_level: if synced { "line".to_string() } else { "plain".to_string() },
+                has_translation: false,
+                translation: None,
                 text,
             });
         }
@@ -981,7 +993,6 @@ pub fn search_lrclib_lyrics(
                 (item.duration_seconds - duration_seconds).abs()
             }
         });
-        results.truncate(8);
         Ok(results)
     })
 }
@@ -1030,7 +1041,21 @@ pub fn search_liriqo_lyrics(
             let Some((text, synced)) = liriqo_track_text(&track) else {
                 continue;
             };
-            let provider = track.provider.unwrap_or_else(|| "LiriQo".to_string());
+            let translation = liriqo_translation(&track);
+            let has_translation = translation.is_some();
+            let provider = track
+                .provider
+                .as_ref()
+                .cloned()
+                .unwrap_or_else(|| "LiriQo".to_string());
+            let sync_level = if !synced {
+                "plain".to_string()
+            } else {
+                track
+                    .sync_level
+                    .clone()
+                    .unwrap_or_else(|| "line".to_string())
+            };
             results.push(LyricsSearchResult {
                 id: format!("liriqo:{}:{}", provider, results.len()),
                 source: "liriqo".to_string(),
@@ -1040,6 +1065,9 @@ pub fn search_liriqo_lyrics(
                 album: track.album.unwrap_or_default(),
                 duration_seconds: track.duration.map(|value| value as i64).unwrap_or(0),
                 synced,
+                sync_level,
+                has_translation,
+                translation,
                 text,
             });
         }
@@ -1050,9 +1078,30 @@ pub fn search_liriqo_lyrics(
                 (item.duration_seconds - duration_seconds).abs()
             }
         });
-        results.truncate(12);
         Ok(results)
     })
+}
+
+fn liriqo_translation(track: &LiriqoTrack) -> Option<String> {
+    if let Some(text) = track
+        .translation
+        .as_deref()
+        .map(str::trim)
+        .filter(|text| !text.is_empty())
+    {
+        return Some(text.to_string());
+    }
+    let value = track.translations.as_ref()?;
+    if let Some(text) = value.as_str().map(str::trim).filter(|text| !text.is_empty()) {
+        return Some(text.to_string());
+    }
+    let object = value.as_object()?;
+    for value in object.values() {
+        if let Some(text) = value.as_str().map(str::trim).filter(|text| !text.is_empty()) {
+            return Some(text.to_string());
+        }
+    }
+    None
 }
 
 fn liriqo_track_text(track: &LiriqoTrack) -> Option<(String, bool)> {

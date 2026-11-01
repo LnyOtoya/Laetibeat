@@ -87,6 +87,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get languageDialogTitle => '语言';
 
   @override
+  String get appThemeTitle => '应用主题';
+
+  @override
+  String get appThemeSupporting => '浅色、深色之间切换，或者跟随系统默认';
+
+  @override
+  String get themeLight => '浅色';
+
+  @override
+  String get themeDark => '深色';
+
+  @override
+  String get themeSystem => '跟随系统';
+
+  @override
   String get languageSystem => '跟随系统';
 
   @override
@@ -160,6 +175,18 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get lyricsSearchCollapse => '收起';
+
+  @override
+  String get lyricsHasTranslation => '有翻译';
+
+  @override
+  String get lyricsSyncWord => '逐字';
+
+  @override
+  String get lyricsSyncLine => '逐行';
+
+  @override
+  String get lyricsSyncStatic => '静态';
 
   @override
   String get lyricsGroup => '歌词';

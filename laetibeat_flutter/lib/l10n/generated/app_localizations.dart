@@ -254,6 +254,36 @@ abstract class AppLocalizations {
   /// **'Language'**
   String get languageDialogTitle;
 
+  /// No description provided for @appThemeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'App theme'**
+  String get appThemeTitle;
+
+  /// No description provided for @appThemeSupporting.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch between light and dark, or follow the system default'**
+  String get appThemeSupporting;
+
+  /// No description provided for @themeLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get themeLight;
+
+  /// No description provided for @themeDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get themeDark;
+
+  /// No description provided for @themeSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow system'**
+  String get themeSystem;
+
   /// No description provided for @languageSystem.
   ///
   /// In en, this message translates to:
@@ -403,6 +433,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Collapse'**
   String get lyricsSearchCollapse;
+
+  /// No description provided for @lyricsHasTranslation.
+  ///
+  /// In en, this message translates to:
+  /// **'Translation'**
+  String get lyricsHasTranslation;
+
+  /// No description provided for @lyricsSyncWord.
+  ///
+  /// In en, this message translates to:
+  /// **'Word'**
+  String get lyricsSyncWord;
+
+  /// No description provided for @lyricsSyncLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Line'**
+  String get lyricsSyncLine;
+
+  /// No description provided for @lyricsSyncStatic.
+  ///
+  /// In en, this message translates to:
+  /// **'Static'**
+  String get lyricsSyncStatic;
 
   /// No description provided for @lyricsGroup.
   ///
