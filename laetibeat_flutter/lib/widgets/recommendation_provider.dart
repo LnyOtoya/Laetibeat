@@ -234,8 +234,11 @@ List<_AlbumScore> _rotateCandidates(
   int refreshToken,
   int limit,
 ) {
-  if (refreshToken <= 0 || candidates.length <= limit) return candidates;
-  final offset = (refreshToken * limit) % candidates.length;
+  if (refreshToken <= 0 || candidates.length <= 1) return candidates;
+  final step = candidates.length > limit
+      ? limit
+      : (candidates.length / 2).ceil();
+  final offset = (refreshToken * step) % candidates.length;
   return [...candidates.skip(offset), ...candidates.take(offset)];
 }
 

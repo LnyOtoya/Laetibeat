@@ -58,8 +58,12 @@ class _MobileDailySectionState extends ConsumerState<MobileDailySection> {
                       ).recommendedQueueSource,
                     );
               },
-              onRefresh: () =>
-                  ref.read(recommendationRefreshProvider.notifier).refresh(),
+              onRefresh: () {
+                ref.read(recommendationRefreshProvider.notifier).refresh();
+                ref.invalidate(
+                  albumRecommendationsProvider(RecommendMode.neverPlayed),
+                );
+              },
             ),
           ),
       ],
@@ -110,7 +114,7 @@ class _MobileDailySectionState extends ConsumerState<MobileDailySection> {
 }
 
 /// 左右两组半边构图：左边露出右半边，右边露出左半边，中间留出空隙。
-class _SplitShapeCompositions extends StatelessWidget {
+class _SplitShapeCompositions extends StatefulWidget {
   const _SplitShapeCompositions({
     required this.albums,
     required this.onTap,
@@ -123,15 +127,42 @@ class _SplitShapeCompositions extends StatelessWidget {
   final VoidCallback onRandom;
   final VoidCallback onRefresh;
 
+  @override
+  State<_SplitShapeCompositions> createState() =>
+      _SplitShapeCompositionsState();
+}
+
+class _SplitShapeCompositionsState extends State<_SplitShapeCompositions>
+    with SingleTickerProviderStateMixin {
   static const int _maxPerSide = 11;
+
+  late final AnimationController _rotationController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 820),
+  );
+  late final Animation<double> _turns = CurvedAnimation(
+    parent: _rotationController,
+    curve: Curves.easeInOutCubic,
+  );
+
+  @override
+  void dispose() {
+    _rotationController.dispose();
+    super.dispose();
+  }
+
+  void _handleRefresh() {
+    _rotationController.forward(from: 0);
+    widget.onRefresh();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final leftCount = albums.length <= 1
-        ? albums.length
-        : (albums.length / 2).ceil().clamp(1, _maxPerSide);
-    final leftAlbums = albums.take(leftCount).toList(growable: false);
-    final rightAlbums = albums
+    final leftCount = widget.albums.length <= 1
+        ? widget.albums.length
+        : (widget.albums.length / 2).ceil().clamp(1, _maxPerSide);
+    final leftAlbums = widget.albums.take(leftCount).toList(growable: false);
+    final rightAlbums = widget.albums
         .skip(leftCount)
         .take(_maxPerSide)
         .toList(growable: false);
@@ -143,6 +174,7 @@ class _SplitShapeCompositions extends StatelessWidget {
             : 320.0;
         final side = width * 0.84;
         final buttonSize = width * 0.24;
+        final scheme = M3ETheme.of(context).colorScheme;
 
         return SizedBox(
           width: width,
@@ -160,7 +192,8 @@ class _SplitShapeCompositions extends StatelessWidget {
                     child: _RadialComposition(
                       albums: leftAlbums,
                       size: side,
-                      onTap: onTap,
+                      turns: _turns,
+                      onTap: widget.onTap,
                     ),
                   ),
                 if (rightAlbums.isNotEmpty)
@@ -172,7 +205,8 @@ class _SplitShapeCompositions extends StatelessWidget {
                     child: _RadialComposition(
                       albums: rightAlbums,
                       size: side,
-                      onTap: onTap,
+                      turns: _turns,
+                      onTap: widget.onTap,
                     ),
                   ),
                 Positioned(
@@ -184,9 +218,9 @@ class _SplitShapeCompositions extends StatelessWidget {
                     shape: M3EShapeKind.cookie12Sided,
                     icon: M3EIcons.shuffle,
                     label: AppLocalizations.of(context).shuffleRecommendations,
-                    background: null,
-                    foreground: null,
-                    onTap: onRandom,
+                    background: scheme.secondaryContainer,
+                    foreground: scheme.onSecondaryContainer,
+                    onTap: widget.onRandom,
                   ),
                 ),
                 Positioned(
@@ -198,9 +232,9 @@ class _SplitShapeCompositions extends StatelessWidget {
                     shape: M3EShapeKind.burst,
                     icon: M3EIcons.refresh,
                     label: AppLocalizations.of(context).refreshRecommendations,
-                    background: null,
-                    foreground: null,
-                    onTap: onRefresh,
+                    background: scheme.tertiaryContainer,
+                    foreground: scheme.onTertiaryContainer,
+                    onTap: _handleRefresh,
                   ),
                 ),
               ],
@@ -212,8 +246,8 @@ class _SplitShapeCompositions extends StatelessWidget {
   }
 }
 
-/// 中缝里的圆形/异形操作按钮。
-class _CenterShapeButton extends StatelessWidget {
+/// 中缝里的圆形/异形操作按钮。点击时自转一圈。
+class _CenterShapeButton extends StatefulWidget {
   const _CenterShapeButton({
     required this.shape,
     required this.icon,
@@ -231,24 +265,57 @@ class _CenterShapeButton extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_CenterShapeButton> createState() => _CenterShapeButtonState();
+}
+
+class _CenterShapeButtonState extends State<_CenterShapeButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _spinController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 620),
+  );
+  late final Animation<double> _turns = CurvedAnimation(
+    parent: _spinController,
+    curve: Curves.easeInOutCubic,
+  );
+
+  @override
+  void dispose() {
+    _spinController.dispose();
+    super.dispose();
+  }
+
+  void _handleTap() {
+    _spinController.forward(from: 0);
+    widget.onTap();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = M3ETheme.of(context);
-    final filled = background != null && foreground != null;
+    final filled = widget.background != null && widget.foreground != null;
 
     return Semantics(
       button: true,
-      label: label,
+      label: widget.label,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: M3EShapeContainer(
-          kind: shape,
-          color: filled ? background : theme.colorScheme.primaryContainer,
-          child: Center(
-            child: Icon(
-              icon,
-              size: theme.spacing.xl,
-              color: filled ? foreground : theme.colorScheme.onPrimaryContainer,
+        onTap: _handleTap,
+        child: RotationTransition(
+          turns: _turns,
+          child: M3EShapeContainer(
+            kind: widget.shape,
+            color: filled
+                ? widget.background
+                : theme.colorScheme.primaryContainer,
+            child: Center(
+              child: Icon(
+                widget.icon,
+                size: theme.spacing.xl,
+                color: filled
+                    ? widget.foreground
+                    : theme.colorScheme.onPrimaryContainer,
+              ),
             ),
           ),
         ),
@@ -262,11 +329,13 @@ class _RadialComposition extends StatelessWidget {
   const _RadialComposition({
     required this.albums,
     required this.size,
+    required this.turns,
     required this.onTap,
   });
 
   final List<RecommendedAlbum> albums;
   final double size;
+  final Animation<double> turns;
   final ValueChanged<RecommendedAlbum> onTap;
 
   static const List<M3EShapeKind> _ringShapes = <M3EShapeKind>[
@@ -286,48 +355,63 @@ class _RadialComposition extends StatelessWidget {
     final ringRadius = size * 0.36;
     final ringItems = albums.skip(1).toList(growable: false);
 
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          if (albums.isNotEmpty)
-            Positioned(
-              left: center.dx - centerSize / 2,
-              top: center.dy - centerSize / 2,
-              width: centerSize,
-              height: centerSize,
-              child: _buildCard(
-                albums.first,
-                0,
-                shape: M3EShapeKind.cookie12Sided,
-                rotation: 0,
-              ),
-            ),
-          for (var i = 0; i < ringItems.length; i++)
-            Positioned(
-              left:
-                  center.dx +
-                  math.cos(-math.pi / 2 + 2 * math.pi * i / ringItems.length) *
-                      ringRadius -
-                  ringSize / 2,
-              top:
-                  center.dy +
-                  math.sin(-math.pi / 2 + 2 * math.pi * i / ringItems.length) *
-                      ringRadius -
-                  ringSize / 2,
-              width: ringSize,
-              height: ringSize,
-              child: _buildCard(
-                ringItems[i],
-                i + 1,
-                shape: _ringShapes[i % _ringShapes.length],
-                rotation: i.isEven ? -0.055 : 0.055,
-              ),
-            ),
-        ],
-      ),
+    return AnimatedBuilder(
+      animation: turns,
+      builder: (BuildContext context, Widget? child) {
+        final orbit = turns.value * 2 * math.pi;
+
+        return SizedBox(
+          width: size,
+          height: size,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              if (albums.isNotEmpty)
+                Positioned(
+                  left: center.dx - centerSize / 2,
+                  top: center.dy - centerSize / 2,
+                  width: centerSize,
+                  height: centerSize,
+                  child: _buildCard(
+                    albums.first,
+                    0,
+                    shape: M3EShapeKind.cookie12Sided,
+                    rotation: orbit,
+                  ),
+                ),
+              for (var i = 0; i < ringItems.length; i++)
+                Positioned(
+                  left:
+                      center.dx +
+                      math.cos(
+                            -math.pi / 2 +
+                                2 * math.pi * i / ringItems.length +
+                                orbit,
+                          ) *
+                          ringRadius -
+                      ringSize / 2,
+                  top:
+                      center.dy +
+                      math.sin(
+                            -math.pi / 2 +
+                                2 * math.pi * i / ringItems.length +
+                                orbit,
+                          ) *
+                          ringRadius -
+                      ringSize / 2,
+                  width: ringSize,
+                  height: ringSize,
+                  child: _buildCard(
+                    ringItems[i],
+                    i + 1,
+                    shape: _ringShapes[i % _ringShapes.length],
+                    rotation: i.isEven ? -0.055 : 0.055,
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 
