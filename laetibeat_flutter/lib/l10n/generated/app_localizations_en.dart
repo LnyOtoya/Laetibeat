@@ -586,6 +586,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeGreetingEvening => 'Good evening';
 
   @override
+  String get recommendedQueueSource => 'Recommended for you';
+
+  @override
+  String get homeRecommendationSubtitle => 'Today\'s recommendation for you';
+
+  @override
   String get homeGreetingQuestion => 'What would you like to listen to?';
 
   @override

@@ -26,17 +26,19 @@ class _DailySectionState extends ConsumerState<DailySection> {
   static const List<String> _filters = <String>['未曾听过', '很久没听', '常听专辑'];
 
   RecommendMode get _mode => switch (_selectedIndex) {
-        0 => RecommendMode.neverPlayed,
-        1 => RecommendMode.longTimeNoSee,
-        _ => RecommendMode.mostPlayed,
-      };
+    0 => RecommendMode.neverPlayed,
+    1 => RecommendMode.longTimeNoSee,
+    _ => RecommendMode.mostPlayed,
+  };
 
   @override
   Widget build(BuildContext context) {
     final theme = M3ETheme.of(context);
     final asyncRecommendations = ref.watch(albumRecommendationsProvider(_mode));
     final recommendations =
-        asyncRecommendations.value ?? const <RecommendedAlbum>[];
+        (asyncRecommendations.value ?? const <RecommendedAlbum>[])
+            .take(4)
+            .toList();
 
     return AnimatedContainer(
       duration: kSectionAnimDuration,
@@ -54,16 +56,11 @@ class _DailySectionState extends ConsumerState<DailySection> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(
-                '为你推荐',
-                style: theme.typeScale.titleLarge,
-              ),
+              Text('为你推荐', style: theme.typeScale.titleLarge),
               M3EButtonGroup(
                 type: M3EButtonGroupType.connected,
                 actions: _filters
-                    .map(
-                      (filter) => M3EButtonGroupAction(label: Text(filter)),
-                    )
+                    .map((filter) => M3EButtonGroupAction(label: Text(filter)))
                     .toList(),
                 selectedIndex: _selectedIndex,
                 onSelectedIndexChanged: (index) {
@@ -82,8 +79,9 @@ class _DailySectionState extends ConsumerState<DailySection> {
               builder: (context, constraints) {
                 final spacing = theme.spacing.md;
                 // 固定按 4 列槽位计算卡片宽度:推荐数量不足时不会把卡片拉大
-                final available =
-                    constraints.maxWidth.isFinite ? constraints.maxWidth : 800.0;
+                final available = constraints.maxWidth.isFinite
+                    ? constraints.maxWidth
+                    : 800.0;
                 final cardWidth = (available - spacing * 3) / 4;
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -113,11 +111,9 @@ class _DailySectionState extends ConsumerState<DailySection> {
 
   void _playAlbum(RecommendedAlbum album) {
     if (album.tracks.isEmpty) return;
-    ref.read(playerProvider.notifier).load(
-          album.tracks,
-          0,
-          source: album.title,
-        );
+    ref
+        .read(playerProvider.notifier)
+        .load(album.tracks, 0, source: album.title);
   }
 
   Widget _loading(M3EThemeData theme) {

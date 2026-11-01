@@ -160,9 +160,10 @@ final albumRecommendationsProvider =
       if (scored.isEmpty) return const <RecommendedAlbum>[];
 
       final candidates = _candidatesFor(mode, scored, nowMs);
-      return _pickWithArtistDiversity(candidates, 4)
-          .map((entry) => entry.album)
-          .toList();
+      return _pickWithArtistDiversity(
+        candidates,
+        10,
+      ).map((entry) => entry.album).toList();
     });
 
 List<_AlbumScore> _candidatesFor(
@@ -183,17 +184,19 @@ List<_AlbumScore> _candidatesFor(
       }
       break;
     case RecommendMode.longTimeNoSee:
-      candidates = scored
-          .where(
-            (s) =>
-                s.plays > 0 &&
-                s.lastPlayedAt > 0 &&
-                nowMs - s.lastPlayedAt >= _fourteenDaysMs,
-          )
-          .toList()
-        ..sort(
-          (a, b) => b.longTimeScore(nowMs).compareTo(a.longTimeScore(nowMs)),
-        );
+      candidates =
+          scored
+              .where(
+                (s) =>
+                    s.plays > 0 &&
+                    s.lastPlayedAt > 0 &&
+                    nowMs - s.lastPlayedAt >= _fourteenDaysMs,
+              )
+              .toList()
+            ..sort(
+              (a, b) =>
+                  b.longTimeScore(nowMs).compareTo(a.longTimeScore(nowMs)),
+            );
       break;
     case RecommendMode.mostPlayed:
       candidates = scored.where((s) => s.plays > 0).toList()
@@ -233,6 +236,15 @@ List<_AlbumScore> _pickWithArtistDiversity(
       if (used >= 2) continue;
       picked.add(candidate);
       artistCounts[candidate.artist] = used + 1;
+    }
+  }
+
+  // 数量不够时不再限制同一艺术家，保证能填满首页更多卡位。
+  if (picked.length < count) {
+    for (final candidate in candidates) {
+      if (picked.length >= count) break;
+      if (picked.contains(candidate)) continue;
+      picked.add(candidate);
     }
   }
 
@@ -321,7 +333,8 @@ class _AlbumScore {
 
   /// 很久没听:历史亲和度 × 距上次播放天数权重
   double longTimeScore(int nowMs) {
-    final days = (nowMs - lastPlayedAt) / const Duration(days: 1).inMilliseconds;
+    final days =
+        (nowMs - lastPlayedAt) / const Duration(days: 1).inMilliseconds;
     return plays * (0.5 + 0.5 * completion) * (1 + days / 30);
   }
 }

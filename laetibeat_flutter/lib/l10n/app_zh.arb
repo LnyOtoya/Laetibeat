@@ -264,6 +264,8 @@
   "homeGreetingMorning": "早上好",
   "homeGreetingAfternoon": "下午好",
   "homeGreetingEvening": "晚上好",
+  "recommendedQueueSource": "今天为你推荐",
+  "homeRecommendationSubtitle": "今天为你推荐的曲目是",
   "homeGreetingQuestion": "今天想听点什么？",
   "homeGreetingWithName": "{greeting}，{name}",
   "@homeGreetingWithName": {

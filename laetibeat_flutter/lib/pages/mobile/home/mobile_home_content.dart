@@ -22,9 +22,21 @@ class MobileHomeContent extends StatelessWidget {
           padding: EdgeInsets.only(bottom: bottomInset),
           child: Column(
             children: [
-              const MobileWelcomeSection(),
-              SizedBox(height: theme.spacing.md),
-              const MobileDailySection(),
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  theme.spacing.xl,
+                  theme.spacing.md,
+                  theme.spacing.xl,
+                  0,
+                ),
+                child: Column(
+                  children: [
+                    const MobileWelcomeSection(),
+                    SizedBox(height: theme.spacing.md),
+                    const MobileDailySection(),
+                  ],
+                ),
+              ),
               SizedBox(height: theme.spacing.md),
               const MobileHistorySection(),
             ],
