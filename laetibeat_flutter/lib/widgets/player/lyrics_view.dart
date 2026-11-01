@@ -102,9 +102,16 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
         if (doc == null || doc.lines.isEmpty) {
           return _plainLyrics(theme, text.trim());
         }
+        final hasWordTiming = doc.lines.any(
+          (LyricLine line) =>
+              line.words?.any(
+                (LyricWord word) => word.text.trim().isNotEmpty,
+              ) ??
+              false,
+        );
         return LyricView(
           controller: _controller,
-          preset: _preset(theme),
+          preset: _preset(theme, hasWordTiming: hasWordTiming),
           onLineTap: (details) =>
               ref.read(playerProvider.notifier).seek(details.seekPosition),
         );
@@ -115,7 +122,7 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
   /// Apple Music 预设的紧凑版:多行滚动 + 小字号,并映射到播放页封面配色。
   /// 内置预设使用深色背景的浅色文字;这里改用 secondaryContainer 上的
   /// onSecondaryContainer,保证浅色/深色主题下都可读。
-  LyricPreset _preset(M3EThemeData theme) {
+  LyricPreset _preset(M3EThemeData theme, {required bool hasWordTiming}) {
     final scheme = theme.colorScheme;
     final base = LyricPresets.appleMusic;
     final onBg = scheme.onSecondaryContainer;
@@ -130,7 +137,7 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
         fontSize: 32,
         height: 1.45,
         fontWeight: FontWeight.w700,
-        color: onBg.withValues(alpha: 0.5),
+        color: hasWordTiming ? onBg.withValues(alpha: 0.5) : onBg,
       ),
       translationTextStyle: TextStyle(
         fontSize: 16,
@@ -144,14 +151,21 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
         fontWeight: FontWeight.w600,
         color: onBg.withValues(alpha: 0.72),
       ),
-      highlight: LyricHighlight.solid(onBg, tailFadeWidth: 12),
+      highlight: hasWordTiming
+          ? LyricHighlight.solid(onBg, tailFadeWidth: 12)
+          : const LyricHighlight.none(),
+      wordEffects: hasWordTiming ? base.wordEffects : const LyricWordEffects(),
       padding: const EdgeInsets.symmetric(horizontal: 8),
       lineSpacing: 12,
       translationSpacing: 8,
-      activeAnchor:
-          const LyricAnchor.fraction(.45, target: LyricAnchorTarget.mainText),
-      selectionAnchor:
-          const LyricAnchor.fraction(.45, target: LyricAnchorTarget.mainText),
+      activeAnchor: const LyricAnchor.fraction(
+        .45,
+        target: LyricAnchorTarget.mainText,
+      ),
+      selectionAnchor: const LyricAnchor.fraction(
+        .45,
+        target: LyricAnchorTarget.mainText,
+      ),
       edgeFade: const LyricEdgeFade.fraction(top: .12, bottom: .16),
       // 前奏/间奏圆点:沿用预设默认配置,颜色跟随主题主色。
       countdown: base.countdown.copyWith(color: scheme.primary),

@@ -1,7 +1,7 @@
 # Laetibeat 项目蓝图
 
 > 最后更新：2026-11-01
-> 当前阶段：Android audio_service + just_audio 已接入，待真机验证
+> 当前阶段：Android audio_service + just_audio 核心真机验证通过，继续补边界场景
 
 ## 当前状态速览
 
@@ -148,14 +148,16 @@
 - [x] 耳机拔出 becoming noisy 处理
 - [ ] 蓝牙/有线/扬声器切换真机验证
 - [x] 暂停后通知保留策略（暂停时停止前台服务）
-- [ ] App 退到后台、锁屏、划掉后的行为验证
-- [ ] 后台播放时统计和 scrobble 继续工作验证
+- [x] App 退到后台、锁屏、划掉后的行为验证
+- [x] 后台播放时统计和 scrobble 继续工作验证
 
 ### 8.5 验证
 
-- [ ] 本地文件后台播放
+- [x] 本地文件后台播放
 - [ ] OpenSubsonic 流媒体后台播放
-- [ ] 锁屏控制
+- [x] 锁屏控制
+- [x] 通知栏播放/暂停/上一首/下一首
+- [x] 划掉 App 后继续播放
 - [ ] 蓝牙耳机播放/暂停/上一首/下一首
 - [ ] 暂停、继续、seek、播放完成
 - [ ] 通知权限拒绝时的降级行为
@@ -233,7 +235,7 @@
 ## 已知问题 / 技术债
 
 - 自研 MPRIS 会卡死 waybar，已停用；后续统一迁移 audio_service
-- Android 已接入 just_audio + audio_service，但尚未真机验证后台、锁屏、媒体键和划掉 App
+- Android 已接入 just_audio + audio_service；后台、锁屏、通知、划掉 App、scrobble 已完成真机验证
 - `MediaSessionService` 当前仍是 Noop，`MediaIntegrationHost` 仅做简单状态同步
 - Android 播放后端已按平台拆分，桌面仍使用 MediaKitBackend
 - media_kit 在 Android 上出现过原生 SIGSEGV；Android 已改用 just_audio，桌面风险另论
