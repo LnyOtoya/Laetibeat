@@ -135,4 +135,404 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAboutSupporting => 'Current version';
+
+  @override
+  String get lyricsGroup => 'Lyrics';
+
+  @override
+  String get lyricsSource => 'Lyrics source';
+
+  @override
+  String get lyricsSourceSupporting =>
+      'Choose which lyrics sources are enabled';
+
+  @override
+  String get lyricsPriority => 'Lyrics source priority';
+
+  @override
+  String get lyricsPrioritySupporting => 'Reorder lyrics sources by preference';
+
+  @override
+  String get lyricsReset => 'Reset imported lyrics';
+
+  @override
+  String get lyricsResetSupporting =>
+      'Remove all imported lyrics from the database';
+
+  @override
+  String get syncScanGroup => 'Sync & scan';
+
+  @override
+  String get chooseLocalLibrary => 'Choose local library';
+
+  @override
+  String get chooseLocalLibrarySupporting =>
+      'Choose the folder that contains your music';
+
+  @override
+  String get chooseLibrary => 'Choose library';
+
+  @override
+  String get syncDatabase => 'Sync database';
+
+  @override
+  String get musicSourcesTitle => 'Music sources';
+
+  @override
+  String get openSubsonicDescription =>
+      'Connect to an OpenSubsonic-compatible server, such as Navidrome.';
+
+  @override
+  String get notAvailable => 'Not available yet';
+
+  @override
+  String get sourceJellyfin => 'Jellyfin';
+
+  @override
+  String get sourceEmbyMusic => 'Emby Music';
+
+  @override
+  String get sourceLxMusic => 'LX Music';
+
+  @override
+  String get sourceQqMusic => 'QQ Music';
+
+  @override
+  String get sourceNetEaseMusic => 'NetEase Cloud Music';
+
+  @override
+  String get statisticsTitle => 'Statistics';
+
+  @override
+  String get commonBack => 'Back';
+
+  @override
+  String get previousTrack => 'Previous track';
+
+  @override
+  String get pause => 'Pause';
+
+  @override
+  String get play => 'Play';
+
+  @override
+  String get nextTrack => 'Next track';
+
+  @override
+  String get musicLibraryEmpty => 'Your library is empty';
+
+  @override
+  String get goToSettingsScan =>
+      'Open settings to choose a music folder and start scanning';
+
+  @override
+  String get nothingPlaying => 'Nothing playing';
+
+  @override
+  String get chooseSongToPlay =>
+      'Choose a song from your library to start playing';
+
+  @override
+  String get nowPlaying => 'Now playing';
+
+  @override
+  String get fullScreen => 'Full screen';
+
+  @override
+  String get exitFullScreen => 'Exit full screen';
+
+  @override
+  String get lyrics => 'Lyrics';
+
+  @override
+  String get shufflePlayback => 'Shuffle';
+
+  @override
+  String get repeatPlayback => 'Repeat';
+
+  @override
+  String get addToPlaylist => 'Add to playlist';
+
+  @override
+  String get queueButton => 'Queue';
+
+  @override
+  String get more => 'More';
+
+  @override
+  String get queueTitle => 'Play queue';
+
+  @override
+  String queueCount(int count) {
+    return '$count songs';
+  }
+
+  @override
+  String get closeQueue => 'Close queue';
+
+  @override
+  String get queueEmpty => 'Queue is empty';
+
+  @override
+  String get queueEmptySubtitle =>
+      'Choose songs from your library to start playing';
+
+  @override
+  String get addToQueue => 'Add to queue';
+
+  @override
+  String get hideLyrics => 'Hide lyrics';
+
+  @override
+  String get showLyrics => 'Show lyrics';
+
+  @override
+  String get randomPlay => 'Shuffle';
+
+  @override
+  String get sortLabel => 'Sort';
+
+  @override
+  String get currentSource => 'Current source: ';
+
+  @override
+  String get notConfigured => 'Not configured';
+
+  @override
+  String get exitSelection => 'Exit selection';
+
+  @override
+  String get playNow => 'Play now';
+
+  @override
+  String get playNext => 'Play next';
+
+  @override
+  String get addToFavorites => 'Add to favorites';
+
+  @override
+  String get sortBy => 'Sort by';
+
+  @override
+  String get closeSort => 'Close sorting';
+
+  @override
+  String get noSongs => 'No songs';
+
+  @override
+  String get configureSubsonicFirst => 'Configure a Subsonic source first';
+
+  @override
+  String get loadRemoteSongsFailed => 'Failed to load remote songs';
+
+  @override
+  String get noRemoteSongsScan =>
+      'No remote songs yet. Scan your library in Content settings first.';
+
+  @override
+  String get sourceUnavailable => 'This source is not available yet';
+
+  @override
+  String get noPlaylists => 'No playlists yet';
+
+  @override
+  String get loadPlaylistsFailed => 'Failed to load playlists';
+
+  @override
+  String get noArtists => 'No artists yet';
+
+  @override
+  String get loadArtistsFailed => 'Failed to load artists';
+
+  @override
+  String get noAlbums => 'No albums yet';
+
+  @override
+  String get loadAlbumsFailed => 'Failed to load albums';
+
+  @override
+  String get switchToList => 'Switch to list layout';
+
+  @override
+  String get switchToGrid => 'Switch to grid layout';
+
+  @override
+  String get like => 'Like';
+
+  @override
+  String releaseDate(String year) {
+    return 'Released: $year';
+  }
+
+  @override
+  String get unknown => 'Unknown';
+
+  @override
+  String albumSummary(String count, String duration) {
+    return '$count songs, $duration';
+  }
+
+  @override
+  String get loadTracksFailed => 'Failed to load songs';
+
+  @override
+  String get noTracks => 'No songs yet';
+
+  @override
+  String discNumber(int number) {
+    return 'Disc $number';
+  }
+
+  @override
+  String get durationUnknown => 'Duration unknown';
+
+  @override
+  String totalAlbums(String count) {
+    return '$count albums';
+  }
+
+  @override
+  String get topSongs => 'Top songs';
+
+  @override
+  String get shufflePlay => 'Shuffle';
+
+  @override
+  String get publicData => 'Public data';
+
+  @override
+  String get noArtistBio => 'No artist biography yet';
+
+  @override
+  String get artistAlbums => 'Artist albums';
+
+  @override
+  String get yearUnknown => 'Year unknown';
+
+  @override
+  String approxMinutes(int minutes) {
+    return 'About $minutes min';
+  }
+
+  @override
+  String get lessThanMinute => 'Less than 1 min';
+
+  @override
+  String get serverUrlRequired => 'Enter the server URL';
+
+  @override
+  String get serverUrlInvalid => 'Enter a valid server URL';
+
+  @override
+  String get portInvalid => 'Enter a valid port';
+
+  @override
+  String get usernameRequired => 'Enter a username';
+
+  @override
+  String get passwordRequired => 'Enter a password';
+
+  @override
+  String get connectionSuccess => 'Connection successful: ';
+
+  @override
+  String get syncFetchingArtists => 'Fetching artists…';
+
+  @override
+  String syncAlbumsProgress(int count) {
+    return 'Fetched $count albums';
+  }
+
+  @override
+  String get syncFetchingAlbums => 'Fetching albums…';
+
+  @override
+  String syncTracksProgress(int completed, int total) {
+    return 'Fetching tracks $completed/$total';
+  }
+
+  @override
+  String syncTracksCount(int count) {
+    return 'Fetching tracks: $count';
+  }
+
+  @override
+  String get syncScanning => 'Scanning…';
+
+  @override
+  String syncFailed(String error) {
+    return 'Scan failed: $error';
+  }
+
+  @override
+  String get syncRetry => 'Try again later';
+
+  @override
+  String syncComplete(int count) {
+    return 'Scan complete: $count songs';
+  }
+
+  @override
+  String get serverUrlLabel => 'Server URL';
+
+  @override
+  String get serverUrlSupporting => 'Configured URL';
+
+  @override
+  String get portLabel => 'Port';
+
+  @override
+  String get portSupporting => 'Port number';
+
+  @override
+  String get usernameLabel => 'Username';
+
+  @override
+  String get passwordLabel => 'Password';
+
+  @override
+  String get showPassword => 'Show password';
+
+  @override
+  String get hidePassword => 'Hide password';
+
+  @override
+  String get testingButton => 'Testing…';
+
+  @override
+  String get testButton => 'Test';
+
+  @override
+  String get scanningButton => 'Scanning…';
+
+  @override
+  String get scanButton => 'Scan';
+
+  @override
+  String get scanningSemantics => 'Scanning';
+
+  @override
+  String get lyricsNotPlayingTitle => 'Nothing playing';
+
+  @override
+  String get lyricsNotPlayingSubtitle =>
+      'Choose a song from your library to view lyrics';
+
+  @override
+  String get lyricsLoading => 'Loading lyrics';
+
+  @override
+  String get lyricsLoadFailed => 'Failed to load lyrics';
+
+  @override
+  String get lyricsEmptyTitle => 'No lyrics';
+
+  @override
+  String get lyricsEmptySubtitle => 'No lyrics are available for this track';
+
+  @override
+  String get notificationChannelName => 'Playback';
+
+  @override
+  String get notificationChannelDescription => 'Laetibeat playback controls';
 }

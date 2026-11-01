@@ -41,5 +41,211 @@
   "settingsBackupRestore": "备份与还原",
   "settingsBackupRestoreSupporting": "备份设置或从另一份配置中导入设置",
   "settingsAbout": "关于",
-  "settingsAboutSupporting": "当前版本"
+  "settingsAboutSupporting": "当前版本",
+  "lyricsGroup": "歌词",
+  "lyricsSource": "歌词来源",
+  "lyricsSourceSupporting": "选择要启用的歌词来源",
+  "lyricsPriority": "歌词来源优先级",
+  "lyricsPrioritySupporting": "按照偏好重新排序歌词源优先级",
+  "lyricsReset": "重置已导入的歌词",
+  "lyricsResetSupporting": "从数据库中移除所有已经导入的歌词",
+  "syncScanGroup": "同步与扫描",
+  "chooseLocalLibrary": "选择本地媒体库",
+  "chooseLocalLibrarySupporting": "选择您的音乐文件夹所在的目录",
+  "chooseLibrary": "选择媒体库",
+  "syncDatabase": "同步数据库",
+  "musicSourcesTitle": "音乐源配置",
+  "openSubsonicDescription": "连接到您的支持opensubsonic协议的服务器，例如navidrome。",
+  "notAvailable": "暂未提供",
+  "sourceJellyfin": "Jellyfin",
+  "sourceEmbyMusic": "Emby音乐",
+  "sourceLxMusic": "洛雪音源",
+  "sourceQqMusic": "QQ音乐",
+  "sourceNetEaseMusic": "网易云音乐",
+  "statisticsTitle": "统计",
+  "commonBack": "返回",
+  "previousTrack": "上一曲",
+  "pause": "暂停",
+  "play": "播放",
+  "nextTrack": "下一曲",
+  "musicLibraryEmpty": "音乐库为空",
+  "goToSettingsScan": "前往设置选择音乐文件夹，开始扫描",
+  "nothingPlaying": "未在播放",
+  "chooseSongToPlay": "从音乐库选择一首歌曲开始播放",
+  "nowPlaying": "正在播放",
+  "fullScreen": "全屏",
+  "exitFullScreen": "退出全屏",
+  "lyrics": "歌词",
+  "shufflePlayback": "随机播放",
+  "repeatPlayback": "重复",
+  "addToPlaylist": "添加到歌单",
+  "queueButton": "队列",
+  "more": "更多",
+  "queueTitle": "播放队列",
+  "queueCount": "{count} 首",
+  "@queueCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "closeQueue": "关闭队列",
+  "queueEmpty": "队列为空",
+  "queueEmptySubtitle": "从音乐库选择歌曲开始播放",
+  "addToQueue": "添加到播放队列",
+  "hideLyrics": "收起歌词",
+  "showLyrics": "查看歌词",
+  "randomPlay": "随机播放",
+  "sortLabel": "排序",
+  "currentSource": "当前音源：",
+  "notConfigured": "未配置",
+  "exitSelection": "退出选择",
+  "playNow": "立即播放",
+  "playNext": "下一首播放",
+  "addToFavorites": "添加到喜欢",
+  "sortBy": "排序方式",
+  "closeSort": "关闭排序方式",
+  "noSongs": "暂无歌曲",
+  "configureSubsonicFirst": "请先配置 Subsonic 音源",
+  "loadRemoteSongsFailed": "读取远端歌曲失败",
+  "noRemoteSongsScan": "还没有远端歌曲，请先在内容设置中扫描",
+  "sourceUnavailable": "该音源暂未提供",
+  "noPlaylists": "还没有歌单",
+  "loadPlaylistsFailed": "读取歌单失败",
+  "noArtists": "还没有艺术家",
+  "loadArtistsFailed": "读取艺术家失败",
+  "noAlbums": "还没有专辑",
+  "loadAlbumsFailed": "读取专辑失败",
+  "switchToList": "切换为列表布局",
+  "switchToGrid": "切换为宫格布局",
+  "like": "喜欢",
+  "releaseDate": "发行日期: {year}",
+  "@releaseDate": {
+    "placeholders": {
+      "year": {
+        "type": "String"
+      }
+    }
+  },
+  "unknown": "未知",
+  "albumSummary": "{count}首歌曲，{duration}",
+  "@albumSummary": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "loadTracksFailed": "读取歌曲失败",
+  "noTracks": "暂无歌曲",
+  "discNumber": "碟片 {number}",
+  "@discNumber": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "durationUnknown": "时长未知",
+  "totalAlbums": "共 {count} 张专辑",
+  "@totalAlbums": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "topSongs": "热门歌曲",
+  "shufflePlay": "随机播放",
+  "publicData": "公开数据",
+  "noArtistBio": "暂无歌手详情",
+  "artistAlbums": "歌手专辑",
+  "yearUnknown": "年份未知",
+  "approxMinutes": "大约 {minutes} 分钟",
+  "@approxMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "lessThanMinute": "不到 1 分钟",
+  "serverUrlRequired": "请输入服务器 URL",
+  "serverUrlInvalid": "请输入有效的服务器 URL",
+  "portInvalid": "请输入有效的端口号",
+  "usernameRequired": "请输入用户名",
+  "passwordRequired": "请输入密码",
+  "connectionSuccess": "连接成功：",
+  "syncFetchingArtists": "正在获取艺术家…",
+  "syncAlbumsProgress": "已获取 {count} 张专辑",
+  "@syncAlbumsProgress": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncFetchingAlbums": "正在获取专辑…",
+  "syncTracksProgress": "正在获取曲目 {completed}/{total}",
+  "@syncTracksProgress": {
+    "placeholders": {
+      "completed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "syncTracksCount": "正在获取曲目 {count} 首",
+  "@syncTracksCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncScanning": "正在扫描…",
+  "syncFailed": "扫描失败：{error}",
+  "@syncFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "syncRetry": "请稍后重试",
+  "syncComplete": "扫描完成，共 {count} 首歌曲",
+  "@syncComplete": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "serverUrlLabel": "服务器 URL",
+  "serverUrlSupporting": "配置URL",
+  "portLabel": "端口",
+  "portSupporting": "端口号",
+  "usernameLabel": "用户名",
+  "passwordLabel": "密码",
+  "showPassword": "显示密码",
+  "hidePassword": "隐藏密码",
+  "testingButton": "测试中…",
+  "testButton": "测试",
+  "scanningButton": "扫描中…",
+  "scanButton": "扫描",
+  "scanningSemantics": "正在扫描",
+  "lyricsNotPlayingTitle": "未在播放",
+  "lyricsNotPlayingSubtitle": "从音乐库选择一首歌曲后查看歌词",
+  "lyricsLoading": "歌词加载中",
+  "lyricsLoadFailed": "歌词加载失败",
+  "lyricsEmptyTitle": "暂无歌词",
+  "lyricsEmptySubtitle": "当前曲目没有可显示的歌词",
+  "notificationChannelName": "播放",
+  "notificationChannelDescription": "Laetibeat 播放控制"
 }

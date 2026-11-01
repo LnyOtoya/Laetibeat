@@ -7,6 +7,8 @@ import 'package:laetibeat/widgets/settings/subsonic_provider.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../../l10n/generated/app_localizations.dart';
+
 import '../../mobile_navigation.dart';
 import '../../routes.dart';
 import '../artists/artist_detail_page.dart';
@@ -53,7 +55,9 @@ class _ArtistsLibraryViewState extends ConsumerState<ArtistsLibraryView> {
         ref.watch(subsonicServersProvider).value ??
         const <SubsonicServerConfig>[];
     if (servers.isEmpty) {
-      return const Center(child: Text('请先配置 Subsonic 音源'));
+      return Center(
+        child: Text(AppLocalizations.of(context).configureSubsonicFirst),
+      );
     }
 
     final server = servers.first;
@@ -69,7 +73,7 @@ class _ArtistsLibraryViewState extends ConsumerState<ArtistsLibraryView> {
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Text(
-            '读取艺术家失败\n$error',
+            '${AppLocalizations.of(context).loadArtistsFailed}\n$error',
             textAlign: TextAlign.center,
             style: theme.typeScale.bodyMedium.copyWith(
               color: theme.colorScheme.error,
@@ -79,7 +83,7 @@ class _ArtistsLibraryViewState extends ConsumerState<ArtistsLibraryView> {
       ),
       data: (list) {
         if (list.isEmpty) {
-          return const Center(child: Text('还没有艺术家'));
+          return Center(child: Text(AppLocalizations.of(context).noArtists));
         }
         return _isGrid
             ? _buildGrid(theme, server.id, list, bottomInset)

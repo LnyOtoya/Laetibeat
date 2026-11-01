@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/playback/just_audio_backend.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../core/playback/laetibeat_audio_handler.dart';
 import '../core/providers/playback_backend_provider.dart';
 import '../core/services/directory_picker.dart';
@@ -20,6 +21,7 @@ import '../widgets/settings/persistence.dart';
 import '../widgets/settings/subsonic_provider.dart';
 import 'app.dart';
 import 'app_form_factor.dart';
+import 'app_locale.dart';
 
 /// 应用启动装配层：平台判断、平台服务选择、全局初始化都在这里完成。
 Future<void> bootstrap() async {
@@ -92,12 +94,14 @@ Future<void> bootstrap() async {
   // 仅在 Android 初始化系统媒体服务；桌面继续使用 media_kit 的现有路径。
   if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
     try {
+      final l10n = await _notificationLocalizations(prefs);
       await AudioService.init(
         builder: () => LaetibeatAudioHandler(container),
-        config: const AudioServiceConfig(
+        config: AudioServiceConfig(
           androidNotificationChannelId: 'com.otimeum.laetibeat.playback',
-          androidNotificationChannelName: '播放',
-          androidNotificationChannelDescription: 'Laetibeat 播放控制',
+          androidNotificationChannelName: l10n.notificationChannelName,
+          androidNotificationChannelDescription:
+              l10n.notificationChannelDescription,
           // 暂停时保留前台服务：否则其他应用结束后自动恢复播放，
           // 会在后台触发 startForegroundService 并可能被 Android 12+ 拒绝。
           androidNotificationOngoing: false,
@@ -118,4 +122,22 @@ Future<void> bootstrap() async {
       child: const LaetibeatApp(),
     ),
   );
+}
+
+/// 在 runApp 之前为 Android 通知渠道选择语言。
+/// 渠道名只在首次创建时生效；切换应用语言后由系统保留原名称。
+Future<AppLocalizations> _notificationLocalizations(SharedPreferences prefs) {
+  final saved = prefs.getString(kAppLocaleKey);
+  final Locale locale;
+  if (saved == 'zh') {
+    locale = const Locale('zh');
+  } else if (saved == 'en') {
+    locale = const Locale('en');
+  } else {
+    final system = WidgetsBinding.instance.platformDispatcher.locale;
+    locale = system.languageCode == 'zh'
+        ? const Locale('zh')
+        : const Locale('en');
+  }
+  return AppLocalizations.delegate.load(locale);
 }

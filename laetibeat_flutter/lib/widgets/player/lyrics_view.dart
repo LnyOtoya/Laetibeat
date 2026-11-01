@@ -5,6 +5,8 @@ import 'package:flutter_lyric/flutter_lyric.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 
+import '../../l10n/generated/app_localizations.dart';
+
 import 'lyric_provider.dart';
 import 'player_provider.dart';
 
@@ -70,9 +72,14 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
   @override
   Widget build(BuildContext context) {
     final theme = M3ETheme.of(context);
+    final l10n = AppLocalizations.of(context);
     final track = ref.watch(playerProvider.select((s) => s.current));
     if (track == null) {
-      return _empty(theme, '未在播放', '从音乐库选择一首歌曲后查看歌词');
+      return _empty(
+        theme,
+        l10n.lyricsNotPlayingTitle,
+        l10n.lyricsNotPlayingSubtitle,
+      );
     }
 
     // 播放/暂停/seek 等状态变化时通知控制器重新采样;
@@ -89,14 +96,16 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
     });
 
     return lyricsAsync.when(
-      loading: () => const Center(
-        child: M3EProgressIndicator.circular(semanticsLabel: '歌词加载中'),
+      loading: () => Center(
+        child: M3EProgressIndicator.circular(
+          semanticsLabel: l10n.lyricsLoading,
+        ),
       ),
-      error: (e, _) => _empty(theme, '歌词加载失败', e.toString()),
+      error: (e, _) => _empty(theme, l10n.lyricsLoadFailed, e.toString()),
       data: (lyrics) {
         final text = lyrics?.rawText ?? '';
         if (text.trim().isEmpty) {
-          return _empty(theme, '暂无歌词', '当前曲目没有可显示的歌词');
+          return _empty(theme, l10n.lyricsEmptyTitle, l10n.lyricsEmptySubtitle);
         }
         final doc = _documentFor(text);
         if (doc == null || doc.lines.isEmpty) {

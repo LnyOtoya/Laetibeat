@@ -6,6 +6,7 @@ import 'package:laetibeat/widgets/remote_browser_provider.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../widgets/mobile_large_subpage_app_bar.dart';
 
 /// 专辑详情页。先展示顶部返回栏和全宽专辑封面。
@@ -22,6 +23,7 @@ class AlbumDetailPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = M3ETheme.of(context);
+    final l10n = AppLocalizations.of(context);
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     final remoteTracks = ref.watch(
       remoteTracksProvider((sourceId: sourceId, albumId: album.id)),
@@ -40,7 +42,7 @@ class AlbumDetailPage extends ConsumerWidget {
           M3EIconButton(
             variant: M3EIconButtonVariant.tonal,
             icon: const Icon(M3EIcons.favorite_border),
-            tooltip: '喜欢',
+            tooltip: AppLocalizations.of(context).like,
             onPressed: () {},
           ),
         ],
@@ -83,7 +85,7 @@ class AlbumDetailPage extends ConsumerWidget {
                     Row(
                       children: [
                         M3EChip(
-                          label: '立即播放',
+                          label: l10n.playNow,
                           leading: const Icon(M3EIcons.play_arrow),
                           elevated: true,
                           onPressed: tracks.isEmpty
@@ -94,7 +96,7 @@ class AlbumDetailPage extends ConsumerWidget {
                         ),
                         const SizedBox(width: 8),
                         M3EChip(
-                          label: '随机播放',
+                          label: l10n.shufflePlay,
                           leading: const Icon(M3EIcons.shuffle),
                           elevated: true,
                           onPressed: tracks.isEmpty
@@ -116,7 +118,7 @@ class AlbumDetailPage extends ConsumerWidget {
             child: Column(
               children: [
                 Text(
-                  '发行日期: ${album.year?.toString() ?? '未知'}',
+                  l10n.releaseDate(album.year?.toString() ?? l10n.unknown),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
@@ -124,8 +126,13 @@ class AlbumDetailPage extends ConsumerWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${_formatSongCount(album.songCount?.toInt())}首歌曲，'
-                  '${_formatAlbumDuration(album.durationSeconds?.toInt())}',
+                  l10n.albumSummary(
+                    _formatSongCount(album.songCount?.toInt()),
+                    _formatAlbumDuration(
+                      album.durationSeconds?.toInt(),
+                      l10n.durationUnknown,
+                    ),
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
@@ -137,7 +144,7 @@ class AlbumDetailPage extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 20),
-          _buildTrackSections(theme, ref, remoteTracks),
+          _buildTrackSections(context, theme, ref, remoteTracks),
           SizedBox(height: 24 + bottomInset),
         ],
       ),
@@ -145,6 +152,7 @@ class AlbumDetailPage extends ConsumerWidget {
   }
 
   Widget _buildTrackSections(
+    BuildContext context,
     M3EThemeData theme,
     WidgetRef ref,
     AsyncValue<List<rust_subsonic.UiRemoteTrack>> tracksAsync,
@@ -162,7 +170,7 @@ class AlbumDetailPage extends ConsumerWidget {
       error: (Object error, StackTrace stackTrace) => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         child: Text(
-          '读取歌曲失败\n$error',
+          '${AppLocalizations.of(context).loadTracksFailed}\n$error',
           textAlign: TextAlign.center,
           style: theme.typeScale.bodyMedium.copyWith(
             color: theme.colorScheme.error,
@@ -171,9 +179,9 @@ class AlbumDetailPage extends ConsumerWidget {
       ),
       data: (list) {
         if (list.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
-            child: Center(child: Text('暂无歌曲')),
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Center(child: Text(AppLocalizations.of(context).noTracks)),
           );
         }
 
@@ -208,7 +216,7 @@ class AlbumDetailPage extends ConsumerWidget {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '碟片 $disc',
+                      AppLocalizations.of(context).discNumber(disc),
                       style: theme.typeScale.titleSmall.copyWith(
                         color: theme.colorScheme.onPrimaryContainer,
                       ),
@@ -251,7 +259,10 @@ class AlbumDetailPage extends ConsumerWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          _formatAlbumDuration(track.durationSeconds.toInt()),
+                          _formatAlbumDuration(
+                            track.durationSeconds.toInt(),
+                            AppLocalizations.of(context).durationUnknown,
+                          ),
                           style: theme.typeScale.bodySmall.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
@@ -261,7 +272,7 @@ class AlbumDetailPage extends ConsumerWidget {
                           size: M3EIconButtonSize.xs,
                           variant: M3EIconButtonVariant.standard,
                           icon: const Icon(M3EIcons.favorite_border),
-                          tooltip: '喜欢',
+                          tooltip: AppLocalizations.of(context).like,
                           onPressed: () {},
                         ),
                       ],
@@ -285,12 +296,12 @@ class AlbumDetailPage extends ConsumerWidget {
 }
 
 String _formatSongCount(int? count) {
-  if (count == null || count < 0) return '-- ';
-  return '$count ';
+  if (count == null || count < 0) return '--';
+  return '$count';
 }
 
-String _formatAlbumDuration(int? seconds) {
-  if (seconds == null || seconds < 0) return '时长未知';
+String _formatAlbumDuration(int? seconds, String unknown) {
+  if (seconds == null || seconds < 0) return unknown;
   final hours = seconds ~/ 3600;
   final minutes = (seconds % 3600) ~/ 60;
   final rest = (seconds % 60).toString().padLeft(2, '0');

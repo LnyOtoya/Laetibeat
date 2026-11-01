@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 
+import '../../l10n/generated/app_localizations.dart';
+
 /// SquishButtonRow —— 上一首 / 播放暂停 / 下一首 控制排
 ///
 /// 复刻 material_3_expressive 的 neighbor-squish 效果(内部 M3E 未用作分组,
@@ -57,8 +59,10 @@ class _SquishButtonRowState extends State<SquishButtonRow>
     duration: const Duration(milliseconds: 380),
     reverseDuration: const Duration(milliseconds: 260),
   );
-  late final CurvedAnimation _curve =
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic);
+  late final CurvedAnimation _curve = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeOutCubic,
+  );
 
   /// 当前被按住的按钮索引, null 表示没有
   int? _pressed;
@@ -77,22 +81,27 @@ class _SquishButtonRowState extends State<SquishButtonRow>
   }
 
   bool _enabled(int i) => switch (i) {
-        0 => widget.previousEnabled,
-        1 => widget.toggleEnabled,
-        2 => widget.nextEnabled,
-        _ => false,
-      };
+    0 => widget.previousEnabled,
+    1 => widget.toggleEnabled,
+    2 => widget.nextEnabled,
+    _ => false,
+  };
 
   void _fire(int i) => switch (i) {
-        0 => widget.onPrevious?.call(),
-        1 => widget.onToggle?.call(),
-        2 => widget.onNext?.call(),
-        _ => null,
-      };
+    0 => widget.onPrevious?.call(),
+    1 => widget.onToggle?.call(),
+    2 => widget.onNext?.call(),
+    _ => null,
+  };
 
   // ---- 宽度计算 ----
 
-  double _naturalWidth(int i, M3EThemeData theme, TextStyle labelStyle) {
+  double _naturalWidth(
+    int i,
+    M3EThemeData theme,
+    TextStyle labelStyle,
+    String playLabel,
+  ) {
     switch (i) {
       case 0:
       case 2:
@@ -101,10 +110,7 @@ class _SquishButtonRowState extends State<SquishButtonRow>
         // 胶囊: 圆形部分 + 文本 + 图标 + 间距 + 呼吸余量
         // 呼吸余量刻意放大,让中间按钮更长,以填掉两侧留白
         final tp = TextPainter(
-          text: TextSpan(
-            text: widget.isPlaying ? '暂停' : '播放',
-            style: labelStyle,
-          ),
+          text: TextSpan(text: playLabel, style: labelStyle),
           maxLines: 1,
           textDirection: TextDirection.ltr,
         )..layout();
@@ -113,10 +119,15 @@ class _SquishButtonRowState extends State<SquishButtonRow>
     return _roundBase;
   }
 
-  List<double> _squishSizes(M3EThemeData theme, TextStyle labelStyle) {
+  List<double> _squishSizes(
+    M3EThemeData theme,
+    TextStyle labelStyle,
+    String playLabel,
+  ) {
     const n = 3;
     final natural = [
-      for (var i = 0; i < n; i++) _naturalWidth(i, theme, labelStyle),
+      for (var i = 0; i < n; i++)
+        _naturalWidth(i, theme, labelStyle, playLabel),
     ];
     final sizes = List<double>.of(natural);
 
@@ -174,7 +185,9 @@ class _SquishButtonRowState extends State<SquishButtonRow>
   @override
   Widget build(BuildContext context) {
     final theme = M3ETheme.of(context);
+    final l10n = AppLocalizations.of(context);
     final labelStyle = theme.typeScale.bodyMedium;
+    final playLabel = widget.isPlaying ? l10n.pause : l10n.play;
 
     // 其余控件用同款 FittedBox 防溢出: 空间不足时整行缩放而非横向溢出
     return FittedBox(
@@ -183,7 +196,7 @@ class _SquishButtonRowState extends State<SquishButtonRow>
       child: AnimatedBuilder(
         animation: _controller,
         builder: (context, _) {
-          final sizes = _squishSizes(theme, labelStyle);
+          final sizes = _squishSizes(theme, labelStyle, playLabel);
           // 居中、三键紧密相邻; 通过加长中间按钮来缩小两侧留白
           return Center(
             child: Row(
@@ -194,15 +207,15 @@ class _SquishButtonRowState extends State<SquishButtonRow>
                   sizes[0],
                   icon: Icons.skip_previous,
                   label: null,
-                  tooltip: '上一首',
+                  tooltip: l10n.previousTrack,
                 ),
                 SizedBox(width: theme.spacing.sm),
                 _button(
                   1,
                   sizes[1],
                   icon: widget.isPlaying ? Icons.pause : Icons.play_arrow,
-                  label: widget.isPlaying ? '暂停' : '播放',
-                  tooltip: widget.isPlaying ? '暂停' : '播放',
+                  label: playLabel,
+                  tooltip: playLabel,
                 ),
                 SizedBox(width: theme.spacing.sm),
                 _button(
@@ -210,7 +223,7 @@ class _SquishButtonRowState extends State<SquishButtonRow>
                   sizes[2],
                   icon: Icons.skip_next,
                   label: null,
-                  tooltip: '下一首',
+                  tooltip: l10n.nextTrack,
                 ),
               ],
             ),
@@ -267,11 +280,7 @@ class _SquishButtonRowState extends State<SquishButtonRow>
         }
       },
       child: IgnorePointer(
-        child: SizedBox(
-          width: width,
-          height: _buttonHeight,
-          child: visual,
-        ),
+        child: SizedBox(width: width, height: _buttonHeight, child: visual),
       ),
     );
   }

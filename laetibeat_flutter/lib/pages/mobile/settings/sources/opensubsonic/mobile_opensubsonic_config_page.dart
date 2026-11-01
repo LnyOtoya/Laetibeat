@@ -6,6 +6,7 @@ import 'package:laetibeat/widgets/settings/subsonic_provider.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../../../l10n/generated/app_localizations.dart';
 import '../../../widgets/mobile_large_subpage_app_bar.dart';
 
 enum _ServerScheme { http, https }
@@ -118,9 +119,10 @@ class _MobileOpensubsonicConfigPageState
 
   /// 把 URL、端口、用户名和密码组合成服务器配置。
   SubsonicServerConfig? _buildConfig() {
+    final l10n = AppLocalizations.of(context);
     final rawUrl = _urlController.text.trim();
     if (rawUrl.isEmpty) {
-      _error = '请输入服务器 URL';
+      _error = l10n.serverUrlRequired;
       return null;
     }
 
@@ -129,7 +131,7 @@ class _MobileOpensubsonicConfigPageState
         : '${_scheme.name}://$rawUrl';
     final uri = Uri.tryParse(rawWithScheme);
     if (uri == null || uri.host.isEmpty) {
-      _error = '请输入有效的服务器 URL';
+      _error = l10n.serverUrlInvalid;
       return null;
     }
 
@@ -140,7 +142,7 @@ class _MobileOpensubsonicConfigPageState
     } else {
       final parsed = int.tryParse(portText);
       if (parsed == null || parsed < 1 || parsed > 65535) {
-        _error = '请输入有效的端口号';
+        _error = l10n.portInvalid;
         return null;
       }
       port = parsed;
@@ -148,13 +150,13 @@ class _MobileOpensubsonicConfigPageState
 
     final username = _usernameController.text.trim();
     if (username.isEmpty) {
-      _error = '请输入用户名';
+      _error = l10n.usernameRequired;
       return null;
     }
 
     final password = _passwordController.text;
     if (password.isEmpty) {
-      _error = '请输入密码';
+      _error = l10n.passwordRequired;
       return null;
     }
 
@@ -175,6 +177,7 @@ class _MobileOpensubsonicConfigPageState
   }
 
   Future<void> _test() async {
+    final l10n = AppLocalizations.of(context);
     final config = _buildConfig();
     if (config == null) {
       setState(() {});
@@ -198,7 +201,9 @@ class _MobileOpensubsonicConfigPageState
       setState(() {
         _testPassed = true;
         _testedFingerprint = fingerprint;
-        _info = '连接成功：${info.serverType ?? 'Subsonic'} '
+        _info =
+            '${l10n.connectionSuccess}'
+            '${info.serverType ?? 'Subsonic'} '
             '${info.serverVersion ?? ''}'
             '${info.openSubsonic ? ' · OpenSubsonic' : ''}';
       });
@@ -242,24 +247,27 @@ class _MobileOpensubsonicConfigPageState
 
   String? _syncStatusText(RemoteSyncState? sync) {
     if (sync == null) return null;
+    final l10n = AppLocalizations.of(context);
     if (sync.isSyncing) {
       return switch (sync.phase) {
-        RemoteSyncPhase.artists => sync.message ?? '正在获取艺术家…',
-        RemoteSyncPhase.albums => sync.completed > 0
-            ? '已获取 ${sync.completed} 张专辑'
-            : '正在获取专辑…',
-        RemoteSyncPhase.tracks => sync.total > 0
-            ? '正在获取曲目 ${sync.completed}/${sync.total}'
-            : '正在获取曲目 ${sync.completed} 首',
-        _ => sync.message ?? '正在扫描…',
+        RemoteSyncPhase.artists => sync.message ?? l10n.syncFetchingArtists,
+        RemoteSyncPhase.albums =>
+          sync.completed > 0
+              ? l10n.syncAlbumsProgress(sync.completed)
+              : l10n.syncFetchingAlbums,
+        RemoteSyncPhase.tracks =>
+          sync.total > 0
+              ? l10n.syncTracksProgress(sync.completed, sync.total)
+              : l10n.syncTracksCount(sync.completed),
+        _ => sync.message ?? l10n.syncScanning,
       };
     }
     if (sync.phase == RemoteSyncPhase.failed) {
-      return '扫描失败：${sync.error ?? sync.message ?? '请稍后重试'}';
+      return l10n.syncFailed(sync.error ?? sync.message ?? l10n.syncRetry);
     }
     if (sync.hasResult) {
       final count = sync.meta?.trackCount.toInt() ?? sync.trackCount;
-      return '扫描完成，共 $count 首歌曲';
+      return l10n.syncComplete(count);
     }
     return null;
   }
@@ -267,11 +275,11 @@ class _MobileOpensubsonicConfigPageState
   @override
   Widget build(BuildContext context) {
     final theme = M3ETheme.of(context);
+    final l10n = AppLocalizations.of(context);
     final scheme = theme.colorScheme;
     final sync = ref.watch(remoteSyncProvider).value;
     final bool syncing = sync?.isSyncing ?? false;
-    final bool canScan =
-        _testMatchesInput && !_testing && !_saving && !syncing;
+    final bool canScan = _testMatchesInput && !_testing && !_saving && !syncing;
     final String? syncStatus = _syncStatusText(sync);
 
     return Scaffold(
@@ -326,8 +334,8 @@ class _MobileOpensubsonicConfigPageState
                     maxLines: 1,
                     keyboardType: TextInputType.url,
                     textInputAction: TextInputAction.next,
-                    label: '服务器 URL',
-                    supportingText: '配置URL',
+                    label: l10n.serverUrlLabel,
+                    supportingText: l10n.serverUrlSupporting,
                     supportingTextOnFocusOnly: false,
                     isRequired: true,
                     placeholder: 'music.example.com',
@@ -346,8 +354,8 @@ class _MobileOpensubsonicConfigPageState
                     maxLines: 1,
                     keyboardType: TextInputType.number,
                     textInputAction: TextInputAction.next,
-                    label: '端口',
-                    supportingText: '端口号',
+                    label: l10n.portLabel,
+                    supportingText: l10n.portSupporting,
                     supportingTextOnFocusOnly: false,
                     isRequired: false,
                     placeholder: '4533',
@@ -363,8 +371,8 @@ class _MobileOpensubsonicConfigPageState
               maxLines: 1,
               keyboardType: TextInputType.text,
               textInputAction: TextInputAction.next,
-              label: '用户名',
-              supportingText: '用户名',
+              label: l10n.usernameLabel,
+              supportingText: l10n.usernameLabel,
               supportingTextOnFocusOnly: false,
               isRequired: true,
               leading: const Icon(M3EIcons.person),
@@ -377,15 +385,15 @@ class _MobileOpensubsonicConfigPageState
               maxLines: 1,
               keyboardType: TextInputType.visiblePassword,
               textInputAction: TextInputAction.done,
-              label: '密码',
-              supportingText: '密码',
+              label: l10n.passwordLabel,
+              supportingText: l10n.passwordLabel,
               supportingTextOnFocusOnly: false,
               isRequired: true,
               leading: const Icon(M3EIcons.lock),
               obscureText: true,
               showPasswordToggle: true,
-              showPasswordSemanticsLabel: '显示密码',
-              hidePasswordSemanticsLabel: '隐藏密码',
+              showPasswordSemanticsLabel: l10n.showPassword,
+              hidePasswordSemanticsLabel: l10n.hidePassword,
               onChanged: _onFieldChanged,
             ),
             if (_saving || syncing) ...[
@@ -395,7 +403,7 @@ class _MobileOpensubsonicConfigPageState
                   size: 48,
                   strokeWidth: 8,
                   trackStrokeWidth: 8,
-                  semanticsLabel: '正在扫描',
+                  semanticsLabel: l10n.scanningSemantics,
                 ),
               ),
             ],
@@ -432,7 +440,7 @@ class _MobileOpensubsonicConfigPageState
                 M3EButton(
                   size: M3EButtonSize.md,
                   shape: M3EButtonShape.square,
-                  label: Text(_testing ? '测试中…' : '测试'),
+                  label: Text(_testing ? l10n.testingButton : l10n.testButton),
                   onPressed: _testing || _saving ? null : _test,
                 ),
                 const SizedBox(height: 12),
@@ -441,7 +449,9 @@ class _MobileOpensubsonicConfigPageState
                   shape: M3EButtonShape.square,
                   style: M3EButtonStyle.tonal,
                   enabled: canScan,
-                  label: Text(_saving || syncing ? '扫描中…' : '扫描'),
+                  label: Text(
+                    _saving || syncing ? l10n.scanningButton : l10n.scanButton,
+                  ),
                   onPressed: canScan ? _scan : null,
                 ),
               ],

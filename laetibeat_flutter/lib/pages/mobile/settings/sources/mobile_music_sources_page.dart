@@ -1,6 +1,7 @@
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../mobile_navigation.dart';
 import '../../routes.dart';
 import '../../widgets/mobile_large_subpage_app_bar.dart';
@@ -13,12 +14,13 @@ class MobileMusicSourcesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = M3ETheme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surfaceContainer,
       appBar: mobileLargeSubpageAppBar(
         context,
-        title: '音乐源配置',
+        title: l10n.musicSourcesTitle,
         centerTitle: true,
       ),
       body: SafeArea(
@@ -40,31 +42,30 @@ class MobileMusicSourcesPage extends StatelessWidget {
               itemCount: 6,
               itemBuilder: (BuildContext context, int index) {
                 return switch (index) {
-                  0 => const M3EListItem(
-                      headline: 'Opensubsonic',
-                      supportingText:
-                          '连接到您的支持opensubsonic协议的服务器，例如navidrome。',
-                    ),
-                  1 => const M3EListItem(
-                      headline: 'Jellyfin',
-                      supportingText: '暂未提供',
-                    ),
-                  2 => const M3EListItem(
-                      headline: 'Emby音乐',
-                      supportingText: '暂未提供',
-                    ),
-                  3 => const M3EListItem(
-                      headline: '洛雪音源',
-                      supportingText: '暂未提供',
-                    ),
-                  4 => const M3EListItem(
-                      headline: 'qq音乐',
-                      supportingText: '暂未提供',
-                    ),
-                  _ => const M3EListItem(
-                      headline: '网易云',
-                      supportingText: '暂未提供',
-                    ),
+                  0 => M3EListItem(
+                    headline: 'Opensubsonic',
+                    supportingText: l10n.openSubsonicDescription,
+                  ),
+                  1 => M3EListItem(
+                    headline: l10n.sourceJellyfin,
+                    supportingText: l10n.notAvailable,
+                  ),
+                  2 => M3EListItem(
+                    headline: l10n.sourceEmbyMusic,
+                    supportingText: l10n.notAvailable,
+                  ),
+                  3 => M3EListItem(
+                    headline: l10n.sourceLxMusic,
+                    supportingText: l10n.notAvailable,
+                  ),
+                  4 => M3EListItem(
+                    headline: l10n.sourceQqMusic,
+                    supportingText: l10n.notAvailable,
+                  ),
+                  _ => M3EListItem(
+                    headline: l10n.sourceNetEaseMusic,
+                    supportingText: l10n.notAvailable,
+                  ),
                 };
               },
             ),

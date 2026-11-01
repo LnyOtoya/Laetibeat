@@ -11,6 +11,8 @@ import 'package:laetibeat/widgets/settings/subsonic_provider.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../../l10n/generated/app_localizations.dart';
+
 /// 歌曲分类内容。
 class SongsLibraryView extends ConsumerStatefulWidget {
   const SongsLibraryView({super.key});
@@ -157,6 +159,7 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
     });
 
     final theme = M3ETheme.of(context);
+    final l10n = AppLocalizations.of(context);
     ref.watch(defaultSongSortProvider);
     final localState = ref.watch(musicLibraryProvider).value;
     final servers =
@@ -176,7 +179,7 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
                 children: [
                   M3EButton.icon(
                     icon: const Icon(M3EIcons.shuffle),
-                    label: const Text('随机播放'),
+                    label: Text(l10n.randomPlay),
                     style: M3EButtonStyle.filled,
                     size: M3EButtonSize.sm,
                     shape: M3EButtonShape.round,
@@ -185,12 +188,12 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
                   const Spacer(),
                   M3ESplitButton<String>(
                     items: const [],
-                    label: '排序',
+                    label: l10n.sortLabel,
                     leadingIcon: M3EIcons.sort,
                     style: M3EButtonStyle.tonal,
                     size: M3EButtonSize.sm,
                     shape: M3EButtonShape.round,
-                    trailingTooltip: '当前音源：$_selectedSource',
+                    trailingTooltip: '${l10n.currentSource}$_selectedSource',
                     selectedValue: _selectedSource,
                     decoration: const M3ESplitButtonDecoration(
                       menuStyle: M3ESplitButtonMenuStyle.popup,
@@ -208,7 +211,7 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
                           value: _subsonicSource,
                           selected: _selectedSource == _subsonicSource,
                           enabled: server != null,
-                          supportingText: server?.baseUrl ?? '未配置',
+                          supportingText: server?.baseUrl ?? l10n.notConfigured,
                         ),
                         for (final source in const [
                           SongSources.jellyfin,
@@ -222,7 +225,7 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
                             value: source,
                             selected: _selectedSource == source,
                             enabled: false,
-                            supportingText: '暂未提供',
+                            supportingText: l10n.notAvailable,
                           ),
                       ];
                     },
@@ -252,7 +255,7 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
                 leading: M3EToolbarIconButton(
                   action: M3EToolbarAction(
                     icon: M3EIcons.close,
-                    tooltip: '退出选择',
+                    tooltip: l10n.exitSelection,
                     onPressed: _clearSelection,
                   ),
                   size: M3EIconButtonSize.sm,
@@ -261,17 +264,17 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
                 actions: <M3EToolbarItem>[
                   M3EToolbarAction(
                     icon: M3EIcons.play_arrow,
-                    tooltip: '立即播放',
+                    tooltip: l10n.playNow,
                     onPressed: _playSelectedNow,
                   ),
                   M3EToolbarAction(
                     icon: M3EIcons.queue_play_next,
-                    tooltip: '下一首播放',
+                    tooltip: l10n.playNext,
                     onPressed: _playSelectedNext,
                   ),
                   M3EToolbarAction(
                     icon: M3EIcons.playlist_add,
-                    tooltip: '添加到歌单',
+                    tooltip: l10n.addToPlaylist,
                     onPressed: () {},
                   ),
                   M3EToolbarWidget(
@@ -279,7 +282,7 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
                       variant: M3EIconButtonVariant.tonal,
                       shape: M3EIconButtonShapeVariant.round,
                       icon: const Icon(M3EIcons.favorite_border),
-                      tooltip: '添加到喜欢',
+                      tooltip: l10n.addToFavorites,
                       onPressed: () {},
                     ),
                   ),
@@ -324,12 +327,15 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
                   Row(
                     children: [
                       Expanded(
-                        child: Text('排序方式', style: theme.typeScale.titleLarge),
+                        child: Text(
+                          AppLocalizations.of(sheetContext).sortBy,
+                          style: theme.typeScale.titleLarge,
+                        ),
                       ),
                       M3EIconButton(
                         size: M3EIconButtonSize.xs,
                         icon: const Icon(M3EIcons.close),
-                        tooltip: '关闭排序方式',
+                        tooltip: AppLocalizations.of(sheetContext).closeSort,
                         onPressed: () => Navigator.of(sheetContext).pop(),
                       ),
                     ],
@@ -373,12 +379,18 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
       final tracks = (localState?.tracks ?? const <rust.UiTrack>[])
           .where((track) => !_dismissedTrackIds.contains(track.id))
           .toList(growable: false);
-      return _buildTrackList(theme, tracks, '暂无歌曲');
+      return _buildTrackList(
+        theme,
+        tracks,
+        AppLocalizations.of(context).noSongs,
+      );
     }
 
     if (_selectedSource == _subsonicSource) {
       if (server == null) {
-        return const Center(child: Text('请先配置 Subsonic 音源'));
+        return Center(
+          child: Text(AppLocalizations.of(context).configureSubsonicFirst),
+        );
       }
 
       final remote = ref.watch(remoteAllTracksProvider(server.id));
@@ -393,7 +405,7 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Text(
-              '读取远端歌曲失败\n$error',
+              '${AppLocalizations.of(context).loadRemoteSongsFailed}\n$error',
               textAlign: TextAlign.center,
               style: theme.typeScale.bodyMedium.copyWith(
                 color: theme.colorScheme.error,
@@ -406,12 +418,16 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
               .map((track) => remoteTrackToUiTrack(track, server.id))
               .where((track) => !_dismissedTrackIds.contains(track.id))
               .toList(growable: false);
-          return _buildTrackList(theme, tracks, '还没有远端歌曲，请先在内容设置中扫描');
+          return _buildTrackList(
+            theme,
+            tracks,
+            AppLocalizations.of(context).noRemoteSongsScan,
+          );
         },
       );
     }
 
-    return Center(child: Text('$_selectedSource暂未提供'));
+    return Center(child: Text(AppLocalizations.of(context).sourceUnavailable));
   }
 
   Widget _buildTrackList(

@@ -5,6 +5,7 @@ import 'package:laetibeat/widgets/remote_browser_provider.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../mobile_navigation.dart';
 import '../../routes.dart';
 import '../../widgets/mobile_large_subpage_app_bar.dart';
@@ -31,6 +32,7 @@ class _ArtistDetailPageState extends ConsumerState<ArtistDetailPage> {
   @override
   Widget build(BuildContext context) {
     final theme = M3ETheme.of(context);
+    final l10n = AppLocalizations.of(context);
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     final biography = ref.watch(
       remoteArtistBiographyProvider((
@@ -54,7 +56,7 @@ class _ArtistDetailPageState extends ConsumerState<ArtistDetailPage> {
           M3EIconButton(
             variant: M3EIconButtonVariant.standard,
             icon: const Icon(M3EIcons.favorite_border),
-            tooltip: '喜欢',
+            tooltip: AppLocalizations.of(context).like,
             onPressed: () {},
           ),
         ],
@@ -81,7 +83,9 @@ class _ArtistDetailPageState extends ConsumerState<ArtistDetailPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '共 ${widget.artist.albumCount?.toInt() ?? '--'} 张专辑',
+                      l10n.totalAlbums(
+                        '${widget.artist.albumCount?.toInt() ?? '--'}',
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.typeScale.bodyMedium.copyWith(
@@ -99,7 +103,7 @@ class _ArtistDetailPageState extends ConsumerState<ArtistDetailPage> {
               Expanded(
                 child: M3EButton.icon(
                   icon: const Icon(M3EIcons.local_fire_department),
-                  label: const Text('热门歌曲'),
+                  label: Text(l10n.topSongs),
                   style: M3EButtonStyle.filled,
                   onPressed: () {},
                 ),
@@ -108,7 +112,7 @@ class _ArtistDetailPageState extends ConsumerState<ArtistDetailPage> {
               Expanded(
                 child: M3EButton.icon(
                   icon: const Icon(M3EIcons.shuffle),
-                  label: const Text('随机播放'),
+                  label: Text(l10n.shufflePlay),
                   style: M3EButtonStyle.tonal,
                   onPressed: () {},
                 ),
@@ -122,7 +126,7 @@ class _ArtistDetailPageState extends ConsumerState<ArtistDetailPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  '公开数据',
+                  l10n.publicData,
                   style: theme.typeScale.titleSmall.copyWith(
                     color: theme.colorScheme.onPrimaryContainer,
                   ),
@@ -134,10 +138,10 @@ class _ArtistDetailPageState extends ConsumerState<ArtistDetailPage> {
                     child: Center(child: M3ELoadingIndicator()),
                   ),
                   error: (Object error, StackTrace stackTrace) =>
-                      _biographyText(theme, '暂无歌手详情'),
+                      _biographyText(theme, l10n.noArtistBio),
                   data: (String? text) {
                     final content = text == null || text.trim().isEmpty
-                        ? '暂无歌手详情'
+                        ? l10n.noArtistBio
                         : text;
                     return GestureDetector(
                       behavior: HitTestBehavior.opaque,
@@ -168,7 +172,7 @@ class _ArtistDetailPageState extends ConsumerState<ArtistDetailPage> {
             child: Row(
               children: [
                 Text(
-                  '歌手专辑',
+                  l10n.artistAlbums,
                   style: theme.typeScale.titleSmall.copyWith(
                     color: theme.colorScheme.onPrimaryContainer,
                   ),
@@ -188,15 +192,15 @@ class _ArtistDetailPageState extends ConsumerState<ArtistDetailPage> {
               padding: EdgeInsets.symmetric(vertical: 16),
               child: Center(child: M3ELoadingIndicator()),
             ),
-            error: (Object error, StackTrace stackTrace) => const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16),
-              child: Center(child: Text('读取专辑失败')),
+            error: (Object error, StackTrace stackTrace) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Center(child: Text(l10n.loadAlbumsFailed)),
             ),
             data: (list) {
               if (list.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Center(child: Text('暂无专辑')),
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Center(child: Text(l10n.noAlbums)),
                 );
               }
               return M3EList(
@@ -218,13 +222,13 @@ class _ArtistDetailPageState extends ConsumerState<ArtistDetailPage> {
                       ),
                       headline: album.title,
                       supportingText:
-                          '${album.year?.toString() ?? '年份未知'}\n'
-                          '${_formatApproxDuration(album.durationSeconds?.toInt())}',
+                          '${album.year?.toString() ?? l10n.yearUnknown}\n'
+                          '${_formatApproxDuration(album.durationSeconds?.toInt(), l10n)}',
                       trailing: M3EIconButton(
                         size: M3EIconButtonSize.xs,
                         variant: M3EIconButtonVariant.standard,
                         icon: const Icon(M3EIcons.favorite_border),
-                        tooltip: '喜欢',
+                        tooltip: AppLocalizations.of(context).like,
                         onPressed: () {},
                       ),
                     ),
@@ -238,11 +242,11 @@ class _ArtistDetailPageState extends ConsumerState<ArtistDetailPage> {
     );
   }
 
-  String _formatApproxDuration(int? seconds) {
-    if (seconds == null || seconds <= 0) return '时长未知';
+  String _formatApproxDuration(int? seconds, AppLocalizations l10n) {
+    if (seconds == null || seconds <= 0) return l10n.durationUnknown;
     final minutes = (seconds / 60).round();
-    if (minutes <= 0) return '不到 1 分钟';
-    return '大约 $minutes 分钟';
+    if (minutes <= 0) return l10n.lessThanMinute;
+    return l10n.approxMinutes(minutes);
   }
 
   void _openAlbum(rust_subsonic.UiRemoteAlbum album) {

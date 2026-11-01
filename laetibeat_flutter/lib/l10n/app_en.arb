@@ -41,5 +41,211 @@
   "settingsBackupRestore": "Backup & restore",
   "settingsBackupRestoreSupporting": "Back up settings or import from another configuration",
   "settingsAbout": "About",
-  "settingsAboutSupporting": "Current version"
+  "settingsAboutSupporting": "Current version",
+  "lyricsGroup": "Lyrics",
+  "lyricsSource": "Lyrics source",
+  "lyricsSourceSupporting": "Choose which lyrics sources are enabled",
+  "lyricsPriority": "Lyrics source priority",
+  "lyricsPrioritySupporting": "Reorder lyrics sources by preference",
+  "lyricsReset": "Reset imported lyrics",
+  "lyricsResetSupporting": "Remove all imported lyrics from the database",
+  "syncScanGroup": "Sync & scan",
+  "chooseLocalLibrary": "Choose local library",
+  "chooseLocalLibrarySupporting": "Choose the folder that contains your music",
+  "chooseLibrary": "Choose library",
+  "syncDatabase": "Sync database",
+  "musicSourcesTitle": "Music sources",
+  "openSubsonicDescription": "Connect to an OpenSubsonic-compatible server, such as Navidrome.",
+  "notAvailable": "Not available yet",
+  "sourceJellyfin": "Jellyfin",
+  "sourceEmbyMusic": "Emby Music",
+  "sourceLxMusic": "LX Music",
+  "sourceQqMusic": "QQ Music",
+  "sourceNetEaseMusic": "NetEase Cloud Music",
+  "statisticsTitle": "Statistics",
+  "commonBack": "Back",
+  "previousTrack": "Previous track",
+  "pause": "Pause",
+  "play": "Play",
+  "nextTrack": "Next track",
+  "musicLibraryEmpty": "Your library is empty",
+  "goToSettingsScan": "Open settings to choose a music folder and start scanning",
+  "nothingPlaying": "Nothing playing",
+  "chooseSongToPlay": "Choose a song from your library to start playing",
+  "nowPlaying": "Now playing",
+  "fullScreen": "Full screen",
+  "exitFullScreen": "Exit full screen",
+  "lyrics": "Lyrics",
+  "shufflePlayback": "Shuffle",
+  "repeatPlayback": "Repeat",
+  "addToPlaylist": "Add to playlist",
+  "queueButton": "Queue",
+  "more": "More",
+  "queueTitle": "Play queue",
+  "queueCount": "{count} songs",
+  "@queueCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "closeQueue": "Close queue",
+  "queueEmpty": "Queue is empty",
+  "queueEmptySubtitle": "Choose songs from your library to start playing",
+  "addToQueue": "Add to queue",
+  "hideLyrics": "Hide lyrics",
+  "showLyrics": "Show lyrics",
+  "randomPlay": "Shuffle",
+  "sortLabel": "Sort",
+  "currentSource": "Current source: ",
+  "notConfigured": "Not configured",
+  "exitSelection": "Exit selection",
+  "playNow": "Play now",
+  "playNext": "Play next",
+  "addToFavorites": "Add to favorites",
+  "sortBy": "Sort by",
+  "closeSort": "Close sorting",
+  "noSongs": "No songs",
+  "configureSubsonicFirst": "Configure a Subsonic source first",
+  "loadRemoteSongsFailed": "Failed to load remote songs",
+  "noRemoteSongsScan": "No remote songs yet. Scan your library in Content settings first.",
+  "sourceUnavailable": "This source is not available yet",
+  "noPlaylists": "No playlists yet",
+  "loadPlaylistsFailed": "Failed to load playlists",
+  "noArtists": "No artists yet",
+  "loadArtistsFailed": "Failed to load artists",
+  "noAlbums": "No albums yet",
+  "loadAlbumsFailed": "Failed to load albums",
+  "switchToList": "Switch to list layout",
+  "switchToGrid": "Switch to grid layout",
+  "like": "Like",
+  "releaseDate": "Released: {year}",
+  "@releaseDate": {
+    "placeholders": {
+      "year": {
+        "type": "String"
+      }
+    }
+  },
+  "unknown": "Unknown",
+  "albumSummary": "{count} songs, {duration}",
+  "@albumSummary": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "loadTracksFailed": "Failed to load songs",
+  "noTracks": "No songs yet",
+  "discNumber": "Disc {number}",
+  "@discNumber": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "durationUnknown": "Duration unknown",
+  "totalAlbums": "{count} albums",
+  "@totalAlbums": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "topSongs": "Top songs",
+  "shufflePlay": "Shuffle",
+  "publicData": "Public data",
+  "noArtistBio": "No artist biography yet",
+  "artistAlbums": "Artist albums",
+  "yearUnknown": "Year unknown",
+  "approxMinutes": "About {minutes} min",
+  "@approxMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "lessThanMinute": "Less than 1 min",
+  "serverUrlRequired": "Enter the server URL",
+  "serverUrlInvalid": "Enter a valid server URL",
+  "portInvalid": "Enter a valid port",
+  "usernameRequired": "Enter a username",
+  "passwordRequired": "Enter a password",
+  "connectionSuccess": "Connection successful: ",
+  "syncFetchingArtists": "Fetching artists…",
+  "syncAlbumsProgress": "Fetched {count} albums",
+  "@syncAlbumsProgress": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncFetchingAlbums": "Fetching albums…",
+  "syncTracksProgress": "Fetching tracks {completed}/{total}",
+  "@syncTracksProgress": {
+    "placeholders": {
+      "completed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "syncTracksCount": "Fetching tracks: {count}",
+  "@syncTracksCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncScanning": "Scanning…",
+  "syncFailed": "Scan failed: {error}",
+  "@syncFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "syncRetry": "Try again later",
+  "syncComplete": "Scan complete: {count} songs",
+  "@syncComplete": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "serverUrlLabel": "Server URL",
+  "serverUrlSupporting": "Configured URL",
+  "portLabel": "Port",
+  "portSupporting": "Port number",
+  "usernameLabel": "Username",
+  "passwordLabel": "Password",
+  "showPassword": "Show password",
+  "hidePassword": "Hide password",
+  "testingButton": "Testing…",
+  "testButton": "Test",
+  "scanningButton": "Scanning…",
+  "scanButton": "Scan",
+  "scanningSemantics": "Scanning",
+  "lyricsNotPlayingTitle": "Nothing playing",
+  "lyricsNotPlayingSubtitle": "Choose a song from your library to view lyrics",
+  "lyricsLoading": "Loading lyrics",
+  "lyricsLoadFailed": "Failed to load lyrics",
+  "lyricsEmptyTitle": "No lyrics",
+  "lyricsEmptySubtitle": "No lyrics are available for this track",
+  "notificationChannelName": "Playback",
+  "notificationChannelDescription": "Laetibeat playback controls"
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:laetibeat/src/rust/api/simple.dart' as rust;
+import '../../l10n/generated/app_localizations.dart';
 import '../../animations.dart';
 import '../settings/music_library_provider.dart';
 import 'cover_provider.dart';
@@ -64,7 +65,9 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
     });
 
     //空态:未播放任何曲目时,按音乐库是否有曲目分两种占位提示(保持全局配色)
-    if (track == null) return _emptyState(ref, baseTheme, baseTheme.colorScheme);
+    if (track == null) {
+      return _emptyState(context, ref, baseTheme, baseTheme.colorScheme);
+    }
 
     // 播放页封面取色:仅本页用封面主色派生 ColorScheme 覆盖全局配色,
     // 其余页面保持原有壁纸/主题取色不变。无封面时保持默认配色。
@@ -103,18 +106,22 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
                 // 竖直空间极小(矮窗口被下方队列压缩):退化为可滚动布局,保证不溢出
                 if (c.maxHeight < _tightHeight) {
                   return SingleChildScrollView(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: hPad,
+                      vertical: vPad,
+                    ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _sourceArea(
+                          context,
                           theme,
                           scheme,
                           player,
-                          bottomGap:
-                              compact ? theme.spacing.sm : theme.spacing.lg,
+                          bottomGap: compact
+                              ? theme.spacing.sm
+                              : theme.spacing.lg,
                         ),
                         // 封面/歌词区:封面向上滑出淡出,歌词平滑进入(反向亦然)。
                         // 歌词态同时放大可用高度,把来源区收起释放的空间让给歌词;
@@ -129,8 +136,9 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
                           duration: kSectionAnimDuration,
                           curve: kSectionAnimCurve,
                           builder: (context, factor, child) => ConstrainedBox(
-                            constraints:
-                                BoxConstraints(maxHeight: c.maxHeight * factor),
+                            constraints: BoxConstraints(
+                              maxHeight: c.maxHeight * factor,
+                            ),
                             child: child,
                           ),
                           child: _mainArea(theme, bytes),
@@ -146,8 +154,14 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
                               ? theme.spacing.lg
                               : theme.spacing.xxl,
                         ),
-                        _controlRegion(context, theme, scheme, player, ref,
-                            compact: compact),
+                        _controlRegion(
+                          context,
+                          theme,
+                          scheme,
+                          player,
+                          ref,
+                          compact: compact,
+                        ),
                       ],
                     ),
                   );
@@ -156,19 +170,20 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
                 // 常规流式填充布局:封面 Expanded 吸收所有高度余量,
                 // AspectRatio(1) 保证正方形、不拉伸,文字/图标始终原生像素渲染
                 return Padding(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: hPad,
+                    vertical: vPad,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       // 来源区顶部留缝;窄屏收紧,让来源文字上移、封面获得更多空间
                       _sourceArea(
+                        context,
                         theme,
                         scheme,
                         player,
-                        topGap: compact
-                            ? theme.spacing.sm
-                            : theme.spacing.xl,
+                        topGap: compact ? theme.spacing.sm : theme.spacing.xl,
                         bottomGap: compact
                             ? theme.spacing.sm
                             : theme.spacing.lg,
@@ -176,16 +191,20 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
                       Expanded(child: _mainArea(theme, bytes)),
                       // 信息行距离控制区: 间距稍大
                       SizedBox(
-                        height:
-                            compact ? theme.spacing.lg : theme.spacing.xxl,
+                        height: compact ? theme.spacing.lg : theme.spacing.xxl,
                       ),
                       _infoRow(context, theme, track, bytes),
                       SizedBox(
-                        height:
-                            compact ? theme.spacing.lg : theme.spacing.xxl,
+                        height: compact ? theme.spacing.lg : theme.spacing.xxl,
                       ),
-                      _controlRegion(context, theme, scheme, player, ref,
-                          compact: compact),
+                      _controlRegion(
+                        context,
+                        theme,
+                        scheme,
+                        player,
+                        ref,
+                        compact: compact,
+                      ),
                     ],
                   ),
                 );
@@ -219,7 +238,7 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
                           );
                         },
                         child: _showQueue
-                            ? _queueOverlay(theme, scheme, player)
+                            ? _queueOverlay(context, theme, scheme, player)
                             : const SizedBox.shrink(
                                 key: ValueKey('queue-closed'),
                               ),
@@ -237,22 +256,27 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
 
   //空态占位:音乐库为空 => 引导扫描;有曲目未播放 => '未在播放'提示
   Widget _emptyState(
+    BuildContext context,
     WidgetRef ref,
     M3EThemeData theme,
     M3EColorScheme scheme,
   ) {
+    final l10n = AppLocalizations.of(context);
     final lib = ref.watch(musicLibraryProvider).value;
     final empty = lib == null || lib.tracks.isEmpty;
     final icon = empty ? Icons.music_off : Icons.play_circle_outline;
-    final title = empty ? '音乐库为空' : '未在播放';
-    final subtitle =
-        empty ? '前往设置选择音乐文件夹,开始扫描' : '从音乐库选择一首歌曲开始播放';
+    final title = empty ? l10n.musicLibraryEmpty : l10n.nothingPlaying;
+    final subtitle = empty ? l10n.goToSettingsScan : l10n.chooseSongToPlay;
 
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 96, color: scheme.onSurfaceVariant.withValues(alpha: 0.4)),
+          Icon(
+            icon,
+            size: 96,
+            color: scheme.onSurfaceVariant.withValues(alpha: 0.4),
+          ),
           SizedBox(height: theme.spacing.lg),
           Text(title, style: theme.typeScale.titleMedium),
           SizedBox(height: theme.spacing.xs),
@@ -272,6 +296,7 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
   // 默认态显示"正在播放"与来源名;收起用 Align.heightFactor + ClipRect,
   // 固定尺寸内容不会被压缩变形。
   Widget _sourceArea(
+    BuildContext context,
     M3EThemeData theme,
     M3EColorScheme scheme,
     PlayerState player, {
@@ -297,7 +322,7 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (topGap > 0) SizedBox(height: topGap),
-          _sourceRegion(theme, scheme, player),
+          _sourceRegion(context, theme, scheme, player),
           SizedBox(height: bottomGap ?? theme.spacing.lg),
         ],
       ),
@@ -306,6 +331,7 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
 
   //区域1:来源区 - 居中显示'正在播放' + 来源名
   Widget _sourceRegion(
+    BuildContext context,
     M3EThemeData theme,
     M3EColorScheme scheme,
     PlayerState player,
@@ -316,7 +342,7 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
         Align(
           alignment: Alignment.center,
           child: Text(
-            '正在播放',
+            AppLocalizations.of(context).nowPlaying,
             style: theme.typeScale.labelLarge.copyWith(
               color: scheme.onSurfaceVariant,
             ),
@@ -349,8 +375,10 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
         return FadeTransition(
           opacity: animation,
           child: SlideTransition(
-            position: Tween<Offset>(begin: begin, end: Offset.zero)
-                .animate(animation),
+            position: Tween<Offset>(
+              begin: begin,
+              end: Offset.zero,
+            ).animate(animation),
             child: child,
           ),
         );
@@ -374,6 +402,7 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
     rust.UiTrack? track,
     Uint8List? bytes,
   ) {
+    final l10n = AppLocalizations.of(context);
     final showCover = _showLyrics;
     const double coverSize = 44;
     return Row(
@@ -424,7 +453,7 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      track?.title ?? '未在播放',
+                      track?.title ?? l10n.nothingPlaying,
                       style: theme.typeScale.headlineSmall,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -483,13 +512,17 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
                     ? Icons.fullscreen_exit
                     : Icons.fullscreen,
               ),
-              semanticLabel: widget.fullscreen && !_showLyrics ? '退出全屏' : '全屏',
-              tooltip: widget.fullscreen && !_showLyrics ? '退出全屏' : '全屏',
+              semanticLabel: widget.fullscreen && !_showLyrics
+                  ? l10n.exitFullScreen
+                  : l10n.fullScreen,
+              tooltip: widget.fullscreen && !_showLyrics
+                  ? l10n.exitFullScreen
+                  : l10n.fullScreen,
             ),
-            const M3EButtonGroupAction(
-              icon: Icon(Icons.lyrics),
-              semanticLabel: '歌词',
-              tooltip: '歌词',
+            M3EButtonGroupAction(
+              icon: const Icon(Icons.lyrics),
+              semanticLabel: l10n.lyrics,
+              tooltip: l10n.lyrics,
             ),
           ],
         ),
@@ -547,6 +580,7 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
         ? player.position
         : Duration(milliseconds: (_dragValue! * total).round());
     final notifier = ref.read(playerProvider.notifier);
+    final l10n = AppLocalizations.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -641,8 +675,8 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
                           icon: const Icon(Icons.shuffle),
                           selectedIcon: const Icon(Icons.shuffle),
                           // label 缺省即纯 icon
-                          semanticLabel: '随机播放',
-                          tooltip: '随机播放',
+                          semanticLabel: l10n.shufflePlayback,
+                          tooltip: l10n.shufflePlayback,
                         ),
                         M3EButtonGroupAction(
                           icon: Icon(
@@ -656,14 +690,14 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
                                 : Icons.repeat,
                           ),
                           // label 缺省即纯 icon
-                          semanticLabel: '重复',
-                          tooltip: '重复',
+                          semanticLabel: l10n.repeatPlayback,
+                          tooltip: l10n.repeatPlayback,
                         ),
-                        const M3EButtonGroupAction(
-                          icon: Icon(Icons.playlist_add),
+                        M3EButtonGroupAction(
+                          icon: const Icon(Icons.playlist_add),
                           // label 缺省即纯 icon
-                          semanticLabel: '添加到歌单',
-                          tooltip: '添加到歌单',
+                          semanticLabel: l10n.addToPlaylist,
+                          tooltip: l10n.addToPlaylist,
                         ),
                       ],
                     ),
@@ -679,7 +713,7 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
                   M3EButton(
                     size: M3EButtonSize.sm,
                     icon: const Icon(Icons.playlist_play),
-                    label: const Text('队列'),
+                    label: Text(l10n.queueButton),
                     style: M3EButtonStyle.filled,
                     shape: M3EButtonShape.square,
                     onPressed: () => setState(() => _showQueue = !_showQueue),
@@ -724,6 +758,7 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
   /// 面板内遮罩 + 底部队列卡片。覆盖范围就是当前播放面板,
   /// 不会像 showModalBottomSheet 那样弹到整个窗口底部。
   Widget _queueOverlay(
+    BuildContext context,
     M3EThemeData theme,
     M3EColorScheme scheme,
     PlayerState player,
@@ -754,7 +789,7 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
                     theme.spacing.md,
                     theme.spacing.md,
                   ),
-                  child: _queueSheet(theme, scheme, player),
+                  child: _queueSheet(context, theme, scheme, player),
                 ),
               ),
             ),
@@ -765,11 +800,13 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
   }
 
   Widget _queueSheet(
+    BuildContext context,
     M3EThemeData theme,
     M3EColorScheme scheme,
     PlayerState player,
   ) {
     final queue = player.queue;
+    final l10n = AppLocalizations.of(context);
     return DecoratedBox(
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHigh,
@@ -789,10 +826,13 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
             Row(
               children: [
                 Expanded(
-                  child: Text('播放队列', style: theme.typeScale.titleLarge),
+                  child: Text(
+                    l10n.queueTitle,
+                    style: theme.typeScale.titleLarge,
+                  ),
                 ),
                 Text(
-                  '${queue.length} 首',
+                  l10n.queueCount(queue.length),
                   style: theme.typeScale.labelMedium.copyWith(
                     color: scheme.onSurfaceVariant,
                   ),
@@ -801,7 +841,7 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
                 M3EIconButton(
                   size: M3EIconButtonSize.xs,
                   icon: const Icon(Icons.close),
-                  tooltip: '关闭队列',
+                  tooltip: l10n.closeQueue,
                   onPressed: _closeQueue,
                 ),
               ],
@@ -821,10 +861,13 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
                             ),
                           ),
                           SizedBox(height: theme.spacing.sm),
-                          Text('队列为空', style: theme.typeScale.titleMedium),
+                          Text(
+                            l10n.queueEmpty,
+                            style: theme.typeScale.titleMedium,
+                          ),
                           SizedBox(height: theme.spacing.xs),
                           Text(
-                            '从音乐库选择歌曲开始播放',
+                            l10n.queueEmptySubtitle,
                             style: theme.typeScale.bodyMedium.copyWith(
                               color: scheme.onSurfaceVariant,
                             ),
@@ -846,8 +889,8 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
                           leading: Icon(
                             selected
                                 ? (player.isPlaying
-                                    ? Icons.graphic_eq
-                                    : Icons.pause_circle_outline)
+                                      ? Icons.graphic_eq
+                                      : Icons.pause_circle_outline)
                                 : Icons.music_note,
                             size: 20,
                             color: selected
@@ -875,12 +918,13 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
 
   //竖向三点菜单
   Widget _moreMenu(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return M3EMenu.entries(
       position: M3EMenuAnchorPosition.bottomEnd,
       entries: [
-        const M3EMenuEntry(label: '添加到播放队列'),
+        M3EMenuEntry(label: l10n.addToQueue),
         M3EMenuEntry(
-          label: _showLyrics ? '收起歌词' : '查看歌词',
+          label: _showLyrics ? l10n.hideLyrics : l10n.showLyrics,
           onPressed: () => setState(() {
             _showLyrics = !_showLyrics;
             // 收起歌词即返回普通播放页,同步退出沉浸模式
@@ -891,7 +935,7 @@ class _PlaybackPanelState extends ConsumerState<PlaybackPanel> {
       anchorBuilder: (context, open) => M3EButton(
         size: M3EButtonSize.sm,
         icon: const Icon(Icons.more_vert),
-        label: const Text('更多'),
+        label: Text(l10n.more),
         style: M3EButtonStyle.filled,
         shape: M3EButtonShape.square,
         onPressed: open,

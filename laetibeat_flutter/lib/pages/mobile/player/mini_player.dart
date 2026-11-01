@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../widgets/player/cover_provider.dart';
 import '../../../widgets/player/playback_panel.dart';
 import '../../../widgets/player/player_provider.dart';
@@ -55,19 +56,21 @@ class MiniPlayer extends ConsumerWidget {
                 M3EIconButton(
                   variant: M3EIconButtonVariant.standard,
                   icon: const Icon(M3EIcons.skip_previous),
-                  tooltip: '上一曲',
+                  tooltip: AppLocalizations.of(context).previousTrack,
                   onPressed: notifier.prev,
                 ),
                 M3EIconButton(
                   variant: M3EIconButtonVariant.filled,
                   icon: Icon(isPlaying ? M3EIcons.pause : M3EIcons.play_arrow),
-                  tooltip: isPlaying ? '暂停' : '播放',
+                  tooltip: isPlaying
+                      ? AppLocalizations.of(context).pause
+                      : AppLocalizations.of(context).play,
                   onPressed: notifier.toggle,
                 ),
                 M3EIconButton(
                   variant: M3EIconButtonVariant.standard,
                   icon: const Icon(M3EIcons.skip_next),
-                  tooltip: '下一曲',
+                  tooltip: AppLocalizations.of(context).nextTrack,
                   onPressed: notifier.next,
                 ),
               ],

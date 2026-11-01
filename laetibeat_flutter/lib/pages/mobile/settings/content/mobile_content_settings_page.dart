@@ -1,6 +1,7 @@
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../widgets/mobile_large_subpage_app_bar.dart';
 
 /// 内容设置子页面。
@@ -10,16 +11,17 @@ class MobileContentSettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = M3ETheme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surfaceContainer,
-      appBar: mobileLargeSubpageAppBar(context, title: '内容'),
+      appBar: mobileLargeSubpageAppBar(context, title: l10n.settingsContent),
       body: SafeArea(
         top: false,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           children: [
-            const _ContentGroupTitle('歌词'),
+            _ContentGroupTitle(l10n.lyricsGroup),
             const SizedBox(height: 8),
             M3EList(
               color: theme.colorScheme.surface,
@@ -27,32 +29,32 @@ class MobileContentSettingsPage extends StatelessWidget {
               itemCount: 3,
               itemBuilder: (BuildContext context, int index) {
                 return switch (index) {
-                  0 => const M3EListItem(
-                      headline: '歌词来源',
-                      supportingText: '选择要启用的歌词来源',
-                    ),
-                  1 => const M3EListItem(
-                      headline: '歌词来源优先级',
-                      supportingText: '按照偏好重新排序歌词源优先级',
-                    ),
-                  _ => const M3EListItem(
-                      headline: '重置已导入的歌词',
-                      supportingText: '从数据库中移除所有已经导入的歌词',
-                    ),
+                  0 => M3EListItem(
+                    headline: l10n.lyricsSource,
+                    supportingText: l10n.lyricsSourceSupporting,
+                  ),
+                  1 => M3EListItem(
+                    headline: l10n.lyricsPriority,
+                    supportingText: l10n.lyricsPrioritySupporting,
+                  ),
+                  _ => M3EListItem(
+                    headline: l10n.lyricsReset,
+                    supportingText: l10n.lyricsResetSupporting,
+                  ),
                 };
               },
             ),
             const SizedBox(height: 24),
-            const _ContentGroupTitle('同步与扫描'),
+            _ContentGroupTitle(l10n.syncScanGroup),
             const SizedBox(height: 8),
             M3EList(
               color: theme.colorScheme.surface,
               variant: M3ECardVariant.filled,
               itemCount: 1,
               itemBuilder: (BuildContext context, int index) {
-                return const M3EListItem(
-                  headline: '选择本地媒体库',
-                  supportingText: '选择您的音乐文件夹所在的目录',
+                return M3EListItem(
+                  headline: l10n.chooseLocalLibrary,
+                  supportingText: l10n.chooseLocalLibrarySupporting,
                 );
               },
             ),
@@ -61,13 +63,10 @@ class MobileContentSettingsPage extends StatelessWidget {
               spacing: 12,
               runSpacing: 8,
               children: [
-                M3EButton(
-                  label: const Text('选择媒体库'),
-                  onPressed: () {},
-                ),
+                M3EButton(label: Text(l10n.chooseLibrary), onPressed: () {}),
                 M3EButton(
                   style: M3EButtonStyle.tonal,
-                  label: const Text('同步数据库'),
+                  label: Text(l10n.syncDatabase),
                   onPressed: () {},
                 ),
               ],
