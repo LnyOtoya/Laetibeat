@@ -60,8 +60,6 @@
   "sourceJellyfin": "Jellyfin",
   "sourceEmbyMusic": "Emby Music",
   "sourceLxMusic": "LX Music",
-  "sourceQqMusic": "QQ Music",
-  "sourceNetEaseMusic": "NetEase Cloud Music",
   "statisticsTitle": "Statistics",
   "commonBack": "Back",
   "previousTrack": "Previous track",

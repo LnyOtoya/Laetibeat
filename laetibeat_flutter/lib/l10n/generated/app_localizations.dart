@@ -458,18 +458,6 @@ abstract class AppLocalizations {
   /// **'LX Music'**
   String get sourceLxMusic;
 
-  /// No description provided for @sourceQqMusic.
-  ///
-  /// In en, this message translates to:
-  /// **'QQ Music'**
-  String get sourceQqMusic;
-
-  /// No description provided for @sourceNetEaseMusic.
-  ///
-  /// In en, this message translates to:
-  /// **'NetEase Cloud Music'**
-  String get sourceNetEaseMusic;
-
   /// No description provided for @statisticsTitle.
   ///
   /// In en, this message translates to:

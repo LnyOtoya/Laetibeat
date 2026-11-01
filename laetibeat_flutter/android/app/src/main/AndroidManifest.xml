@@ -11,7 +11,9 @@
         android:name=".LaetibeatApplication"
         android:icon="@mipmap/ic_launcher"
         android:enableOnBackInvokedCallback="true"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config"
+        tools:replace="android:networkSecurityConfig">
         <activity
             android:name=".MainActivity"
             android:exported="true"

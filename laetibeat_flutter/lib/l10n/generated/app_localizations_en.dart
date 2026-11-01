@@ -195,12 +195,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sourceLxMusic => 'LX Music';
 
   @override
-  String get sourceQqMusic => 'QQ Music';
-
-  @override
-  String get sourceNetEaseMusic => 'NetEase Cloud Music';
-
-  @override
   String get statisticsTitle => 'Statistics';
 
   @override

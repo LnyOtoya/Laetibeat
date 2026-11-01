@@ -60,8 +60,6 @@
   "sourceJellyfin": "Jellyfin",
   "sourceEmbyMusic": "Emby音乐",
   "sourceLxMusic": "洛雪音源",
-  "sourceQqMusic": "QQ音乐",
-  "sourceNetEaseMusic": "网易云音乐",
   "statisticsTitle": "统计",
   "commonBack": "返回",
   "previousTrack": "上一曲",

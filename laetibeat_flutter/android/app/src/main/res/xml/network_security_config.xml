@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  rustls-platform-verifier 的 AAR 会注入一个默认禁止明文 HTTP 的
+  networkSecurityConfig，覆盖 usesCleartextTraffic。
+  Laetibeat 需要连接用户自己配置的局域网/自建 HTTP 音乐服务器，
+  因此这里明确允许明文流量。
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

@@ -190,12 +190,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sourceLxMusic => '洛雪音源';
 
   @override
-  String get sourceQqMusic => 'QQ音乐';
-
-  @override
-  String get sourceNetEaseMusic => '网易云音乐';
-
-  @override
   String get statisticsTitle => '统计';
 
   @override

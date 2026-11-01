@@ -225,8 +225,6 @@ class _SongsLibraryViewState extends ConsumerState<SongsLibraryView> {
                           SongSources.jellyfin,
                           SongSources.emby,
                           SongSources.lx,
-                          SongSources.qq,
-                          SongSources.netease,
                         ])
                           M3EMenuSelectable(
                             label: source,

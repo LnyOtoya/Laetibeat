@@ -39,7 +39,7 @@ class MobileMusicSourcesPage extends StatelessWidget {
                   name: MobileRoutes.opensubsonicConfig,
                 );
               },
-              itemCount: 6,
+              itemCount: 4,
               itemBuilder: (BuildContext context, int index) {
                 return switch (index) {
                   0 => M3EListItem(
@@ -54,16 +54,8 @@ class MobileMusicSourcesPage extends StatelessWidget {
                     headline: l10n.sourceEmbyMusic,
                     supportingText: l10n.notAvailable,
                   ),
-                  3 => M3EListItem(
-                    headline: l10n.sourceLxMusic,
-                    supportingText: l10n.notAvailable,
-                  ),
-                  4 => M3EListItem(
-                    headline: l10n.sourceQqMusic,
-                    supportingText: l10n.notAvailable,
-                  ),
                   _ => M3EListItem(
-                    headline: l10n.sourceNetEaseMusic,
+                    headline: l10n.sourceLxMusic,
                     supportingText: l10n.notAvailable,
                   ),
                 };

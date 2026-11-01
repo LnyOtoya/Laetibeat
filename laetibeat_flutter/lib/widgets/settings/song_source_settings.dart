@@ -11,8 +11,6 @@ abstract final class SongSources {
   static const String jellyfin = 'Jellyfin';
   static const String emby = 'Emby音乐';
   static const String lx = '洛雪音源';
-  static const String qq = 'QQ音乐';
-  static const String netease = '网易云音乐';
 
   static const List<String> all = <String>[
     local,
@@ -20,8 +18,6 @@ abstract final class SongSources {
     jellyfin,
     emby,
     lx,
-    qq,
-    netease,
   ];
 }
 
