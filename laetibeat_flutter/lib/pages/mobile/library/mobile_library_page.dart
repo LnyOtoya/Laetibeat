@@ -1,6 +1,7 @@
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../widgets/mobile_app_bar.dart';
 import 'views/albums_library_view.dart';
 import 'views/artists_library_view.dart';
@@ -22,6 +23,7 @@ class _MobileLibraryPageState extends State<MobileLibraryPage> {
   Widget build(BuildContext context) {
     final theme = M3ETheme.of(context);
     final scheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context);
 
     M3EButtonGroupAction action(IconData icon, String label) {
       return M3EButtonGroupAction(
@@ -41,7 +43,7 @@ class _MobileLibraryPageState extends State<MobileLibraryPage> {
       backgroundColor: theme.colorScheme.surfaceContainer,
       appBar: mobileTopAppBar(
         context,
-        title: mobileTopAppBarTitle(context, '媒体库'),
+        title: mobileTopAppBarTitle(context, l10n.libraryTitle),
         actions: mobileHomeAppBarActions(context),
       ),
       body: SafeArea(
@@ -66,28 +68,28 @@ class _MobileLibraryPageState extends State<MobileLibraryPage> {
                   setState(() => _selectedIndex = index);
                 },
                 actions: [
-                  action(M3EIcons.music_note, '歌曲'),
-                  action(M3EIcons.queue_music, '歌单'),
-                  action(M3EIcons.person, '艺术家'),
-                  action(M3EIcons.album, '专辑'),
-                  action(M3EIcons.podcasts, '播客'),
+                  action(M3EIcons.music_note, l10n.librarySongs),
+                  action(M3EIcons.queue_music, l10n.libraryPlaylists),
+                  action(M3EIcons.person, l10n.libraryArtists),
+                  action(M3EIcons.album, l10n.libraryAlbums),
+                  action(M3EIcons.podcasts, l10n.libraryPodcasts),
                 ],
               ),
             ),
-            Expanded(child: _buildContent()),
+            Expanded(child: _buildContent(l10n)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(AppLocalizations l10n) {
     return switch (_selectedIndex) {
       0 => const SongsLibraryView(),
       1 => const PlaylistsLibraryView(),
       2 => const ArtistsLibraryView(),
       3 => const AlbumsLibraryView(),
-      _ => const _LibraryPlaceholder('播客'),
+      _ => _LibraryPlaceholder(l10n.libraryPodcasts),
     };
   }
 }

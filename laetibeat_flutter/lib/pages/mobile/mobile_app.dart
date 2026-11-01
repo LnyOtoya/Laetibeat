@@ -3,6 +3,7 @@ import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../app/app_destination.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../shared/layout/app_bottom_inset.dart';
 import '../../widgets/player/player_provider.dart';
 import 'home/mobile_home_page.dart';
@@ -36,14 +37,22 @@ class _MobileAppState extends ConsumerState<MobileApp> {
     AppDestination.search,
   ];
 
-  static const List<M3ENavigationBarDestination> _destinations = [
-    M3ENavigationBarDestination(icon: Icon(M3EIcons.home), label: 'Home'),
-    M3ENavigationBarDestination(
-      icon: Icon(M3EIcons.music_note),
-      label: 'Library',
-    ),
-    M3ENavigationBarDestination(icon: Icon(M3EIcons.search), label: 'Search'),
-  ];
+  List<M3ENavigationBarDestination> _destinations(AppLocalizations l10n) {
+    return [
+      M3ENavigationBarDestination(
+        icon: const Icon(M3EIcons.home),
+        label: l10n.navHome,
+      ),
+      M3ENavigationBarDestination(
+        icon: const Icon(M3EIcons.music_note),
+        label: l10n.navLibrary,
+      ),
+      M3ENavigationBarDestination(
+        icon: const Icon(M3EIcons.search),
+        label: l10n.navSearch,
+      ),
+    ];
+  }
 
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   late final _MobileNavigatorObserver _navigatorObserver =
@@ -142,6 +151,7 @@ class _MobileAppState extends ConsumerState<MobileApp> {
   @override
   Widget build(BuildContext context) {
     final theme = M3ETheme.of(context);
+    final l10n = AppLocalizations.of(context);
     final int selectedIndex = _tabs.indexOf(_currentTab);
     final bool hasTrack = ref.watch(
       playerProvider.select((state) => state.current != null),
@@ -170,7 +180,7 @@ class _MobileAppState extends ConsumerState<MobileApp> {
       ),
       bottomNavigationBar: _showNavigationBar
           ? M3ENavigationBar(
-              destinations: _destinations,
+              destinations: _destinations(l10n),
               selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
               onDestinationSelected: (int index) {
                 if (index < 0 || index >= _tabs.length) return;

@@ -4,6 +4,8 @@ import 'package:laetibeat/widgets/settings/song_source_settings.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../../app/app_locale.dart';
+import '../../../../l10n/generated/app_localizations.dart';
 import '../../widgets/mobile_large_subpage_app_bar.dart';
 
 /// 移动端外观设置子页面。
@@ -11,10 +13,11 @@ class MobileAppearanceSettingsPage extends ConsumerWidget {
   const MobileAppearanceSettingsPage({super.key});
 
   Future<void> _pickSongSource(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
     final current = ref.read(defaultSongSourceProvider);
     final picked = await M3EDialog.showSelectionScreen(
       context,
-      title: '歌曲来源',
+      title: l10n.songSource,
       options: SongSources.all,
       initialSelection: <String>[current],
       icon: const Icon(M3EIcons.library_music),
@@ -24,10 +27,11 @@ class MobileAppearanceSettingsPage extends ConsumerWidget {
   }
 
   Future<void> _pickSongSort(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
     final current = ref.read(defaultSongSortProvider);
     final picked = await M3EDialog.showSelectionScreen(
       context,
-      title: '歌曲排序',
+      title: l10n.songSort,
       options: SongSortModes.all,
       initialSelection: <String>[current],
       icon: const Icon(M3EIcons.sort),
@@ -36,41 +40,78 @@ class MobileAppearanceSettingsPage extends ConsumerWidget {
     ref.read(defaultSongSortProvider.notifier).setMode(picked.first);
   }
 
+  Future<void> _pickLanguage(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
+    final current = ref.read(appLanguageProvider);
+    final labels = <String>[
+      l10n.languageSystem,
+      l10n.languageChinese,
+      l10n.languageEnglish,
+    ];
+    final currentLabel = switch (current) {
+      AppLanguage.system => l10n.languageSystem,
+      AppLanguage.zh => l10n.languageChinese,
+      AppLanguage.en => l10n.languageEnglish,
+    };
+    final picked = await M3EDialog.showSelectionScreen(
+      context,
+      title: l10n.languageDialogTitle,
+      options: labels,
+      initialSelection: <String>[currentLabel],
+      icon: const Icon(M3EIcons.translate),
+    );
+    if (!context.mounted || picked == null || picked.isEmpty) return;
+    final index = labels.indexOf(picked.first);
+    if (index < 0) return;
+    await ref
+        .read(appLanguageProvider.notifier)
+        .select(AppLanguage.values[index]);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = M3ETheme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surfaceContainer,
-      appBar: mobileLargeSubpageAppBar(context, title: '外观'),
+      appBar: mobileLargeSubpageAppBar(context, title: l10n.appearanceTitle),
       body: SafeArea(
         top: false,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           children: [
-            const _AppearanceGroupTitle('显示'),
+            _AppearanceGroupTitle(l10n.displayGroup),
             const SizedBox(height: 8),
             M3EList(
               color: theme.colorScheme.surface,
               variant: M3ECardVariant.filled,
               onTap: (int index) {
-                if (index == 0) {
-                  _pickSongSource(context, ref);
-                } else {
-                  _pickSongSort(context, ref);
+                switch (index) {
+                  case 0:
+                    _pickSongSource(context, ref);
+                  case 1:
+                    _pickSongSort(context, ref);
+                  case 2:
+                    _pickLanguage(context, ref);
                 }
               },
-              itemCount: 2,
+              itemCount: 3,
               itemBuilder: (BuildContext context, int index) {
-                return index == 0
-                    ? const M3EListItem(
-                        headline: '歌曲来源',
-                        supportingText: '选择在歌曲列表默认显示的歌曲来源',
-                      )
-                    : const M3EListItem(
-                        headline: '歌曲排序',
-                        supportingText: '选择默认的歌曲排序方式',
-                      );
+                return switch (index) {
+                  0 => M3EListItem(
+                    headline: l10n.songSource,
+                    supportingText: l10n.songSourceSupporting,
+                  ),
+                  1 => M3EListItem(
+                    headline: l10n.songSort,
+                    supportingText: l10n.songSortSupporting,
+                  ),
+                  _ => M3EListItem(
+                    headline: l10n.language,
+                    supportingText: l10n.languageSupporting,
+                  ),
+                };
               },
             ),
           ],

@@ -1,6 +1,7 @@
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../widgets/mobile_app_bar.dart';
 import '../widgets/mobile_search_bar.dart';
 
@@ -13,6 +14,7 @@ class MobileSearchPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = M3ETheme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surfaceContainer,
@@ -29,10 +31,7 @@ class MobileSearchPage extends StatelessWidget {
       body: SafeArea(
         top: false,
         child: Center(
-          child: Text(
-            '搜索',
-            style: theme.typeScale.headlineSmall,
-          ),
+          child: Text(l10n.searchTitle, style: theme.typeScale.headlineSmall),
         ),
       ),
     );
@@ -50,7 +49,7 @@ class _SearchSourceAvatar extends StatelessWidget {
 
     return Semantics(
       button: true,
-      label: '切换搜索源',
+      label: AppLocalizations.of(context).switchSearchSource,
       child: GestureDetector(
         onTap: onTap,
         child: DecoratedBox(

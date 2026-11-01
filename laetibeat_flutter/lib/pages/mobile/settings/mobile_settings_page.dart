@@ -1,6 +1,8 @@
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
+
 import '../mobile_navigation.dart';
 import '../routes.dart';
 import 'appearance/mobile_appearance_settings_page.dart';
@@ -18,16 +20,17 @@ class MobileSettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = M3ETheme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surfaceContainer,
       body: SafeArea(
         child: Column(
           children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 8, 16, 8),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
               child: MobileSearchBar(
-                hintText: '搜索设置',
+                hintText: l10n.settingsSearchHint,
                 variant: MobileSearchBarVariant.outlined,
               ),
             ),
@@ -47,8 +50,8 @@ class MobileSettingsPage extends StatelessWidget {
                     },
                     items: [
                       M3EListItem(
-                        headline: '外观',
-                        supportingText: '主题与明暗切换',
+                        headline: l10n.settingsAppearance,
+                        supportingText: l10n.settingsAppearanceSupporting,
                         leading: _SettingsLeadingAvatar(icon: M3EIcons.palette),
                       ),
                     ],
@@ -66,15 +69,15 @@ class MobileSettingsPage extends StatelessWidget {
                     },
                     items: [
                       M3EListItem(
-                        headline: '播放器与音频',
-                        supportingText: '淡入淡出与电池优化',
+                        headline: l10n.settingsPlaybackAudio,
+                        supportingText: l10n.settingsPlaybackAudioSupporting,
                         leading: _SettingsLeadingAvatar(
                           icon: M3EIcons.graphic_eq,
                         ),
                       ),
                       M3EListItem(
-                        headline: '内容',
-                        supportingText: '音乐库、歌词与语言',
+                        headline: l10n.settingsContent,
+                        supportingText: l10n.settingsContentSupporting,
                         leading: _SettingsLeadingAvatar(
                           icon: M3EIcons.library_music,
                         ),
@@ -85,13 +88,13 @@ class MobileSettingsPage extends StatelessWidget {
                   _SettingsGroup(
                     items: [
                       M3EListItem(
-                        headline: '储存',
-                        supportingText: '缓存管理',
+                        headline: l10n.settingsStorage,
+                        supportingText: l10n.settingsStorageSupporting,
                         leading: _SettingsLeadingAvatar(icon: M3EIcons.storage),
                       ),
                       M3EListItem(
-                        headline: '备份与还原',
-                        supportingText: '备份设置或从另一份配置中导入设置',
+                        headline: l10n.settingsBackupRestore,
+                        supportingText: l10n.settingsBackupRestoreSupporting,
                         leading: _SettingsLeadingAvatar(
                           icon: M3EIcons.settings_backup_restore,
                         ),
@@ -102,8 +105,8 @@ class MobileSettingsPage extends StatelessWidget {
                   _SettingsGroup(
                     items: [
                       M3EListItem(
-                        headline: '关于',
-                        supportingText: '当前版本',
+                        headline: l10n.settingsAbout,
+                        supportingText: l10n.settingsAboutSupporting,
                         leading: _SettingsLeadingAvatar(icon: M3EIcons.info),
                       ),
                     ],

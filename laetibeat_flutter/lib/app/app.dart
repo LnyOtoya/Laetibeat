@@ -2,11 +2,13 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 
+import '../l10n/generated/app_localizations.dart';
 import '../pages/desktop/desktop_app.dart';
 import '../pages/mobile/mobile_app.dart';
 import '../widgets/integration/media_integration_host.dart';
 import '../widgets/settings/settings_provider.dart';
 import 'app_form_factor.dart';
+import 'app_locale.dart';
 import 'theme/app_theme.dart';
 
 /// 应用根节点：只负责形态选择、主题装配与全局宿主。
@@ -17,6 +19,7 @@ class LaetibeatApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final formFactor = ref.watch(appFormFactorProvider);
     final themeMode = ref.watch(appThemeModeProvider);
+    final language = ref.watch(appLanguageProvider);
     final followSystem = themeMode == AppThemeMode.system;
     final initialTheme = followSystem
         ? null
@@ -25,6 +28,10 @@ class LaetibeatApp extends ConsumerWidget {
     return M3EMaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Laetibeat',
+      onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
+      locale: localeFor(language),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       data: AppThemeFactory.dataFor(formFactor),
       dynamicColoring: true,
       autoTheming: followSystem,

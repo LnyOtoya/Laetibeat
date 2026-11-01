@@ -1,6 +1,7 @@
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../mobile_navigation.dart';
 import '../routes.dart';
 import '../settings/mobile_settings_page.dart';
@@ -55,10 +56,11 @@ List<Widget> mobileHomeAppBarActions(BuildContext context) {
 
 /// 音乐源配置入口。
 Widget mobileMusicSourcesAction(BuildContext context) {
+  final l10n = AppLocalizations.of(context);
   return M3EIconButton(
     variant: M3EIconButtonVariant.standard,
     icon: const Icon(M3EIcons.cloud),
-    tooltip: '音乐源配置',
+    tooltip: l10n.actionMusicSources,
     onPressed: () => pushMobileRootPage(
       context,
       const MobileMusicSourcesPage(),
@@ -69,10 +71,11 @@ Widget mobileMusicSourcesAction(BuildContext context) {
 
 /// 统计入口。
 Widget mobileStatsAction(BuildContext context) {
+  final l10n = AppLocalizations.of(context);
   return M3EIconButton(
     variant: M3EIconButtonVariant.standard,
     icon: const Icon(M3EIcons.bar_chart),
-    tooltip: '统计',
+    tooltip: l10n.actionStatistics,
     onPressed: () => pushMobileRootPage(
       context,
       const MobileStatsPage(),
@@ -90,7 +93,7 @@ Widget mobileSettingsAction(BuildContext context) {
       variant: M3EIconButtonVariant.tonal,
       shape: M3EIconButtonShapeVariant.round,
       icon: const Icon(M3EIcons.settings),
-      tooltip: '设置',
+      tooltip: AppLocalizations.of(context).actionSettings,
       onPressed: () => pushMobileRootPage(
         context,
         const MobileSettingsPage(),

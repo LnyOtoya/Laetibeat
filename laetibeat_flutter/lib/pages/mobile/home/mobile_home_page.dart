@@ -1,6 +1,7 @@
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../widgets/mobile_app_bar.dart';
 
 /// 移动端首页。
@@ -17,7 +18,10 @@ class MobileHomePage extends StatelessWidget {
       backgroundColor: theme.colorScheme.surfaceContainer,
       appBar: mobileTopAppBar(
         context,
-        title: mobileTopAppBarTitle(context, '首页'),
+        title: mobileTopAppBarTitle(
+          context,
+          AppLocalizations.of(context).homeTitle,
+        ),
         actions: mobileHomeAppBarActions(context),
       ),
       body: const SizedBox.expand(),

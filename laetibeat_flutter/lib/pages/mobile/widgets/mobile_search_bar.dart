@@ -1,6 +1,8 @@
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
+
 /// 搜索栏的静态外观。
 enum MobileSearchBarVariant {
   /// 默认 filled：surfaceContainerHigh 背景，无边框。
@@ -19,13 +21,13 @@ enum MobileSearchBarVariant {
 class MobileSearchBar extends StatefulWidget {
   const MobileSearchBar({
     super.key,
-    this.hintText = '搜索歌曲、艺人、专辑',
+    this.hintText,
     this.variant = MobileSearchBarVariant.filled,
     this.avatar,
     this.trailing,
   });
 
-  final String hintText;
+  final String? hintText;
   final MobileSearchBarVariant variant;
 
   /// 搜索栏右侧头像；为空时不显示。
@@ -63,12 +65,14 @@ class _MobileSearchBarState extends State<MobileSearchBar> {
       suggestionsBuilder: (BuildContext context, M3ESearchController _) {
         return const <Widget>[];
       },
-      barHintText: widget.hintText,
+      barHintText: widget.hintText ?? AppLocalizations.of(context).searchHint,
       barLeading: const Icon(M3EIcons.search),
       barAvatar: widget.avatar,
       barTrailing: widget.trailing,
       barBackgroundColor: outlined
-          ? WidgetStatePropertyAll<Color?>(theme.colorScheme.surfaceContainerHigh)
+          ? WidgetStatePropertyAll<Color?>(
+              theme.colorScheme.surfaceContainerHigh,
+            )
           : null,
       barSide: outlined
           ? WidgetStatePropertyAll<BorderSide?>(
