@@ -30,6 +30,10 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }
@@ -42,4 +46,10 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // rustls-platform-verifier 的 Android JVM 组件。
+    // 版本必须与 Cargo.lock 中的 rustls-platform-verifier-android 对齐。
+    implementation("org.rustls:rustls-platform-verifier:0.2.0")
 }

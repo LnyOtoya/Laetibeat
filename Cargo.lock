@@ -2001,9 +2001,11 @@ name = "rust_lib_laetibeat"
 version = "0.1.0"
 dependencies = [
  "flutter_rust_bridge",
+ "jni",
  "laetibeat_core",
  "laetibeat_remote",
  "rfd",
+ "rustls-platform-verifier",
 ]
 
 [[package]]
