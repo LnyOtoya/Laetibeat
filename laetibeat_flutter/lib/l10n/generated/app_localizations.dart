@@ -368,6 +368,42 @@ abstract class AppLocalizations {
   /// **'Choose which lyrics sources are enabled'**
   String get lyricsSourceSupporting;
 
+  /// No description provided for @lyricsSourceTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Lyrics tags'**
+  String get lyricsSourceTags;
+
+  /// No description provided for @lyricsSourceTagsIncludingServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Lyrics tags (including server default)'**
+  String get lyricsSourceTagsIncludingServer;
+
+  /// No description provided for @lyricsSourceLrclib.
+  ///
+  /// In en, this message translates to:
+  /// **'LRCLIB'**
+  String get lyricsSourceLrclib;
+
+  /// No description provided for @closeLyricsPriority.
+  ///
+  /// In en, this message translates to:
+  /// **'Close lyrics source priority'**
+  String get closeLyricsPriority;
+
+  /// No description provided for @lyricsPriorityHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Long-press and drag to reorder'**
+  String get lyricsPriorityHint;
+
+  /// No description provided for @lyricsReorderHandle.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag to reorder lyrics sources'**
+  String get lyricsReorderHandle;
+
   /// No description provided for @lyricsPriority.
   ///
   /// In en, this message translates to:

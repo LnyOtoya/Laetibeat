@@ -7,6 +7,7 @@
 // ignore_for_file: argument_type_not_assignable
 
 import 'api/library.dart';
+import 'api/lyrics.dart';
 import 'api/metadata.dart';
 import 'api/simple.dart';
 import 'api/stats.dart';

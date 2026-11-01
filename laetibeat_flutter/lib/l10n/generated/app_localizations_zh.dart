@@ -144,6 +144,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get lyricsSourceSupporting => '选择要启用的歌词来源';
 
   @override
+  String get lyricsSourceTags => '歌词标签';
+
+  @override
+  String get lyricsSourceTagsIncludingServer => '歌词标签（包括服务器默认返回）';
+
+  @override
+  String get lyricsSourceLrclib => 'LRCLIB';
+
+  @override
+  String get closeLyricsPriority => '关闭歌词来源优先级';
+
+  @override
+  String get lyricsPriorityHint => '长按并拖动调整顺序';
+
+  @override
+  String get lyricsReorderHandle => '拖动调整歌词来源优先级';
+
+  @override
   String get lyricsPriority => '歌词来源优先级';
 
   @override

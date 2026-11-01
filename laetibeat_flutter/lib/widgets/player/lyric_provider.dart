@@ -1,20 +1,20 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:laetibeat/src/rust/api/library.dart' as rust_library;
+import 'package:laetibeat/src/rust/api/lyrics.dart' as rust_lyrics;
 import 'package:laetibeat/src/rust/api/simple.dart' as rust;
 import 'package:laetibeat/src/rust/api/subsonic.dart' as rust_subsonic;
 
+import '../settings/lyrics_settings.dart';
 import 'player_provider.dart';
 
 // ---------------------------------------------------------------------------
-// 歌词来源抽象 + 本地实现
+// 歌词来源抽象 + 实现
 // ---------------------------------------------------------------------------
-// 上层(歌词页)只依赖 LyricProvider 这个拼口:
-//   * 来源优先级: 内嵌标签(USLT/SYLT/©lyr/LYRICS) -> 同目录 .lrc/.txt -> 网络
-//   * 网络源(Navidrome / opensubsonic) -> 以后实现同接口,按 getLyrics URL 拉取
-// 与 CoverProvider 同构:新增音源只需新增一个实现,不动上层。
-//
-// 本层只负责"取到原始歌词文本";LRC/QRC/YRC 的解析全部交给 flutter_lyric,
-// 解析结果为空时上层按纯文本展示。
+// 上层(歌词页)只依赖 LyricsRepository:
+//   * 本地曲目: 内嵌标签(USLT/SYLT/©lyr/LYRICS) -> 同目录 .lrc/.txt -> 网络
+//   * OpenSubsonic 曲目: 服务器歌词 -> 网络
+//   * 其它远端音源: 由各自的“标签/服务器”Provider 返回自己的歌词 -> 网络
+// 网络源当前为 LRCLIB; 解析全部交给 flutter_lyric, 本层只负责原始文本。
 
 /// 一份歌词的原始文本。
 class Lyrics {
@@ -59,18 +59,75 @@ class RemoteLyricProvider implements LyricProvider {
   }
 }
 
+/// LRCLIB 网络歌词来源。请求、正/负缓存都由 Rust 层负责。
+class LrclibLyricProvider implements LyricProvider {
+  LrclibLyricProvider();
+
+  @override
+  Future<Lyrics?> lyrics(rust.UiTrack track) async {
+    if (track.title.trim().isEmpty || track.artist.trim().isEmpty) {
+      return null;
+    }
+    final text = await rust_lyrics.lrclibGetLyrics(
+      title: track.title,
+      artist: track.artist,
+      album: track.album,
+      durationSeconds: track.durationSeconds.toInt(),
+    );
+    return _toLyrics(text);
+  }
+}
+
 Lyrics? _toLyrics(String? text) {
   if (text == null) return null;
   final trimmed = text.trim();
   return trimmed.isEmpty ? null : Lyrics(trimmed);
 }
 
+/// 按当前设置，把“标签/服务器歌词”和 LRCLIB 串成一条回退链。
+class LyricsRepository {
+  LyricsRepository({
+    required this.fileProvider,
+    required this.remoteProvider,
+    required this.lrclibProvider,
+    required this.settings,
+  });
+
+  final FileLyricProvider fileProvider;
+  final RemoteLyricProvider remoteProvider;
+  final LrclibLyricProvider lrclibProvider;
+  final LyricsSettings settings;
+
+  Future<Lyrics?> lyrics(rust.UiTrack track) async {
+    for (final source in settings.order) {
+      if (!settings.isEnabled(source)) continue;
+      final lyrics = await switch (source) {
+        LyricsSourceId.tags => _loadOwnLyrics(track),
+        LyricsSourceId.lrclib => lrclibProvider.lyrics(track),
+      };
+      if (lyrics != null) return lyrics;
+    }
+    return null;
+  }
+
+  /// “歌词标签”包含本地内嵌/外挂歌词，以及服务器默认返回的歌词。
+  Future<Lyrics?> _loadOwnLyrics(rust.UiTrack track) async {
+    if (track.source == 'opensubsonic' && track.sourceId.isNotEmpty) {
+      return remoteProvider.lyrics(track);
+    }
+    if (track.path.isNotEmpty) {
+      return fileProvider.lyrics(track);
+    }
+    // 未来 Jellyfin / Emby 等音源在这里接入各自的服务器歌词 Provider。
+    return null;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Riverpod 接线
 // ---------------------------------------------------------------------------
 
-/// 全局歌词来源(本地文件实现)。
-final lyricProvider = Provider<LyricProvider>((ref) {
+final fileLyricProvider = Provider<FileLyricProvider>((ref) {
   return FileLyricProvider();
 });
 
@@ -78,25 +135,32 @@ final remoteLyricProvider = Provider<RemoteLyricProvider>((ref) {
   return RemoteLyricProvider();
 });
 
-/// 当前播放曲目的歌词。随当前曲目切换而刷新;无歌词返回 null。
+final lrclibLyricProvider = Provider<LrclibLyricProvider>((ref) {
+  return LrclibLyricProvider();
+});
+
+final lyricsRepositoryProvider = Provider<LyricsRepository>((ref) {
+  return LyricsRepository(
+    fileProvider: ref.watch(fileLyricProvider),
+    remoteProvider: ref.watch(remoteLyricProvider),
+    lrclibProvider: ref.watch(lrclibLyricProvider),
+    settings: ref.watch(lyricsSettingsProvider),
+  );
+});
+
+/// 当前播放曲目的歌词。随当前曲目或歌词设置变化而刷新;无歌词返回 null。
 /// 只订阅 current(而非整个 state),避免播放进度 position 每 tick 更新
 /// state 时触发本 FutureProvider 反复重跑而闪 loading。
 final lyricsProvider = FutureProvider<Lyrics?>((ref) async {
   final track = ref.watch(playerProvider.select((s) => s.current));
   if (track == null) return null;
-  if (track.source == 'opensubsonic' && track.sourceId.isNotEmpty) {
-    return ref.read(remoteLyricProvider).lyrics(track);
-  }
-  return ref.read(lyricProvider).lyrics(track);
+  return ref.watch(lyricsRepositoryProvider).lyrics(track);
 });
 
-/// 按曲目取歌词(供列表等并行展示)。以 track 对象作 family key,
-/// FileLyricProvider 内部再按 id 缓存。
-final trackLyricsProvider =
-    FutureProvider.family<Lyrics?, rust.UiTrack>((ref, track) async {
-  if (track.source == 'opensubsonic' && track.sourceId.isNotEmpty) {
-    return ref.read(remoteLyricProvider).lyrics(track);
-  }
-  if (track.path.isEmpty) return null;
-  return ref.read(lyricProvider).lyrics(track);
+/// 按曲目取歌词(供列表等并行展示)。
+final trackLyricsProvider = FutureProvider.family<Lyrics?, rust.UiTrack>((
+  ref,
+  track,
+) async {
+  return ref.watch(lyricsRepositoryProvider).lyrics(track);
 });

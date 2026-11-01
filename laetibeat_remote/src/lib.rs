@@ -9,6 +9,7 @@ use opensubsonic::{
 };
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
+use std::time::Duration;
 use tokio::runtime::{Builder, Runtime};
 
 static RUNTIME: OnceLock<Runtime> = OnceLock::new();
@@ -569,4 +570,144 @@ mod tests {
         assert!(result.albums.is_empty());
         assert!(result.tracks.is_empty());
     }
+}
+
+
+// ---------------------------------------------------------------------------
+// LRCLIB
+// ---------------------------------------------------------------------------
+
+static LRCLIB_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+
+#[derive(Debug, Clone, serde::Deserialize)]
+struct LrclibLyrics {
+    #[serde(default)]
+    duration: Option<f64>,
+    #[serde(rename = "plainLyrics", default)]
+    plain_lyrics: Option<String>,
+    #[serde(rename = "syncedLyrics", default)]
+    synced_lyrics: Option<String>,
+    #[serde(default)]
+    instrumental: bool,
+}
+
+fn lrclib_client() -> Result<&'static reqwest::Client, String> {
+    if let Some(client) = LRCLIB_CLIENT.get() {
+        return Ok(client);
+    }
+    let client = reqwest::Client::builder()
+        .user_agent("Laetibeat/0.1 (OpenSubsonic music player)")
+        .timeout(Duration::from_secs(15))
+        .build()
+        .map_err(map_err)?;
+    let _ = LRCLIB_CLIENT.set(client);
+    LRCLIB_CLIENT
+        .get()
+        .ok_or_else(|| "LRCLIB 客户端初始化失败".to_string())
+}
+
+/// 从 LRCLIB 精确查询歌词；没有精确结果时做一次搜索兜底。
+/// 返回同步歌词优先，其次纯文本歌词。
+pub fn get_lrclib_lyrics(
+    artist: &str,
+    title: &str,
+    album: &str,
+    duration_seconds: i64,
+) -> Result<Option<String>, String> {
+    let client = lrclib_client()?;
+    let runtime = runtime()?;
+
+    runtime.block_on(async {
+        let mut query = vec![
+            ("artist_name", artist.to_string()),
+            ("track_name", title.to_string()),
+        ];
+        if !album.trim().is_empty() {
+            query.push(("album_name", album.to_string()));
+        }
+        if duration_seconds > 0 {
+            query.push(("duration", duration_seconds.to_string()));
+        }
+
+        let response = client
+            .get("https://lrclib.net/api/get")
+            .query(&query)
+            .send()
+            .await
+            .map_err(map_err)?;
+
+        if response.status() == reqwest::StatusCode::NOT_FOUND {
+            return search_lrclib(client, artist, title, duration_seconds).await;
+        }
+        if !response.status().is_success() {
+            return Err(format!("LRCLIB 请求失败: {}", response.status()));
+        }
+
+        let item = response.json::<LrclibLyrics>().await.map_err(map_err)?;
+        let text = lrclib_text(item);
+        if text.is_some() {
+            return Ok(text);
+        }
+        search_lrclib(client, artist, title, duration_seconds).await
+    })
+}
+
+async fn search_lrclib(
+    client: &reqwest::Client,
+    artist: &str,
+    title: &str,
+    duration_seconds: i64,
+) -> Result<Option<String>, String> {
+    let response = client
+        .get("https://lrclib.net/api/search")
+        .query(&[
+            ("artist_name", artist.to_string()),
+            ("track_name", title.to_string()),
+        ])
+        .send()
+        .await
+        .map_err(map_err)?;
+    if !response.status().is_success() {
+        return Ok(None);
+    }
+
+    let items = response
+        .json::<Vec<LrclibLyrics>>()
+        .await
+        .map_err(map_err)?;
+    let best = items
+        .into_iter()
+        .filter(|item| !item.instrumental)
+        .filter(|item| {
+            item.synced_lyrics
+                .as_deref()
+                .map(|text| !text.trim().is_empty())
+                .unwrap_or(false)
+                || item
+                    .plain_lyrics
+                    .as_deref()
+                    .map(|text| !text.trim().is_empty())
+                    .unwrap_or(false)
+        })
+        .min_by_key(|item| {
+            if duration_seconds <= 0 {
+                0
+            } else {
+                item.duration
+                    .map(|duration| (duration - duration_seconds as f64).abs() as i64)
+                    .unwrap_or(i64::MAX)
+            }
+        });
+
+    Ok(best.and_then(lrclib_text))
+}
+
+fn lrclib_text(item: LrclibLyrics) -> Option<String> {
+    if item.instrumental {
+        return None;
+    }
+    item.synced_lyrics
+        .filter(|text| !text.trim().is_empty())
+        .or_else(|| item.plain_lyrics.filter(|text| !text.trim().is_empty()))
+        .map(|text| text.trim().to_string())
 }

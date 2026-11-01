@@ -147,6 +147,25 @@ class AppLocalizationsEn extends AppLocalizations {
       'Choose which lyrics sources are enabled';
 
   @override
+  String get lyricsSourceTags => 'Lyrics tags';
+
+  @override
+  String get lyricsSourceTagsIncludingServer =>
+      'Lyrics tags (including server default)';
+
+  @override
+  String get lyricsSourceLrclib => 'LRCLIB';
+
+  @override
+  String get closeLyricsPriority => 'Close lyrics source priority';
+
+  @override
+  String get lyricsPriorityHint => 'Long-press and drag to reorder';
+
+  @override
+  String get lyricsReorderHandle => 'Drag to reorder lyrics sources';
+
+  @override
   String get lyricsPriority => 'Lyrics source priority';
 
   @override
