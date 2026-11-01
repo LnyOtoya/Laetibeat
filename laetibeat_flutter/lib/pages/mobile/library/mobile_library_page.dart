@@ -2,6 +2,7 @@ import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../widgets/mobile_app_bar.dart';
+import 'views/songs_library_view.dart';
 
 /// 移动端音乐库页面。
 class MobileLibraryPage extends StatefulWidget {
@@ -69,10 +70,35 @@ class _MobileLibraryPageState extends State<MobileLibraryPage> {
                 ],
               ),
             ),
-            const Expanded(child: SizedBox.shrink()),
+            Expanded(child: _buildContent()),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildContent() {
+    return switch (_selectedIndex) {
+      0 => const _LibraryPlaceholder('歌单'),
+      1 => const _LibraryPlaceholder('艺术家'),
+      2 => const _LibraryPlaceholder('专辑'),
+      3 => const SongsLibraryView(),
+      _ => const _LibraryPlaceholder('播客'),
+    };
+  }
+}
+
+class _LibraryPlaceholder extends StatelessWidget {
+  const _LibraryPlaceholder(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = M3ETheme.of(context);
+
+    return Center(
+      child: Text(label, style: theme.typeScale.headlineSmall),
     );
   }
 }
