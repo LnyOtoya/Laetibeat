@@ -577,5 +577,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchFailed => 'Search failed';
 
   @override
+  String get searchRecentTitle => 'Recent searches';
+
+  @override
+  String get searchRecentEmpty => 'No recent searches';
+
+  @override
+  String get searchRecentClear => 'Clear';
+
+  @override
   String get searchRemoteNotSynced => 'Remote library is not synced yet';
 }

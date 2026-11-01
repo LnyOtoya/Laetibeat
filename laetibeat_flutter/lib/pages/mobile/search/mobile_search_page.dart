@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_3_expressive/material_3_expressive.dart';
 import 'package:material_ui/material_ui.dart';
@@ -10,6 +12,7 @@ import '../../../widgets/player/cover_provider.dart';
 import '../../../widgets/player/player_provider.dart';
 import '../../../widgets/remote_browser_provider.dart';
 import '../../../widgets/settings/music_library_provider.dart';
+import '../../../widgets/settings/persistence.dart';
 import '../../../widgets/settings/remote_sync_provider.dart';
 import '../../../widgets/settings/subsonic_provider.dart';
 import '../library/albums/album_detail_page.dart';
@@ -30,13 +33,21 @@ class MobileSearchPage extends ConsumerStatefulWidget {
 }
 
 class _MobileSearchPageState extends ConsumerState<MobileSearchPage> {
+  static const String _recentSearchesKey = 'search.recent_queries';
+
+  static const int _recentSearchLimit = 30;
+
   late final M3ESearchController _searchController;
   String _query = '';
+  List<String> _recentSearches = const <String>[];
 
   @override
   void initState() {
     super.initState();
     _searchController = M3ESearchController()..addListener(_onSearchChanged);
+    _recentSearches =
+        ref.read(sharedPreferencesProvider).getStringList(_recentSearchesKey) ??
+        const <String>[];
   }
 
   @override
@@ -53,46 +64,158 @@ class _MobileSearchPageState extends ConsumerState<MobileSearchPage> {
     setState(() => _query = query);
   }
 
+  Future<void> _rememberSearch(String value) async {
+    final query = value.trim();
+    if (query.isEmpty) return;
+    final next = <String>[
+      query,
+      ..._recentSearches.where((item) => item != query),
+    ];
+    if (next.length > _recentSearchLimit) {
+      next.removeRange(_recentSearchLimit, next.length);
+    }
+    if (!mounted) return;
+    setState(() => _recentSearches = next);
+    await ref
+        .read(sharedPreferencesProvider)
+        .setStringList(_recentSearchesKey, next);
+  }
+
+  Future<void> _clearRecentSearches() async {
+    setState(() => _recentSearches = const <String>[]);
+    await ref.read(sharedPreferencesProvider).remove(_recentSearchesKey);
+  }
+
+  void _applyRecentSearch(String query) {
+    _searchController.value = TextEditingValue(
+      text: query,
+      selection: TextSelection.collapsed(offset: query.length),
+    );
+    unawaited(_rememberSearch(query));
+  }
+
+  void _clearSearch() {
+    final current = _searchController.text.trim();
+    if (current.isNotEmpty) {
+      unawaited(_rememberSearch(current));
+    }
+    if (_searchController.text.isEmpty && _query.isEmpty) return;
+    _searchController.clear();
+    if (mounted) {
+      setState(() => _query = '');
+    }
+  }
+
+  Widget _buildSearchHistory(
+    M3EThemeData theme,
+    AppLocalizations l10n,
+    double bottomInset,
+  ) {
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(16, 8, 16, 24 + bottomInset),
+      child: _buildSearchHistoryContent(theme, l10n),
+    );
+  }
+
+  Widget _buildSearchHistoryContent(M3EThemeData theme, AppLocalizations l10n) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                l10n.searchRecentTitle,
+                style: theme.typeScale.titleMedium,
+              ),
+            ),
+            if (_recentSearches.isNotEmpty)
+              M3EButton(
+                style: M3EButtonStyle.text,
+                size: M3EButtonSize.sm,
+                label: Text(l10n.searchRecentClear),
+                onPressed: _clearRecentSearches,
+              ),
+          ],
+        ),
+        SizedBox(height: theme.spacing.md),
+        if (_recentSearches.isEmpty)
+          Text(
+            l10n.searchRecentEmpty,
+            style: theme.typeScale.bodyMedium.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          )
+        else
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final query in _recentSearches)
+                M3EChip(
+                  label: query,
+                  type: M3EChipType.suggestion,
+                  leading: const Icon(M3EIcons.history, size: 18),
+                  onPressed: () => _applyRecentSearch(query),
+                ),
+            ],
+          ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = M3ETheme.of(context);
     final l10n = AppLocalizations.of(context);
     final bottomInset = AppBottomInsetScope.bottomInsetOf(context);
 
-    return Scaffold(
-      backgroundColor: theme.colorScheme.surfaceContainer,
-      appBar: mobileTopAppBar(
-        context,
-        title: MobileSearchBar(
-          searchController: _searchController,
-          suggestionsBuilder:
-              (BuildContext context, M3ESearchController controller) {
-                final query = controller.text.trim();
-                if (query.isEmpty) return const <Widget>[];
-                return <Widget>[
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                    child: _MobileSearchResults(query: query),
-                  ),
-                ];
-              },
+    return PopScope(
+      canPop: _query.isEmpty,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (didPop) return;
+        _clearSearch();
+      },
+      child: Scaffold(
+        backgroundColor: theme.colorScheme.surfaceContainer,
+        appBar: mobileTopAppBar(
+          context,
+          title: MobileSearchBar(
+            searchController: _searchController,
+            onViewClosed: _clearSearch,
+            onSubmitted: (String value) => unawaited(_rememberSearch(value)),
+            suggestionsBuilder:
+                (BuildContext context, M3ESearchController controller) {
+                  final query = controller.text.trim();
+                  if (query.isEmpty) {
+                    return <Widget>[
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                        child: _buildSearchHistoryContent(
+                          M3ETheme.of(context),
+                          AppLocalizations.of(context),
+                        ),
+                      ),
+                    ];
+                  }
+                  return <Widget>[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                      child: _MobileSearchResults(query: query),
+                    ),
+                  ];
+                },
+          ),
         ),
-      ),
-      body: SafeArea(
-        top: false,
-        child: _query.isEmpty
-            ? Center(
-                child: Text(
-                  l10n.searchPrompt,
-                  style: theme.typeScale.bodyLarge.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+        body: SafeArea(
+          top: false,
+          child: _query.isEmpty
+              ? _buildSearchHistory(theme, l10n, bottomInset)
+              : SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(16, 8, 16, 24 + bottomInset),
+                  child: _MobileSearchResults(query: _query),
                 ),
-              )
-            : SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(16, 8, 16, 24 + bottomInset),
-                child: _MobileSearchResults(query: _query),
-              ),
+        ),
       ),
     );
   }

@@ -30,6 +30,7 @@ class MobileSearchBar extends StatefulWidget {
     this.searchController,
     this.onChanged,
     this.onSubmitted,
+    this.onViewClosed,
     this.suggestionsBuilder,
   });
 
@@ -53,6 +54,9 @@ class MobileSearchBar extends StatefulWidget {
   final M3ESearchController? searchController;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
+
+  /// full screen 搜索视图关闭后的回调。
+  final VoidCallback? onViewClosed;
 
   /// full screen 搜索视图中的结果构建器。
   final M3ESearchSuggestionsBuilder? suggestionsBuilder;
@@ -92,6 +96,7 @@ class _MobileSearchBarState extends State<MobileSearchBar> {
           },
       onChanged: widget.onChanged,
       onSubmitted: widget.onSubmitted,
+      onClose: widget.onViewClosed,
       barHintText: widget.hintText ?? AppLocalizations.of(context).searchHint,
       barLeading: const Icon(M3EIcons.search),
       barAvatar: widget.avatar == null

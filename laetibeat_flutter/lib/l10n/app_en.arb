@@ -261,5 +261,8 @@
   "searchLocalLoading": "Loading local library…",
   "searchRemoteLoading": "Searching…",
   "searchFailed": "Search failed",
+  "searchRecentTitle": "Recent searches",
+  "searchRecentEmpty": "No recent searches",
+  "searchRecentClear": "Clear",
   "searchRemoteNotSynced": "Remote library is not synced yet"
 }

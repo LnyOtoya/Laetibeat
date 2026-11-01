@@ -28,6 +28,8 @@ class _SearchViewState extends ConsumerState<SearchView> {
   static const String _searchHint = '搜索你的专辑，艺术家，单曲';
   static const String _recentSearchesKey = 'search.recent_queries';
 
+  static const int _recentSearchLimit = 30;
+
   final TextEditingController _controller = TextEditingController();
 
   List<String> _recentSearches = <String>[];
@@ -68,8 +70,8 @@ class _SearchViewState extends ConsumerState<SearchView> {
       query,
       ..._recentSearches.where((item) => item != query),
     ];
-    if (next.length > 10) {
-      next.removeRange(10, next.length);
+    if (next.length > _recentSearchLimit) {
+      next.removeRange(_recentSearchLimit, next.length);
     }
     if (!mounted) return;
     setState(() => _recentSearches = next);
@@ -181,7 +183,6 @@ class _SearchViewState extends ConsumerState<SearchView> {
     );
   }
 
-
   // 默认状态：最近搜索
   Widget _buildSearchHistory(M3EThemeData theme) {
     return SingleChildScrollView(
@@ -190,9 +191,7 @@ class _SearchViewState extends ConsumerState<SearchView> {
         children: [
           Row(
             children: [
-              Expanded(
-                child: Text('最近搜索', style: theme.typeScale.titleMedium),
-              ),
+              Expanded(child: Text('最近搜索', style: theme.typeScale.titleMedium)),
               if (_recentSearches.isNotEmpty)
                 M3EButton(
                   style: M3EButtonStyle.text,
@@ -407,12 +406,7 @@ class _SearchViewState extends ConsumerState<SearchView> {
 
   Widget _searchCategoryTitle(M3EThemeData theme, String title) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(
-        0,
-        theme.spacing.md,
-        0,
-        theme.spacing.sm,
-      ),
+      padding: EdgeInsets.fromLTRB(0, theme.spacing.md, 0, theme.spacing.sm),
       child: Text(
         title,
         style: theme.typeScale.titleSmall.copyWith(
@@ -424,12 +418,7 @@ class _SearchViewState extends ConsumerState<SearchView> {
 
   Widget _searchSectionHint(M3EThemeData theme, String message) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(
-        0,
-        0,
-        0,
-        theme.spacing.lg,
-      ),
+      padding: EdgeInsets.fromLTRB(0, 0, 0, theme.spacing.lg),
       child: Text(
         message,
         style: theme.typeScale.bodySmall.copyWith(
@@ -660,9 +649,7 @@ class _SearchViewState extends ConsumerState<SearchView> {
     final queue = <rust.UiTrack>[
       for (final track in tracks) remoteTrackToUiTrack(track, sourceId),
     ];
-    ref
-        .read(playerProvider.notifier)
-        .load(queue, index, source: sourceLabel);
+    ref.read(playerProvider.notifier).load(queue, index, source: sourceLabel);
   }
 
   Future<void> _playRemoteAlbum(
@@ -691,17 +678,16 @@ class _SearchViewState extends ConsumerState<SearchView> {
   ) async {
     try {
       final albums = await ref.read(
-        remoteAlbumsProvider(
-          (sourceId: server.id, artistId: artist.id),
-        ).future,
+        remoteAlbumsProvider((sourceId: server.id, artistId: artist.id)).future,
       );
       final tracks = <rust_subsonic.UiRemoteTrack>[];
       for (final album in albums) {
         tracks.addAll(
           await ref.read(
-            remoteTracksProvider(
-              (sourceId: server.id, albumId: album.id),
-            ).future,
+            remoteTracksProvider((
+              sourceId: server.id,
+              albumId: album.id,
+            )).future,
           ),
         );
       }
@@ -723,11 +709,7 @@ class _SearchViewState extends ConsumerState<SearchView> {
 
 //搜索结果行首封面:懒加载曲目封面,无封面回退占位图标
 class _CoverThumb extends ConsumerWidget {
-  const _CoverThumb({
-    required this.track,
-    this.size,
-    this.circle = false,
-  });
+  const _CoverThumb({required this.track, this.size, this.circle = false});
 
   final rust.UiTrack track;
   final double? size;

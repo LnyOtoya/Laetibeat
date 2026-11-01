@@ -261,5 +261,8 @@
   "searchLocalLoading": "本地音乐库加载中…",
   "searchRemoteLoading": "正在搜索…",
   "searchFailed": "搜索失败",
+  "searchRecentTitle": "最近搜索",
+  "searchRecentEmpty": "暂无最近搜索",
+  "searchRecentClear": "清除",
   "searchRemoteNotSynced": "远端音乐尚未同步"
 }

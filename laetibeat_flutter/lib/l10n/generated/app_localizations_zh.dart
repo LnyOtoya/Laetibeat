@@ -566,5 +566,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get searchFailed => '搜索失败';
 
   @override
+  String get searchRecentTitle => '最近搜索';
+
+  @override
+  String get searchRecentEmpty => '暂无最近搜索';
+
+  @override
+  String get searchRecentClear => '清除';
+
+  @override
   String get searchRemoteNotSynced => '远端音乐尚未同步';
 }
